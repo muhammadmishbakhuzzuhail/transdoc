@@ -14,8 +14,21 @@ def render(doc: Document, cfg: Config) -> str:
             lines.append("")
             continue
 
+        if b.type == BlockType.FIGURE and b.image_path:
+            lines.append(f"![figure]({b.image_path})")
+            lines.append("")
+            continue
+
         text = b.output_text.strip()
         if not text:
+            continue
+
+        # bilingual: show source then translation
+        if cfg.bilingual and b.translated is not None and b.text.strip():
+            lines.append(f"> {b.text.strip()}")
+            lines.append("")
+            lines.append(b.translated.strip())
+            lines.append("")
             continue
 
         if b.type == BlockType.TITLE:

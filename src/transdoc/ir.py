@@ -125,6 +125,7 @@ class Block(BaseModel):
     confidence: Confidence = Field(default_factory=Confidence)
 
     table: Optional[Table] = None        # only for BlockType.TABLE
+    image_path: Optional[str] = None     # only for BlockType.FIGURE — extracted image file
 
     # Free-form flags surfaced in the report. e.g. {"unclear": "best-guess?"}
     flags: dict[str, str] = Field(default_factory=dict)

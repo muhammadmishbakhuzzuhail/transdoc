@@ -50,10 +50,12 @@ def translate(
     localize: bool = typer.Option(False, "--localize"),
     register: str = typer.Option("auto", "--register", "-r"),
     pages: str = typer.Option(None, "--pages", "-p", help='e.g. "3-7,10"'),
+    bilingual: bool = typer.Option(False, "--bilingual", "-b", help="source + translation"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
     cfg = _cfg(lang, source, to, engine, ocr, fidelity, domain, localize, register, pages)
+    cfg.bilingual = bilingual
     _execute(input, cfg, out)
 
 
@@ -69,6 +71,26 @@ def convert(
     cfg = _cfg("source", "auto", to, "echo", ocr, fidelity, "auto", False, "auto", None)
     cfg.mode = Mode.RECONSTRUCT
     _execute(input, cfg, out)
+
+
+@app.command()
+def ocr(input: str = typer.Argument(..., help="Scanned PDF"),
+        source: str = typer.Option("auto", "--source", "-s"),
+        ocr_engine: str = typer.Option("auto", "--ocr"),
+        out: str = typer.Option(None, "--out", "-o")):
+    """Make a scanned PDF searchable (add an invisible OCR text layer, no translation)."""
+    from .ingest.detect import detect
+    from .extract import extract as extract_ir
+    from .diagnose import diagnose
+    from .regenerate.pdf_out import render_searchable
+
+    cfg = _cfg(None, source, "pdf", "echo", ocr_engine, "auto", "auto", False, "auto", None)
+    det = detect(input)
+    doc = extract_ir(det, cfg)
+    diagnose(doc, det, cfg)
+    outp = out or str(Path(input).with_suffix("")) + ".searchable.pdf"
+    render_searchable(doc, cfg, outp)
+    console.print(f"[green]✓ searchable PDF:[/] {outp}")
 
 
 @app.command()

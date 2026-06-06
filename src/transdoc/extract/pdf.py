@@ -39,11 +39,15 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
 
     from ..ocr import get_ocr
 
+    import tempfile
+    from pathlib import Path
+
     ocr_pages = ocr_pages or set()
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
 
     ocr = get_ocr(cfg) if ocr_pages else None
+    img_dir = Path(tempfile.mkdtemp(prefix="transdoc_img_"))
 
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
@@ -54,6 +58,25 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             ocr_blocks = ocr.recognize_image_bytes(img_bytes, cfg, page=pno)
             out.blocks.extend(ocr_blocks)
             continue
+
+        # extract embedded images as FIGURE blocks (so flow output can reinsert them)
+        for ii, info in enumerate(page.get_images(full=True)):
+            xref = info[0]
+            try:
+                rects = page.get_image_rects(xref)
+                bb = rects[0] if rects else None
+                pix = fitz.Pixmap(doc, xref)
+                if pix.n - pix.alpha >= 4:  # CMYK -> RGB
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+                fpath = img_dir / f"p{pno}_img{ii}.png"
+                pix.save(str(fpath))
+                out.blocks.append(Block(
+                    id=f"p{pno}-fig{ii}", type=BlockType.FIGURE, page=pno,
+                    image_path=str(fpath),
+                    bbox=BBox(x0=bb.x0, y0=bb.y0, x1=bb.x1, y1=bb.y1) if bb else None,
+                    confidence=Confidence(source="digital")))
+            except Exception:
+                continue
 
         body = _body_size(page)
         d = page.get_text("dict")

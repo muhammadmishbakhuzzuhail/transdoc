@@ -73,6 +73,42 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     return out_path
 
 
+def render_searchable(doc: Document, cfg: Config, out_path: str) -> str:
+    """Add an invisible OCR text layer over the original scanned PDF -> searchable PDF.
+
+    Like OCRmyPDF: keeps the page image untouched and overlays selectable, invisible text
+    (render_mode 3) at each OCR block's bbox. Uses SOURCE text (no translation). Requires a
+    PDF source whose pages were OCR'd into the IR.
+    """
+    import fitz
+
+    if not doc.source_path or not doc.source_path.lower().endswith(".pdf"):
+        raise ValueError("searchable output requires a PDF source")
+    pdf = fitz.open(doc.source_path)
+    for b in doc.ordered_blocks():
+        if not (b.bbox and b.text.strip() and b.confidence.source == "ocr"):
+            continue
+        if b.page >= pdf.page_count:
+            continue
+        page = pdf[b.page]
+        # OCR bbox is in pixels at 300 dpi (see extractor); scale to PDF points (72 dpi).
+        s = 72.0 / 300.0
+        r = fitz.Rect(b.bbox.x0 * s, b.bbox.y0 * s, b.bbox.x1 * s, b.bbox.y1 * s)
+        # fit fontsize to the box (text is invisible, so just needs to land inside it)
+        size = max(4.0, min(r.height, r.width / max(1, len(b.text)) * 1.8))
+        try:
+            for _ in range(6):
+                ret = page.insert_textbox(r, b.text, fontsize=size, render_mode=3)
+                if ret >= 0 or size <= 4:
+                    break
+                size *= 0.7  # shrink until the text fits the original bbox
+        except Exception:
+            continue
+    pdf.save(out_path, garbage=4, deflate=True)
+    pdf.close()
+    return out_path
+
+
 def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
     import fitz
 

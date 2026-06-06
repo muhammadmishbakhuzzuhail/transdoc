@@ -13,9 +13,17 @@ from ..ir import BlockType, Document
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from docx import Document as Docx
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Inches
 
     d = Docx()
     for b in doc.ordered_blocks():
+        if b.type == BlockType.FIGURE and b.image_path:
+            try:
+                d.add_picture(b.image_path, width=Inches(5.5))
+            except Exception:
+                pass
+            continue
+
         if b.type == BlockType.TABLE and b.table and b.table.rows:
             rows = b.table.rows
             ncols = max(len(r) for r in rows)

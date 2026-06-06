@@ -71,8 +71,9 @@ class Config(BaseModel):
     register: Register = Register.AUTO
     mode: Mode = Mode.FULL
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
+    bilingual: bool = False                     # emit source + translation together
 
-    engine: Engine = Engine.ANTHROPIC
+    engine: Engine = Engine.MADLAD             # commercial-safe offline default (no API)
     ocr_engine: OCREngine = OCREngine.AUTO
 
     # Provided glossary: term -> rendering. Extended automatically.
