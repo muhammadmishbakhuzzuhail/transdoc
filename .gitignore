@@ -38,3 +38,4 @@ documents/**/*.rtf
 *.pt
 *.bin
 .cache/
+salvage/
