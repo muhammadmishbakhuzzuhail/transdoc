@@ -46,9 +46,10 @@ class Fidelity(str, Enum):
 
 
 class Engine(str, Enum):
-    NLLB = "nllb"             # offline NMT, 200 langs, best id quality — CC-BY-NC (non-commercial)
-    OPUSMT = "opusmt"         # offline Opus-MT/Marian, per-pair — MIT (commercial-safe, CPU)
-    ARGOS = "argos"           # offline Argos/LibreTranslate — MIT/Apache (commercial-safe)
+    MADLAD = "madlad"         # offline NMT, 450 langs, any->any — Apache-2.0 (COMMERCIAL-SAFE) ★default
+    OPUSMT = "opusmt"         # offline Opus-MT/Marian, per-pair — MIT (commercial-safe, CPU-fast)
+    ARGOS = "argos"           # offline Argos/LibreTranslate — MIT/Apache (commercial-safe, light)
+    NLLB = "nllb"             # offline NMT, 200 langs — CC-BY-NC (NON-COMMERCIAL only)
     OPENROUTER = "openrouter"  # LLM via OpenRouter (needs API key)
     ANTHROPIC = "anthropic"   # LLM, needs API key
     ECHO = "echo"             # no-op passthrough, for testing the pipeline

@@ -19,6 +19,10 @@ def get_translator(cfg: Config) -> Translator:
         from .anthropic import AnthropicTranslator
 
         return AnthropicTranslator()
+    if cfg.engine == Engine.MADLAD:
+        from .madlad import MadladTranslator
+
+        return MadladTranslator()
     if cfg.engine == Engine.NLLB:
         from .nllb import NLLBTranslator
 

@@ -27,8 +27,13 @@ dependencies = [
 [project.optional-dependencies]
 # LLM translation. pip install -e ".[llm]"  (OpenRouter uses the openai SDK)
 llm = ["openai>=1.35", "anthropic>=0.40", "httpx>=0.25"]
-# Offline neural MT, 200 langs. pip install -e ".[nmt]"  (pulls torch — heavy)
-nmt = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2", "sacremoses>=0.1"]
+# Offline neural MT (MADLAD/Opus-MT/NLLB). pip install -e ".[nmt]"  (pulls torch — heavy)
+nmt = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2", "sacremoses>=0.1",
+       "accelerate>=0.30"]
+# 8-bit quantization to fit MADLAD-400-3B on a 6GB GPU
+quant = ["bitsandbytes>=0.43", "accelerate>=0.30"]
+# Commercial-safe light offline engine
+argos = ["argostranslate>=1.9"]
 # Modern OCR: layout + reading order + strong non-Latin. pip install -e ".[surya]"
 surya = ["surya-ocr>=0.6"]
 # PDF regeneration with full layout/RTL/CJK font support.

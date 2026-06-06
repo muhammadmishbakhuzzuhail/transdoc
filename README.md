@@ -31,7 +31,7 @@ output format without touching the rest.
 | OCR + layout | Surya OCR 2 (GPU, 91 langs) | Tesseract (CPU) |
 | PDF parse | PyMuPDF | — |
 | Office parse | python-docx · odfpy · LibreOffice | — |
-| Translate (no API key) | NLLB-200 (200 langs, non-commercial) · MADLAD-400 / Opus-MT (commercial-safe) | OpenRouter/Anthropic (optional, API) |
+| Translate (no API key) | **MADLAD-400** (450 langs, Apache-2.0, commercial-safe) · Opus-MT/Argos (MIT) | NLLB-200 (non-commercial) · OpenRouter/Anthropic (API) |
 | Regenerate | PyMuPDF `insert_htmlbox` overlay · python-docx | Markdown |
 
 > ⚠️ NLLB-200 is **CC-BY-NC** (non-commercial). For commercial use pick Argos/LibreTranslate

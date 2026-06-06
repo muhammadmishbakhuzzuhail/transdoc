@@ -42,7 +42,8 @@ def translate(
     source: str = typer.Option("auto", "--source", "-s", help="Source language"),
     to: str = typer.Option("markdown", "--to", "-t", help="markdown|docx|pdf|plain-text|same-as-source"),
     engine: str = typer.Option("echo", "--engine", "-e",
-                               help="echo|nllb|opusmt|argos|openrouter|anthropic (offline: nllb/opusmt/argos)"),
+                               help="echo|madlad|opusmt|argos|nllb|openrouter|anthropic "
+                                    "(commercial-safe offline: madlad/opusmt/argos)"),
     ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),
