@@ -1,0 +1,24 @@
+"""OCR engine interface. Engines turn image bytes into IR blocks (text + bbox + conf)."""
+
+from __future__ import annotations
+
+from typing import Protocol
+
+from ..config import Config
+from ..ir import Block
+
+
+class OCREngine(Protocol):
+    name: str
+
+    def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
+        """Return IR blocks for one page image (PNG/JPEG bytes)."""
+        ...
+
+
+# Map ISO 639-1 -> tesseract 3-letter codes for the langs we ship by default.
+TESS_LANG = {
+    "en": "eng", "id": "ind", "th": "tha", "vi": "vie", "ar": "ara", "zh": "chi_sim",
+    "ja": "jpn", "ko": "kor", "ru": "rus", "hi": "hin", "de": "deu", "fr": "fra",
+    "es": "spa", "pt": "por", "it": "ita", "nl": "nld",
+}

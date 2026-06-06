@@ -1,0 +1,52 @@
+[project]
+name = "transdoc"
+version = "0.1.0"
+description = "Document Intelligence & Translation Agent — OCR repair, translate, regenerate any document to any language."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Apache-2.0" }
+authors = [{ name = "transdoc contributors" }]
+keywords = ["translation", "ocr", "document", "nllb", "deepl", "docx", "pdf"]
+
+# Core deps: lightweight path that works on CPU, no heavy ML.
+dependencies = [
+  "pydantic>=2.6",
+  "typer>=0.12",
+  "rich>=13.7",
+  "python-magic>=0.4.27",
+  "charset-normalizer>=3.3",
+  "PyMuPDF>=1.24",        # PDF text + bbox + render
+  "python-docx>=1.1",     # DOCX read/write
+  "odfpy>=1.4",           # ODT read
+  "Pillow>=10.2",         # image handling
+  "pytesseract>=0.3.10",  # OCR (system tesseract)
+  "Jinja2>=3.1",          # report templating
+  "langdetect>=1.0.9",    # language detection fallback
+]
+
+[project.optional-dependencies]
+# LLM translation. pip install -e ".[llm]"  (OpenRouter uses the openai SDK)
+llm = ["openai>=1.35", "anthropic>=0.40", "httpx>=0.25"]
+# Offline neural MT, 200 langs. pip install -e ".[nmt]"  (pulls torch — heavy)
+nmt = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2", "sacremoses>=0.1"]
+# Modern OCR: layout + reading order + strong non-Latin. pip install -e ".[surya]"
+surya = ["surya-ocr>=0.6"]
+# PDF regeneration with full layout/RTL/CJK font support.
+pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
+# Async job API
+api = ["fastapi>=0.111", "uvicorn>=0.30", "celery>=5.4", "redis>=5.0"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+transdoc = "transdoc.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transdoc"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

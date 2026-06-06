@@ -1,0 +1,40 @@
+# venv / build
+.venv/
+__pycache__/
+*.egg-info/
+*.pyc
+build/
+dist/
+
+# pipeline outputs
+out/
+
+# test corpus binaries — reproducible via scripts/fetch_corpus.sh + scripts/make_samples.py
+documents/**/*.pdf
+documents/**/*.jpg
+documents/**/*.jpeg
+documents/**/*.png
+documents/**/*.tif
+documents/**/*.tiff
+samples/**/*.pdf
+samples/**/*.png
+samples/**/*.jpg
+samples/**/*.jpeg
+samples/**/*.docx
+samples/**/*.odt
+documents/**/*.docx
+documents/**/*.odt
+documents/**/*.pptx
+documents/**/*.ppt
+documents/**/*.xlsx
+documents/**/*.doc
+documents/**/*.rtf
+
+# keep the manifests + scripts (negated)
+!documents/README.md
+!samples/README.md
+
+# models / caches
+*.pt
+*.bin
+.cache/

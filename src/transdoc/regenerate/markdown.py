@@ -1,0 +1,55 @@
+"""Markdown renderer (flow fidelity). Mirrors logical structure from the IR."""
+
+from __future__ import annotations
+
+from ..config import Config
+from ..ir import BlockType, Document
+
+
+def render(doc: Document, cfg: Config) -> str:
+    lines: list[str] = []
+    for b in doc.ordered_blocks():
+        if b.type == BlockType.TABLE and b.table:
+            lines.append(_table(b.table))
+            lines.append("")
+            continue
+
+        text = b.output_text.strip()
+        if not text:
+            continue
+
+        if b.type == BlockType.TITLE:
+            lines.append(f"# {text}")
+        elif b.type == BlockType.HEADING:
+            lvl = max(2, min(6, b.style.heading_level or 2))
+            lines.append(f"{'#' * lvl} {text}")
+        elif b.type == BlockType.LIST_ITEM:
+            lines.append(f"- {text}")
+        elif b.type in (BlockType.CODE, BlockType.FORMULA):
+            lines.append(f"```\n{text}\n```")
+        elif b.type == BlockType.CAPTION:
+            lines.append(f"*{text}*")
+        elif b.type in (BlockType.STAMP, BlockType.SIGNATURE):
+            lines.append(f"> [{b.type.value.upper()}] {text}")
+        else:
+            lines.append(text)
+
+        if b.flags:
+            flag_str = "; ".join(f"{k}: {v}" for k, v in b.flags.items())
+            lines.append(f"  <!-- ⚠ {flag_str} -->")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _table(table) -> str:
+    if not table.rows:
+        return ""
+    def cells(row):
+        return [c.output_text.replace("\n", " ").strip() or " " for c in row]
+    out = []
+    header = cells(table.rows[0])
+    out.append("| " + " | ".join(header) + " |")
+    out.append("| " + " | ".join("---" for _ in header) + " |")
+    for row in table.rows[1:]:
+        out.append("| " + " | ".join(cells(row)) + " |")
+    return "\n".join(out)

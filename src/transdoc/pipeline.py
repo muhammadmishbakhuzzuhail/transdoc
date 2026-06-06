@@ -1,0 +1,87 @@
+"""Pipeline orchestrator. Runs the phases from the agent spec over the IR.
+
+DIAGNOSE -> (RECONSTRUCT) -> TERMINOLOGY -> TRANSLATE -> SELF-REVIEW -> REGENERATE+REPORT,
+gated by MODE (full / reconstruct-only / translate-only / diagnose-only).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+from .config import Config, Mode
+from .diagnose import diagnose
+from .extract import extract as extract_ir
+from .ingest.detect import detect
+from .ir import Document
+from .regenerate import regenerate
+from .report import build_report
+
+
+@dataclass
+class Result:
+    doc: Document
+    output_path: str | None
+    report_path: str | None
+    report_text: str
+
+
+def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
+    # --- Ingest + detect ---
+    det = detect(input_path)
+
+    # --- Extract -> IR ---
+    doc = extract_ir(det, cfg)
+
+    # --- Phase 1: Diagnose ---
+    diagnose(doc, det, cfg)
+
+    if cfg.mode == Mode.DIAGNOSE:
+        report = build_report(doc, cfg)
+        return Result(doc, None, None, report)
+
+    # --- Phase 2: Reconstruct (OCR repair) — applied inline in extractors today;
+    #     dedicated repair pass is a TODO hook here. ---
+    if cfg.mode == Mode.RECONSTRUCT:
+        # emit the reconstructed source in the requested format, no translation
+        outp = _resolve_out(input_path, cfg, out_path)
+        # render source text by treating source as output
+        for b in doc.blocks:
+            b.translated = None  # ensure source text is rendered
+        regenerate(doc, cfg, outp)
+        report = build_report(doc, cfg)
+        return Result(doc, outp, None, report)
+
+    # --- Phases 3-5: Terminology + Translate + Self-review ---
+    cfg.require_target()
+    from .translate import get_translator, translate_document
+
+    tr = get_translator(cfg)
+    translate_document(doc, tr, cfg)
+
+    if cfg.mode == Mode.TRANSLATE:
+        pass  # translate-only still regenerates output below
+
+    # --- Phase 6: Regenerate + Report ---
+    outp = _resolve_out(input_path, cfg, out_path)
+    regenerate(doc, cfg, outp)
+    report = build_report(doc, cfg)
+    report_path = str(Path(outp).with_suffix("")) + ".report.md"
+    Path(report_path).write_text(report, encoding="utf-8")
+    return Result(doc, outp, report_path, report)
+
+
+_EXT = {"markdown": ".md", "plain-text": ".txt", "docx": ".docx", "pdf": ".pdf"}
+
+
+def _resolve_out(input_path: str, cfg: Config, out_path: str | None) -> str:
+    if out_path:
+        return out_path
+    stem = Path(input_path).with_suffix("")
+    fmt = cfg.output_format.value
+    if fmt == "same-as-source":
+        ext = Path(input_path).suffix or ".md"
+    else:
+        ext = _EXT.get(fmt, ".md")
+    tgt = cfg.target_lang or "out"
+    return f"{stem}.{tgt}{ext}"
