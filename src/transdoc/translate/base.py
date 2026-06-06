@@ -50,10 +50,33 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     if not items:
         return
 
-    texts = [t for t, _ in items]
-    out = tr.translate_batch(texts, cfg, src=doc.source_lang)
+    from .memory import TranslationMemory
+    from .protect import Protector
 
-    # 2) write back + glossary enforcement
+    texts = [t for t, _ in items]
+
+    # 1a) dedupe identical segments via TM -> translate each unique string once
+    tm = TranslationMemory()
+    unique, idx_map = tm.dedupe(texts)
+
+    # 1b) protect verbatim tokens (urls/emails/numbers/dates/codes) per unique segment
+    protector = Protector(extra=list(glossary.keys()))
+    protected, maps = [], []
+    for u in unique:
+        p, m = protector.protect(u)
+        protected.append(p)
+        maps.append(m)
+
+    # 2) translate the protected unique segments, then restore tokens
+    translated_unique = tr.translate_batch(protected, cfg, src=doc.source_lang)
+    translated_unique = [
+        protector.restore(t, m) for t, m in zip(translated_unique, maps)
+    ]
+
+    # 3) scatter unique results back to every original position
+    out = [translated_unique[idx_map[i]] for i in range(len(texts))]
+
+    # 4) write back + glossary enforcement
     for (src_text, sink), translated in zip(items, out):
         translated = _apply_glossary(translated, glossary)
         if isinstance(sink, Block):

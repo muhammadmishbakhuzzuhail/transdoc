@@ -39,7 +39,7 @@ surya = ["surya-ocr>=0.6"]
 # PDF regeneration with full layout/RTL/CJK font support.
 pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
 # Async job API
-api = ["fastapi>=0.111", "uvicorn>=0.30", "celery>=5.4", "redis>=5.0"]
+api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9", "celery>=5.4", "redis>=5.0"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]

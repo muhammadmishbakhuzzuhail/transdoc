@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>transdoc — Document Translation</title>
+<style>
+  :root { --bg:#0f1117; --card:#1a1d27; --line:#2a2e3a; --fg:#e7e9ee; --mut:#9aa0ad;
+          --acc:#5b8cff; --ok:#3ecf8e; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg);
+         display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; }
+  .app { width:100%; max-width:560px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h1 span { color:var(--acc); }
+  .sub { color:var(--mut); margin:0 0 24px; font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
+  select, input[type=file] { width:100%; padding:10px 12px; background:#11141c; color:var(--fg);
+         border:1px solid var(--line); border-radius:9px; font-size:14px; }
+  .row { display:flex; gap:12px; } .row > div { flex:1; }
+  .drop { border:2px dashed var(--line); border-radius:11px; padding:26px; text-align:center;
+          color:var(--mut); cursor:pointer; transition:.15s; }
+  .drop.hover, .drop:hover { border-color:var(--acc); color:var(--fg); }
+  .drop b { color:var(--fg); }
+  button { width:100%; margin-top:20px; padding:13px; background:var(--acc); color:#fff; border:0;
+           border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .bar { height:8px; background:#11141c; border-radius:5px; overflow:hidden; margin-top:18px; display:none; }
+  .bar > i { display:block; height:100%; width:0; background:var(--acc); transition:width .3s; }
+  .status { margin-top:12px; font-size:13px; color:var(--mut); min-height:18px; }
+  .status.ok { color:var(--ok); } .status.err { color:var(--err); }
+  .dl { display:none; margin-top:14px; gap:10px; }
+  .dl a { flex:1; text-align:center; padding:11px; border-radius:9px; text-decoration:none;
+          font-weight:600; font-size:14px; }
+  .dl .primary { background:var(--ok); color:#04210f; } .dl .ghost { background:#11141c; color:var(--fg); border:1px solid var(--line); }
+  .foot { color:var(--mut); font-size:12px; margin-top:18px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>trans<span>doc</span></h1>
+  <p class="sub">Translate any document to any language — layout, tables &amp; images preserved.</p>
+  <div class="card">
+    <div class="drop" id="drop">
+      <b>Drop a file</b> or click to browse<br>
+      <small>PDF · DOCX · ODT · images · scans · TXT</small>
+      <input type="file" id="file" hidden>
+    </div>
+    <div id="fname" class="status"></div>
+
+    <div class="row">
+      <div>
+        <label>Target language</label>
+        <select id="target">
+          <option value="id">Indonesian</option><option value="en">English</option>
+          <option value="zh">Chinese</option><option value="ar">Arabic</option>
+          <option value="ja">Japanese</option><option value="ko">Korean</option>
+          <option value="ru">Russian</option><option value="hi">Hindi</option>
+          <option value="th">Thai</option><option value="de">German</option>
+          <option value="fr">French</option><option value="es">Spanish</option>
+          <option value="pt">Portuguese</option><option value="vi">Vietnamese</option>
+        </select>
+      </div>
+      <div>
+        <label>Source</label>
+        <select id="source"><option value="auto">Auto-detect</option>
+          <option value="en">English</option><option value="id">Indonesian</option>
+          <option value="zh">Chinese</option><option value="ar">Arabic</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Output format</label>
+        <select id="format"><option value="docx">Word (.docx)</option>
+          <option value="pdf">PDF</option><option value="markdown">Markdown</option>
+          <option value="plain-text">Plain text</option></select>
+      </div>
+      <div>
+        <label>Engine</label>
+        <select id="engine"><option value="echo">Echo (test)</option>
+          <option value="madlad">MADLAD-400 (offline)</option>
+          <option value="opusmt">Opus-MT (offline)</option>
+          <option value="argos">Argos (offline)</option>
+          <option value="nllb">NLLB-200 (offline)</option></select>
+      </div>
+    </div>
+
+    <label>Layout fidelity</label>
+    <select id="fidelity"><option value="auto">Auto</option>
+      <option value="flow">Flow (editable)</option>
+      <option value="layout">Layout (visual overlay)</option></select>
+
+    <button id="go" disabled>Translate</button>
+    <div class="bar" id="bar"><i id="fill"></i></div>
+    <div class="status" id="status"></div>
+    <div class="dl" id="dl">
+      <a class="primary" id="dlout" href="#">Download</a>
+      <a class="ghost" id="dlrep" href="#">Report</a>
+    </div>
+  </div>
+  <p class="foot">No per-page API cost · self-hosted · 200+ languages</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let file = null;
+const drop = $('drop'), inp = $('file');
+drop.onclick = () => inp.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('hover'); };
+drop.ondragleave = () => drop.classList.remove('hover');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('hover'); pick(e.dataTransfer.files[0]); };
+inp.onchange = () => pick(inp.files[0]);
+function pick(f){ if(!f) return; file=f; $('fname').textContent='📄 '+f.name; $('go').disabled=false; }
+
+$('go').onclick = async () => {
+  if(!file) return;
+  $('go').disabled=true; $('dl').style.display='none';
+  $('bar').style.display='block'; setBar(0.05); setStatus('uploading…');
+  const fd = new FormData();
+  fd.append('file', file);
+  for(const k of ['target','source','format','engine','fidelity']){
+    const map={target:'target_lang',source:'source_lang',format:'output_format',engine:'engine',fidelity:'fidelity'};
+    fd.append(map[k], $(k).value);
+  }
+  try{
+    const r = await fetch('/api/translate',{method:'POST',body:fd});
+    if(!r.ok){ throw new Error((await r.json()).detail||'request failed'); }
+    const {job_id} = await r.json();
+    poll(job_id);
+  }catch(e){ fail(e.message); }
+};
+
+async function poll(id){
+  try{
+    const r = await fetch('/api/jobs/'+id);
+    const j = await r.json();
+    setBar(j.progress||0.1); setStatus(j.message||j.status);
+    if(j.status==='done'){
+      setBar(1); setStatus('done · '+(j.meta.pages||'?')+' pages · '+(j.meta.flagged||0)+' flagged','ok');
+      $('dlout').href='/api/download/'+id; $('dlrep').href='/api/report/'+id;
+      $('dl').style.display='flex'; $('go').disabled=false; return;
+    }
+    if(j.status==='error'){ fail(j.message); return; }
+    setTimeout(()=>poll(id), 800);
+  }catch(e){ fail(e.message); }
+}
+function setBar(p){ $('fill').style.width=Math.round(p*100)+'%'; }
+function setStatus(t,c){ const s=$('status'); s.textContent=t; s.className='status'+(c?' '+c:''); }
+function fail(m){ setStatus('error: '+m,'err'); $('go').disabled=false; }
+</script>
+</body>
+</html>

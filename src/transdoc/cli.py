@@ -72,6 +72,16 @@ def convert(
 
 
 @app.command()
+def serve(host: str = typer.Option("127.0.0.1", "--host"),
+          port: int = typer.Option(8000, "--port")):
+    """Launch the web UI + REST API (upload -> translate -> download)."""
+    import uvicorn
+
+    console.print(f"[bold cyan]transdoc[/] web UI → http://{host}:{port}")
+    uvicorn.run("transdoc.api.app:app", host=host, port=port, reload=False)
+
+
+@app.command()
 def diagnose(input: str = typer.Argument(...), source: str = typer.Option("auto", "-s")):
     """Print a document profile only (Phase 1)."""
     cfg = _cfg(None, source, "markdown", "echo", "auto", "auto", "auto", False, "auto", None)
