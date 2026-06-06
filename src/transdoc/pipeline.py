@@ -59,8 +59,11 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     tr = get_translator(cfg)
     translate_document(doc, tr, cfg)
 
-    if cfg.mode == Mode.TRANSLATE:
-        pass  # translate-only still regenerates output below
+    # Phase 5b: optional reference-free quality estimation -> flag weak segments
+    if cfg.quality_check:
+        from .translate.quality import annotate_quality
+
+        annotate_quality(doc, cfg)
 
     # --- Phase 6: Regenerate + Report ---
     outp = _resolve_out(input_path, cfg, out_path)

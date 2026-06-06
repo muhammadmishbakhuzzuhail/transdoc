@@ -40,6 +40,8 @@ surya = ["surya-ocr>=0.6"]
 pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
 # Async job API
 api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9", "celery>=5.4", "redis>=5.0"]
+# Reference-free translation quality estimation (COMET-Kiwi)
+qe = ["unbabel-comet>=2.2"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]

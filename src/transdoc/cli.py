@@ -51,11 +51,13 @@ def translate(
     register: str = typer.Option("auto", "--register", "-r"),
     pages: str = typer.Option(None, "--pages", "-p", help='e.g. "3-7,10"'),
     bilingual: bool = typer.Option(False, "--bilingual", "-b", help="source + translation"),
+    quality: bool = typer.Option(False, "--quality", "-q", help="QE: score+flag weak segments"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
     cfg = _cfg(lang, source, to, engine, ocr, fidelity, domain, localize, register, pages)
     cfg.bilingual = bilingual
+    cfg.quality_check = quality
     _execute(input, cfg, out)
 
 

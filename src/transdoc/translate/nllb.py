@@ -24,12 +24,18 @@ class NLLBTranslator:
 
     def __init__(self):
         if NLLBTranslator._model is None:
+            import os
+
             import torch
             from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-            name = "facebook/nllb-200-distilled-600M"
+            # quality knob: distilled-600M (fast) | distilled-1.3B | 3.3B (best, ~6GB)
+            name = os.environ.get("NLLB_MODEL", "facebook/nllb-200-distilled-600M")
             NLLBTranslator._tok = AutoTokenizer.from_pretrained(name)
-            NLLBTranslator._model = AutoModelForSeq2SeqLM.from_pretrained(name)
+            kwargs = {}
+            if torch.cuda.is_available():
+                kwargs = {"torch_dtype": torch.float16}
+            NLLBTranslator._model = AutoModelForSeq2SeqLM.from_pretrained(name, **kwargs)
             if torch.cuda.is_available():
                 NLLBTranslator._model = NLLBTranslator._model.to("cuda")
 
@@ -58,6 +64,11 @@ class NLLBTranslator:
                       max_length=512)
             enc = {k: v.to(model.device) for k, v in enc.items()}
             with torch.no_grad():
-                gen = model.generate(**enc, forced_bos_token_id=bos, max_length=512)
+                gen = model.generate(
+                    **enc, forced_bos_token_id=bos, max_length=512,
+                    num_beams=4,                 # beam search -> higher quality than greedy
+                    no_repeat_ngram_size=3,      # suppress repetition loops
+                    length_penalty=1.0,
+                )
             out.extend(tok.batch_decode(gen, skip_special_tokens=True))
         return out

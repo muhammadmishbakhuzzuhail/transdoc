@@ -72,8 +72,9 @@ class Config(BaseModel):
     mode: Mode = Mode.FULL
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
     bilingual: bool = False                     # emit source + translation together
+    quality_check: bool = False                 # run reference-free QE, flag weak segments
 
-    engine: Engine = Engine.MADLAD             # commercial-safe offline default (no API)
+    engine: Engine = Engine.NLLB               # best broad-coverage offline quality (non-commercial)
     ocr_engine: OCREngine = OCREngine.AUTO
 
     # Provided glossary: term -> rendering. Extended automatically.
