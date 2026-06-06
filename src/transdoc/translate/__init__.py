@@ -23,6 +23,10 @@ def get_translator(cfg: Config) -> Translator:
         from .nllb import NLLBTranslator
 
         return NLLBTranslator()
+    if cfg.engine == Engine.OPUSMT:
+        from .opusmt import OpusMTTranslator
+
+        return OpusMTTranslator()
     if cfg.engine == Engine.ARGOS:
         from .argos import ArgosTranslator
 

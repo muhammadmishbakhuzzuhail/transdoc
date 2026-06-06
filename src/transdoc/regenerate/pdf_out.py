@@ -17,6 +17,10 @@ from ..config import Config
 from ..ir import BlockType, Document
 
 
+# Below this shrink factor, the box was too small for the translation -> flag for review.
+OVERFLOW_FLAG_SCALE = 0.6
+
+
 def _esc(s: str) -> str:
     return html.escape(s)
 
@@ -44,16 +48,23 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
             r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
             page.add_redact_annot(r, fill=(1, 1, 1))
         page.apply_redactions()
-        # 2) overlay translations at original bbox
+        # 2) overlay translations at original bbox, auto-fitting expanded text.
+        #    Translation often expands (+20-30% EN->ID). insert_htmlbox(scale_low=0)
+        #    shrinks the text to fit the original box and returns the scale factor;
+        #    if it had to shrink hard, we flag the block for human review.
         for b in blocks:
             r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
             align = "right" if b.style.rtl else "left"
             size = b.style.size or 11
             htmlbox = (f'<div style="font-size:{size:.0f}px;text-align:{align};'
                        f'line-height:1.05">{_esc(b.output_text)}</div>')
-            # grow box downward if text overflows; PyMuPDF returns leftover if it doesn't fit
             try:
-                page.insert_htmlbox(r, htmlbox)
+                # scale_low=0 lets PyMuPDF shrink text down to fit; returns (spare, scale)
+                ret = page.insert_htmlbox(r, htmlbox, scale_low=0)
+                scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
+                if scale and scale < OVERFLOW_FLAG_SCALE:
+                    b.flags["text_expansion"] = (
+                        f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
             except Exception:
                 page.insert_textbox(r, b.output_text, fontsize=size, align=0)
 

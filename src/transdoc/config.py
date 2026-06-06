@@ -46,10 +46,11 @@ class Fidelity(str, Enum):
 
 
 class Engine(str, Enum):
-    OPENROUTER = "openrouter"  # LLM via OpenRouter (deepseek/qwen/gemma/llama) — default real use
-    ANTHROPIC = "anthropic"   # LLM, best quality + glossary/context, needs API key
-    NLLB = "nllb"             # offline neural MT, 200 langs — CC-BY-NC (non-commercial!)
+    NLLB = "nllb"             # offline NMT, 200 langs, best id quality — CC-BY-NC (non-commercial)
+    OPUSMT = "opusmt"         # offline Opus-MT/Marian, per-pair — MIT (commercial-safe, CPU)
     ARGOS = "argos"           # offline Argos/LibreTranslate — MIT/Apache (commercial-safe)
+    OPENROUTER = "openrouter"  # LLM via OpenRouter (needs API key)
+    ANTHROPIC = "anthropic"   # LLM, needs API key
     ECHO = "echo"             # no-op passthrough, for testing the pipeline
 
 
