@@ -28,36 +28,53 @@ output format without touching the rest.
 ## Stack (see `docs/RESEARCH.md` for the verified rationale)
 | Layer | Default | Fallback |
 |-------|---------|----------|
-| OCR + layout | Surya OCR 2 (GPU, 91 langs) | Tesseract (CPU) |
+| OCR + layout | Tesseract (CPU, 100+ langs) | Surya OCR 2 (GPU, non-commercial model) |
 | PDF parse | PyMuPDF | — |
-| Office parse | python-docx · odfpy · LibreOffice | — |
-| Translate (no API key) | **MADLAD-400** (450 langs, Apache-2.0, commercial-safe) · Opus-MT/Argos (MIT) | NLLB-200 (non-commercial) · OpenRouter/Anthropic (API) |
-| Regenerate | PyMuPDF `insert_htmlbox` overlay · python-docx | Markdown |
+| Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
+| Translate (free, CPU) | **`fallback`** — Google web endpoint → MyMemory → self-hosted LibreTranslate (no API key, runs CPU-only) | Offline NMT: MADLAD-400/Opus-MT/Argos (commercial-safe) · NLLB (non-commercial) · OpenRouter/Anthropic (API) |
+| Translation memory | persistent SQLite cache (cross-run, cuts engine calls) | in-memory dedupe |
+| Regenerate | round-trip in place (pptx/xlsx/epub/srt/vtt) · PyMuPDF `insert_htmlbox` overlay · python-docx | Markdown |
 
-> ⚠️ NLLB-200 is **CC-BY-NC** (non-commercial). For commercial use pick Argos/LibreTranslate
-> or the Anthropic engine.
+> **Free public service (DocTranslator-style):** the default `fallback` engine proxies the
+> free Google Translate web endpoint, so the server hosts no model and runs CPU-only. When
+> Google rate-limits, it falls through to MyMemory and a self-hosted LibreTranslate backstop.
+> The persistent SQLite TM means any segment is sent to Google at most once, ever.
+>
+> ⚠️ The Google web endpoint is unofficial/ToS-grey and can be blocked at scale — the
+> fallback chain + self-hosted LibreTranslate is what keeps the service alive. NLLB-200 is
+> **CC-BY-NC**; for commercial offline use pick MADLAD/Opus-MT/Argos/LibreTranslate.
 
 ## Install
 ```bash
 python3.11 -m venv .venv && . .venv/bin/activate
 pip install -e .                 # core (CPU path)
 pip install -e ".[surya]"        # GPU OCR
-pip install -e ".[nmt]"          # offline NLLB
-pip install -e ".[llm]"          # Anthropic engine
+pip install -e ".[nmt]"          # offline NMT (MADLAD/Opus-MT/NLLB)
+pip install -e ".[llm]"          # OpenRouter/Anthropic engines
+pip install -e ".[formats]"      # subtitles · EPUB · PowerPoint · Excel
 ```
 
 ## Usage
 ```bash
-transdoc translate input.pdf --lang id --to docx        # PDF → translated Word
-transdoc translate scan.png  --lang en --ocr tesseract  # image → OCR → translate
-transdoc translate doc.pdf   --lang ar --to pdf -f layout  # layout-preserving overlay
-transdoc convert  in.pdf     --to docx                   # OCR/convert only, no translation
-transdoc diagnose input.pdf                              # profile only
+transdoc translate input.pdf  --lang id --to docx           # PDF → translated Word (free Google chain)
+transdoc translate deck.pptx  --lang id --to same-as-source # PowerPoint, layout preserved in place
+transdoc translate book.epub  --lang id --to same-as-source # EPUB round-trip
+transdoc translate subs.srt   --lang id --to same-as-source # subtitles, timing untouched
+transdoc translate scan.png   --lang en --ocr tesseract     # image → OCR → translate
+transdoc translate doc.pdf    --lang ar --to pdf -f layout  # layout-preserving overlay
+transdoc translate x.pdf      --lang id -e libretranslate   # privacy/offline (self-host backstop)
+transdoc convert  in.pdf      --to docx                     # OCR/convert only, no translation
+transdoc diagnose input.pdf                                 # profile only
+transdoc serve                                              # web UI + REST API
 ```
 
+Engines (`-e`): `fallback` (default — google→mymemory→libretranslate) · `google` · `mymemory` ·
+`libretranslate` · `madlad` · `opusmt` · `argos` · `nllb` · `openrouter` · `anthropic` · `echo`.
+
 ## Status
-Early. Core pipeline + IR + extractors (PDF/DOCX/ODT/image/text) + OCR (Tesseract/Surya)
-+ translate (echo/anthropic/nllb/argos) + regenerate (md/docx/pdf) + report are in place.
+Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
+OCR (Tesseract/Surya) + translate (free Google-chain/libretranslate/offline NMT/LLM, persistent
+SQLite TM) + regenerate (round-trip pptx/xlsx/epub/srt · md/docx/pdf overlay) + report are in place.
 Test corpus under `documents/` (real downloads) and `samples/` (synthetic ground-truth).
 
 ## License

@@ -1,0 +1,49 @@
+"""EPUB extraction via ebooklib + BeautifulSoup.
+
+EPUB is a zip of XHTML documents. We walk every text node (skipping script/style) in document
+order and emit one IR block per non-empty node, id = ``{item_id}#{n}`` where n is the node's
+ordinal within that document. The renderer re-walks identically and swaps the text node's
+string, preserving all markup, CSS, images, and the spine.
+"""
+
+from __future__ import annotations
+
+from ..config import Config
+from ..ir import Block, BlockType, Confidence, Document
+from .base import reflow_order
+
+_SKIP_PARENTS = {"script", "style", "title"}
+
+
+def iter_text_nodes(soup):
+    """Yield (ordinal, NavigableString) for translatable text nodes, in document order."""
+    from bs4 import NavigableString
+
+    n = 0
+    for node in soup.find_all(string=True):
+        if not isinstance(node, NavigableString):
+            continue
+        parent = node.parent.name if node.parent else ""
+        if parent in _SKIP_PARENTS:
+            continue
+        if node.strip():
+            yield n, node
+            n += 1
+
+
+def extract(path: str, cfg: Config) -> Document:
+    from bs4 import BeautifulSoup
+    from ebooklib import ITEM_DOCUMENT, epub
+
+    book = epub.read_epub(path)
+    out = Document(source_path=path, mime="application/epub+zip")
+    page = 0
+    for item in book.get_items_of_type(ITEM_DOCUMENT):
+        soup = BeautifulSoup(item.get_content(), "html.parser")
+        for n, node in iter_text_nodes(soup):
+            out.blocks.append(Block(
+                id=f"{item.get_id()}#{n}", type=BlockType.PARAGRAPH, page=page,
+                text=str(node), confidence=Confidence(source="digital")))
+        page += 1
+    reflow_order(out)
+    return out

@@ -7,6 +7,22 @@ from .base import Translator, translate_document  # noqa: F401
 
 
 def get_translator(cfg: Config) -> Translator:
+    if cfg.engine == Engine.FALLBACK:
+        from .fallback import FallbackTranslator
+
+        return FallbackTranslator()
+    if cfg.engine == Engine.GOOGLE:
+        from .google import GoogleTranslator
+
+        return GoogleTranslator()
+    if cfg.engine == Engine.MYMEMORY:
+        from .mymemory import MyMemoryTranslator
+
+        return MyMemoryTranslator()
+    if cfg.engine == Engine.LIBRETRANSLATE:
+        from .libretranslate import LibreTranslateTranslator
+
+        return LibreTranslateTranslator()
     if cfg.engine == Engine.ECHO:
         from .echo import EchoTranslator
 

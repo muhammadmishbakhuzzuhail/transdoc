@@ -40,10 +40,13 @@ def translate(
     input: str = typer.Argument(..., help="Input document"),
     lang: str = typer.Option(..., "--lang", "-l", help="TARGET language (ISO 639)"),
     source: str = typer.Option("auto", "--source", "-s", help="Source language"),
-    to: str = typer.Option("markdown", "--to", "-t", help="markdown|docx|pdf|plain-text|same-as-source"),
-    engine: str = typer.Option("echo", "--engine", "-e",
-                               help="echo|madlad|opusmt|argos|nllb|openrouter|anthropic "
-                                    "(commercial-safe offline: madlad/opusmt/argos)"),
+    to: str = typer.Option("markdown", "--to", "-t",
+                           help="markdown|docx|pdf|plain-text|pptx|xlsx|epub|srt|vtt|same-as-source"),
+    engine: str = typer.Option("fallback", "--engine", "-e",
+                               help="fallback|google|mymemory|libretranslate|madlad|opusmt|argos|"
+                                    "nllb|openrouter|anthropic|echo "
+                                    "(free default: fallback = google->mymemory->libretranslate; "
+                                    "commercial-safe offline: madlad/opusmt/argos)"),
     ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),
