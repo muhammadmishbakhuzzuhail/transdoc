@@ -41,8 +41,12 @@ output format without touching the rest.
 > The persistent SQLite TM means any segment is sent to Google at most once, ever.
 >
 > ⚠️ The Google web endpoint is unofficial/ToS-grey and can be blocked at scale — the
-> fallback chain + self-hosted LibreTranslate is what keeps the service alive. NLLB-200 is
-> **CC-BY-NC**; for commercial offline use pick MADLAD/Opus-MT/Argos/LibreTranslate.
+> fallback chain + self-hosted LibreTranslate is what keeps the service alive. The
+> legally-clean free fallbacks are **MyMemory** (50k chars/day with email) and a
+> **self-hosted LibreTranslate** (unlimited; AGPL stays at arm's length — separate process,
+> called only over HTTP, never modified). **DeepL Free is deliberately excluded** from the
+> public chain: its ToS forbids repackaging/reselling access or building a competing service.
+> NLLB-200 is **CC-BY-NC**; for commercial offline use pick MADLAD/Opus-MT/Argos/LibreTranslate.
 
 ## Install
 ```bash
