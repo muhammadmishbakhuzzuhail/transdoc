@@ -9,12 +9,30 @@ from ..extract.epub import iter_text_nodes
 from ..ir import Document
 
 
+def _ensure_toc_uids(entries, prefix: str = "nav") -> None:
+    """ebooklib drops navPoint ids when an epub is read then written: writing the NCX then
+    fails with `item.uid == None`. Walk the (possibly nested) toc and backfill any missing
+    uid so write_epub succeeds. Entries are EpubHtml/Link/Section, or (Section, [children])."""
+    for idx, e in enumerate(entries):
+        if isinstance(e, (tuple, list)):
+            section, children = e[0], e[1]
+            _ensure_toc_uids([section], f"{prefix}-{idx}")
+            _ensure_toc_uids(children, f"{prefix}-{idx}")
+            continue
+        if not getattr(e, "uid", None):
+            try:
+                e.uid = getattr(e, "id", None) or f"{prefix}-{idx}"
+            except Exception:
+                pass
+
+
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from bs4 import BeautifulSoup, NavigableString
     from ebooklib import ITEM_DOCUMENT, epub
 
     m = {b.id: b.output_text for b in doc.blocks}
     book = epub.read_epub(doc.source_path)
+    _ensure_toc_uids(book.toc)
     for item in book.get_items_of_type(ITEM_DOCUMENT):
         soup = BeautifulSoup(item.get_content(), "html.parser")
         changed = False
