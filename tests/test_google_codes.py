@@ -22,3 +22,19 @@ def test_auto_and_passthrough():
     assert g._code("auto") == "auto"
     assert g._code(None) == "auto"
     assert g._code("id") == "id"   # unmapped code passes through unchanged
+
+
+def test_make_falls_back_to_auto_on_bad_source():
+    # a bad/unsupported detected source code must not crash — retry with auto-detect
+    g = GoogleTranslator()
+    calls = []
+
+    class _Eng:
+        def __init__(self, source, target):
+            calls.append(source)
+            if source != "auto":
+                raise ValueError(f"no support for source {source}")
+
+    g._G = _Eng
+    g._make("tn", "id")           # "tn" rejected -> falls back to auto
+    assert calls == ["tn", "auto"]

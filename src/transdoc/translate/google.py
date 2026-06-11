@@ -68,6 +68,16 @@ class GoogleTranslator:
             return "auto"
         return _LANG_FIX.get(lang.lower(), lang)
 
+    def _make(self, source: str, target: str):
+        """Build the engine, falling back to auto-detect if the source code is rejected
+        (language detection can yield a bad/unsupported code on noisy OCR text)."""
+        try:
+            return self._G(source=source, target=target)
+        except Exception:
+            if source != "auto":
+                return self._G(source="auto", target=target)
+            raise
+
     def _translate_one(self, text: str, source: str, target: str) -> str:
         """Translate a single string (splitting if it exceeds the char cap), with backoff."""
         chunks = _split_long(text, _MAX_CHARS)
@@ -79,7 +89,7 @@ class GoogleTranslator:
             last: Exception | None = None
             for attempt in range(4):
                 try:
-                    eng = self._G(source=source, target=target)
+                    eng = self._make(source, target)
                     res = eng.translate(chunk)
                     out.append(res if res is not None else chunk)
                     last = None
