@@ -66,6 +66,7 @@ transdoc translate input.pdf  --lang id --to docx           # PDF → translated
 transdoc translate deck.pptx  --lang id --to same-as-source # PowerPoint, layout preserved in place
 transdoc translate book.epub  --lang id --to same-as-source # EPUB round-trip
 transdoc translate subs.srt   --lang id --to same-as-source # subtitles, timing untouched
+transdoc translate sign.jpg   --lang id --to pdf            # photo → OCR → translation overlaid on the original image (Lens-style)
 transdoc translate scan.png   --lang en --ocr tesseract     # image → OCR → translate
 transdoc translate doc.pdf    --lang ar --to pdf -f layout  # layout-preserving overlay
 transdoc translate x.pdf      --lang id -e libretranslate   # privacy/offline (self-host backstop)
