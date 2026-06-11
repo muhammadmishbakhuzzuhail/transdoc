@@ -147,11 +147,16 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
         # Tables carry their text in cells, not output_text — handle before the empty-text
         # skip below, or the whole table gets dropped.
         if b.type == BlockType.TABLE and b.table:
+            # fitz.Story ignores the HTML `border` attribute; draw the grid with CSS instead.
+            cell = "border:1px solid #000;padding:3px"
             rows = "".join(
-                "<tr>" + "".join(f"<td>{_esc(c.output_text)}</td>" for c in row) + "</tr>"
+                "<tr>" + "".join(
+                    f'<td style="{cell}">{_esc(c.output_text)}</td>' for c in row) + "</tr>"
                 for row in b.table.rows
             )
-            parts.append(f'<table border="1" cellpadding="3">{rows}</table>')
+            parts.append(
+                f'<table style="border-collapse:collapse;border:1px solid #000">'
+                f'{rows}</table>')
             continue
         text = _esc(b.output_text.strip())
         if not text:
