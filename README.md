@@ -28,7 +28,7 @@ output format without touching the rest.
 ## Stack (see `docs/RESEARCH.md` for the verified rationale)
 | Layer | Default | Fallback |
 |-------|---------|----------|
-| OCR + layout | Tesseract (CPU, 100+ langs); auto-OCR fallback when a page's digital text is CID-font garbage | Surya OCR 2 (GPU, non-commercial model) |
+| OCR + layout | Tesseract (CPU, 100+ langs); auto-OCR fallback when a page's digital text is CID-font garbage; low-confidence OCR is left un-overlaid (never covers the original with garbage). Install `tesseract-data-<lang>` and pass `--source` for non-English scans. | Surya OCR 2 (GPU, non-commercial model) |
 | Language detect | langdetect (core, tiny) | lingua low-accuracy mode (`[detect]` extra — 100% vs 91% acc, deterministic, ~1.2GB RAM) |
 | PDF parse | PyMuPDF | — |
 | Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
@@ -68,6 +68,7 @@ transdoc translate book.epub  --lang id --to same-as-source # EPUB round-trip
 transdoc translate subs.srt   --lang id --to same-as-source # subtitles, timing untouched
 transdoc translate sign.jpg   --lang id --to pdf            # photo → OCR → translation overlaid on the original image (Lens-style)
 transdoc translate scan.png   --lang en --ocr tesseract     # image → OCR → translate
+transdoc translate hindi.pdf  --lang id --source hi          # non-English scan: pass --source for the right OCR model
 transdoc translate doc.pdf    --lang ar --to pdf -f layout  # layout-preserving overlay
 transdoc translate x.pdf      --lang id -e libretranslate   # privacy/offline (self-host backstop)
 transdoc convert  in.pdf      --to docx                     # OCR/convert only, no translation

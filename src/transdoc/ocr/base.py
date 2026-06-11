@@ -16,9 +16,12 @@ class OCREngine(Protocol):
         ...
 
 
-# Map ISO 639-1 -> tesseract 3-letter codes for the langs we ship by default.
+# Map ISO 639-1 (+ a few 639-3) -> tesseract codes. Install the matching tesseract-data-*
+# pack for any language you OCR; missing packs just fall back to eng.
 TESS_LANG = {
     "en": "eng", "id": "ind", "th": "tha", "vi": "vie", "ar": "ara", "zh": "chi_sim",
     "ja": "jpn", "ko": "kor", "ru": "rus", "hi": "hin", "de": "deu", "fr": "fra",
     "es": "spa", "pt": "por", "it": "ita", "nl": "nld",
+    "el": "ell", "he": "heb", "iw": "heb", "bn": "ben", "la": "lat",
+    "uk": "ukr", "fa": "fas", "ur": "urd", "ta": "tam", "te": "tel",
 }
