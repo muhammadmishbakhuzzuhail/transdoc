@@ -51,10 +51,20 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         s = 72.0 / 300.0 if b.confidence.source == "ocr" else 1.0
         return fitz.Rect(b.bbox.x0 * s, b.bbox.y0 * s, b.bbox.x1 * s, b.bbox.y1 * s)
 
-    # group translated blocks by page
+    def _is_vertical(b) -> bool:
+        # Rotated/vertical text (e.g. an arXiv ID sidebar) lives in a tall, very narrow box.
+        # Redacting it and dropping horizontal text in there shrinks the translation to an
+        # illegible sliver, so leave such blocks untouched (they're usually identifiers).
+        r = _block_rect(b)
+        return r.width < 40 and r.height > r.width * 4
+
+    # group translated blocks by page (skip vertical/rotated text — keep the original)
     by_page: dict[int, list] = {}
     for b in doc.ordered_blocks():
         if b.bbox and b.translated and b.is_translatable:
+            if _is_vertical(b):
+                b.flags["rotated_text"] = "vertical/rotated text left untranslated (verify)"
+                continue
             by_page.setdefault(b.page, []).append(b)
 
     for pno, blocks in by_page.items():

@@ -28,6 +28,27 @@ def _looks_garbage(text: str) -> bool:
     return ctrl / len(s) > _GARBAGE_CTRL
 
 
+def _parse_pages(spec: str | None, total: int) -> set[int] | None:
+    """Parse a 1-based page selection ("3-7,10,15-") to a 0-based index set. None -> all."""
+    if not spec or not spec.strip():
+        return None
+    sel: set[int] = set()
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            a, _, b = part.partition("-")
+            start = int(a) if a.strip() else 1
+            end = int(b) if b.strip() else total
+        else:
+            start = end = int(part)
+        for p in range(start, end + 1):
+            if 1 <= p <= total:
+                sel.add(p - 1)
+    return sel or None
+
+
 def _guess_type(size: float, body_size: float, flags: int) -> BlockType:
     """Heuristic: larger-than-body font -> heading; much larger -> title."""
     if size >= body_size * 1.6:
@@ -63,6 +84,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
 
+    selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
     ocr = get_ocr(cfg) if ocr_pages else None
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_img_"))
 
@@ -79,6 +101,9 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
 
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
+
+        if selected is not None and pno not in selected:
+            continue  # page not in the requested selection — skip extraction/translation
 
         if pno in ocr_pages:
             _ocr_page(page, pno)
