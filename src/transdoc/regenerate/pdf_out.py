@@ -142,10 +142,17 @@ def render_searchable(doc: Document, cfg: Config, out_path: str) -> str:
 def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
     import fitz
 
-    pdf = fitz.open()
-    page = pdf.new_page()
     parts: list[str] = []
     for b in doc.ordered_blocks():
+        # Tables carry their text in cells, not output_text — handle before the empty-text
+        # skip below, or the whole table gets dropped.
+        if b.type == BlockType.TABLE and b.table:
+            rows = "".join(
+                "<tr>" + "".join(f"<td>{_esc(c.output_text)}</td>" for c in row) + "</tr>"
+                for row in b.table.rows
+            )
+            parts.append(f'<table border="1" cellpadding="3">{rows}</table>')
+            continue
         text = _esc(b.output_text.strip())
         if not text:
             continue
@@ -156,27 +163,23 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
             parts.append(f"<h{lvl}>{text}</h{lvl}>")
         elif b.type == BlockType.LIST_ITEM:
             parts.append(f"<li>{text}</li>")
-        elif b.type == BlockType.TABLE and b.table:
-            rows = "".join(
-                "<tr>" + "".join(f"<td>{_esc(c.output_text)}</td>" for c in row) + "</tr>"
-                for row in b.table.rows
-            )
-            parts.append(f'<table border="1" cellpadding="3">{rows}</table>')
         else:
             parts.append(f"<p>{text}</p>")
 
     body = f'<div style="font-family:sans-serif">{"".join(parts)}</div>'
-    rect = fitz.Rect(40, 40, page.rect.width - 40, page.rect.height - 40)
-    # insert_htmlbox returns overflow; add pages until consumed
-    spare = body
-    while spare:
-        leftover = page.insert_htmlbox(rect, spare)
-        # PyMuPDF returns (spare_height, scale) or leftover html depending on version;
-        # guard against infinite loop by breaking if nothing placed.
-        if isinstance(leftover, (int, float)) or not leftover or leftover == spare:
-            break
-        spare = leftover
-        page = pdf.new_page()
-    pdf.save(out_path, garbage=4, deflate=True)
-    pdf.close()
+
+    # Paginate with fitz.Story: it flows arbitrary-length HTML across as many pages as
+    # needed. (The old insert_htmlbox loop assumed the call returns leftover HTML; modern
+    # PyMuPDF returns a (spare_height, scale) tuple instead, which broke multi-page output.)
+    mediabox = fitz.paper_rect("a4")
+    where = mediabox + (40, 40, -40, -40)
+    story = fitz.Story(html=body)
+    writer = fitz.DocumentWriter(out_path)
+    more = 1
+    while more:
+        dev = writer.begin_page(mediabox)
+        more, _ = story.place(where)
+        story.draw(dev)
+        writer.end_page()
+    writer.close()
     return out_path
