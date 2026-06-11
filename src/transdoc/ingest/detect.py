@@ -26,6 +26,9 @@ class Kind(str, Enum):
     XLSX = "xlsx"
     PPTX = "pptx"
     RTF = "rtf"
+    EPUB = "epub"
+    SRT = "srt"                  # SubRip subtitles
+    VTT = "vtt"                  # WebVTT subtitles
     UNKNOWN = "unknown"
 
 
@@ -45,6 +48,7 @@ _MIME_MAP = {
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": Kind.PPTX,
     "application/rtf": Kind.RTF,
     "text/rtf": Kind.RTF,
+    "application/epub+zip": Kind.EPUB,
     "text/html": Kind.HTML,
     "text/plain": Kind.TEXT,
     "text/markdown": Kind.TEXT,
@@ -109,6 +113,11 @@ def detect(path: str | Path) -> Detection:
 
     mime = _sniff_mime(path)
     notes: list[str] = []
+
+    # Subtitles/EPUB sniff as text/plain or zip; trust the extension for these.
+    ext_override = {".srt": Kind.SRT, ".vtt": Kind.VTT, ".epub": Kind.EPUB}.get(path.suffix.lower())
+    if ext_override:
+        return Detection(kind=ext_override, mime=mime, path=path, notes=notes)
 
     if mime == "application/pdf":
         kind, notes = _classify_pdf(path)

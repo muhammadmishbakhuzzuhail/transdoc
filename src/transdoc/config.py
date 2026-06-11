@@ -19,6 +19,11 @@ class OutputFormat(str, Enum):
     DOCX = "docx"
     PDF = "pdf"
     PLAIN = "plain-text"
+    PPTX = "pptx"
+    XLSX = "xlsx"
+    EPUB = "epub"
+    SRT = "srt"
+    VTT = "vtt"
     SAME = "same-as-source"
 
 
@@ -46,7 +51,11 @@ class Fidelity(str, Enum):
 
 
 class Engine(str, Enum):
-    MADLAD = "madlad"         # offline NMT, 450 langs, any->any — Apache-2.0 (COMMERCIAL-SAFE) ★default
+    FALLBACK = "fallback"     # resilient chain google->mymemory->libretranslate ★default (free public)
+    GOOGLE = "google"         # free Google web endpoint (DocTranslator economics, CPU-only, ToS-grey)
+    MYMEMORY = "mymemory"     # free fallback, ~50k words/day, no key
+    LIBRETRANSLATE = "libretranslate"  # self-host backstop + privacy/offline (AGPL, separate service)
+    MADLAD = "madlad"         # offline NMT, 450 langs, any->any — Apache-2.0 (COMMERCIAL-SAFE)
     OPUSMT = "opusmt"         # offline Opus-MT/Marian, per-pair — MIT (commercial-safe, CPU-fast)
     ARGOS = "argos"           # offline Argos/LibreTranslate — MIT/Apache (commercial-safe, light)
     NLLB = "nllb"             # offline NMT, 200 langs — CC-BY-NC (NON-COMMERCIAL only)
@@ -74,7 +83,7 @@ class Config(BaseModel):
     bilingual: bool = False                     # emit source + translation together
     quality_check: bool = False                 # run reference-free QE, flag weak segments
 
-    engine: Engine = Engine.NLLB               # best broad-coverage offline quality (non-commercial)
+    engine: Engine = Engine.FALLBACK           # free resilient chain: google->mymemory->libretranslate
     ocr_engine: OCREngine = OCREngine.AUTO
 
     # Provided glossary: term -> rendering. Extended automatically.

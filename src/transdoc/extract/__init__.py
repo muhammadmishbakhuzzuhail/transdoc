@@ -42,6 +42,18 @@ def extract(det: Detection, cfg: Config) -> Document:
     if k == Kind.IMAGE:
         from .image import extract as ex
         return ex(p, cfg)
+    if k == Kind.PPTX:
+        from .pptx import extract as ex
+        return ex(p, cfg)
+    if k == Kind.XLSX:
+        from .xlsx import extract as ex
+        return ex(p, cfg)
+    if k == Kind.EPUB:
+        from .epub import extract as ex
+        return ex(p, cfg)
+    if k in (Kind.SRT, Kind.VTT):
+        from .subtitle import extract as ex
+        return ex(p, cfg)
     if k in (Kind.TEXT, Kind.HTML):
         from .text import extract as ex
         return ex(p, cfg)

@@ -12,6 +12,7 @@ geometry (e.g. source was DOCX/image). Uses insert_htmlbox so all scripts render
 from __future__ import annotations
 
 import html
+import re
 
 from ..config import Config
 from ..ir import BlockType, Document
@@ -19,6 +20,16 @@ from ..ir import BlockType, Document
 
 # Below this shrink factor, the box was too small for the translation -> flag for review.
 OVERFLOW_FLAG_SCALE = 0.6
+
+# RTL scripts: Hebrew, Arabic (+ supplements/presentation forms). insert_htmlbox shapes each
+# script via HarfBuzz but does NOT correctly order a single line that MIXES RTL + LTR runs
+# (PyMuPDF maintainer, discussion #3022). We can't fix it here, so we flag it for review.
+_RTL_RE = re.compile(r"[֐-׿؀-ۿݐ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿]")
+_LATIN_RE = re.compile(r"[A-Za-z]")
+
+
+def _is_mixed_bidi(s: str) -> bool:
+    return bool(_RTL_RE.search(s) and _LATIN_RE.search(s))
 
 
 def _esc(s: str) -> str:
@@ -56,6 +67,9 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
             r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
             align = "right" if b.style.rtl else "left"
             size = b.style.size or 11
+            if _is_mixed_bidi(b.output_text):
+                b.flags["bidi_mixed"] = (
+                    "mixed RTL+LTR on one line — insert_htmlbox may misorder words; verify")
             htmlbox = (f'<div style="font-size:{size:.0f}px;text-align:{align};'
                        f'line-height:1.05">{_esc(b.output_text)}</div>')
             try:
@@ -114,8 +128,6 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
 
     pdf = fitz.open()
     page = pdf.new_page()
-    width = page.rect.width - 80
-    y = 50
     parts: list[str] = []
     for b in doc.ordered_blocks():
         text = _esc(b.output_text.strip())

@@ -22,6 +22,7 @@ dependencies = [
   "pytesseract>=0.3.10",  # OCR (system tesseract)
   "Jinja2>=3.1",          # report templating
   "langdetect>=1.0.9",    # language detection fallback
+  "deep-translator>=1.11", # free MT chain: Google web endpoint / MyMemory / LibreTranslate
 ]
 
 [project.optional-dependencies]
@@ -42,6 +43,8 @@ pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
 api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9", "celery>=5.4", "redis>=5.0"]
 # Reference-free translation quality estimation (COMET-Kiwi)
 qe = ["unbabel-comet>=2.2"]
+# Extra round-trip formats: subtitles, EPUB, PowerPoint, Excel
+formats = ["python-pptx>=1.0", "openpyxl>=3.1", "ebooklib>=0.18", "srt>=3.5", "beautifulsoup4>=4.12"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]
@@ -57,3 +60,7 @@ packages = ["src/transdoc"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

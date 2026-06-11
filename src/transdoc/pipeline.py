@@ -74,7 +74,8 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     return Result(doc, outp, report_path, report)
 
 
-_EXT = {"markdown": ".md", "plain-text": ".txt", "docx": ".docx", "pdf": ".pdf"}
+_EXT = {"markdown": ".md", "plain-text": ".txt", "docx": ".docx", "pdf": ".pdf",
+        "pptx": ".pptx", "xlsx": ".xlsx", "epub": ".epub", "srt": ".srt", "vtt": ".vtt"}
 
 
 def _resolve_out(input_path: str, cfg: Config, out_path: str | None) -> str:

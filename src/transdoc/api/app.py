@@ -35,7 +35,7 @@ async def translate(
     target_lang: str = Form(...),
     source_lang: str = Form("auto"),
     output_format: str = Form("docx"),
-    engine: str = Form("madlad"),
+    engine: str = Form("fallback"),
     fidelity: str = Form("auto"),
     domain: str = Form("auto"),
     register: str = Form("auto"),

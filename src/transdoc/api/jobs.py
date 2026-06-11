@@ -1,13 +1,29 @@
-"""In-process async job store. No external queue needed for a single-node deployment;
-swap for Celery/Redis later via the same interface.
+"""Async job store with SQLite persistence.
+
+Jobs survive a server restart and are visible across processes/uvicorn workers: the SQLite
+row is the source of truth, the in-memory ``Job`` is a working copy the worker thread mutates
+and flushes after every state change. On startup any job still marked ``queued``/``running``
+(its worker thread died with the old process) is recovered to ``error`` so clients stop
+polling a job that will never finish.
+
+The work itself still runs in an in-process daemon thread — fine for a single node. To scale
+to multiple worker processes, swap ``run_async`` for a Celery task enqueue; the persisted
+store and HTTP surface stay identical.
+
+Env:
+  TRANSDOC_JOBS_DB    SQLite path (default: <work_dir>/jobs.sqlite)
 """
 
 from __future__ import annotations
 
+import json
+import os
+import sqlite3
 import threading
+import time
 import traceback
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Optional
 
@@ -26,24 +42,76 @@ class Job:
     report_path: Optional[str] = None
     error: Optional[str] = None
     meta: dict = field(default_factory=dict)
+    updated_at: float = 0.0
+
+
+_COLUMNS = [f.name for f in fields(Job)]
 
 
 class JobStore:
-    def __init__(self, work_dir: str = "/tmp/transdoc_jobs"):
-        self.jobs: dict[str, Job] = {}
+    def __init__(self, work_dir: str = "/tmp/transdoc_jobs", db_path: str | None = None):
         self.work_dir = Path(work_dir)
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        db = db_path or os.environ.get("TRANSDOC_JOBS_DB") or str(self.work_dir / "jobs.sqlite")
+        self._conn = sqlite3.connect(db, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute(
+            """CREATE TABLE IF NOT EXISTS jobs (
+                   id TEXT PRIMARY KEY,
+                   status TEXT NOT NULL,
+                   progress REAL NOT NULL,
+                   message TEXT,
+                   input_path TEXT,
+                   output_path TEXT,
+                   report_path TEXT,
+                   error TEXT,
+                   meta TEXT,
+                   updated_at REAL
+               )"""
+        )
+        self._conn.commit()
+        self._recover_orphans()
+
+    def _recover_orphans(self) -> None:
+        """A job left 'queued'/'running' means its worker thread died with the old process."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE jobs SET status='error', message='interrupted by restart', "
+                "error='interrupted by restart', updated_at=? "
+                "WHERE status IN ('queued','running')",
+                (time.time(),),
+            )
+            self._conn.commit()
+
+    def _save(self, job: Job) -> None:
+        job.updated_at = time.time()
+        row = asdict(job)
+        row["meta"] = json.dumps(row["meta"])
+        with self._lock:
+            placeholders = ",".join("?" * len(_COLUMNS))
+            self._conn.execute(
+                f"INSERT OR REPLACE INTO jobs ({','.join(_COLUMNS)}) VALUES ({placeholders})",
+                [row[c] for c in _COLUMNS],
+            )
+            self._conn.commit()
 
     def create(self, input_path: str, meta: dict) -> Job:
         jid = uuid.uuid4().hex[:12]
         job = Job(id=jid, input_path=input_path, meta=meta)
-        with self._lock:
-            self.jobs[jid] = job
+        self._save(job)
         return job
 
     def get(self, jid: str) -> Optional[Job]:
-        return self.jobs.get(jid)
+        with self._lock:
+            cur = self._conn.execute("SELECT * FROM jobs WHERE id=?", (jid,))
+            r = cur.fetchone()
+        if r is None:
+            return None
+        data = dict(r)
+        data["meta"] = json.loads(data["meta"]) if data["meta"] else {}
+        return Job(**{c: data[c] for c in _COLUMNS})
 
     def run_async(self, job: Job, cfg: Config) -> None:
         t = threading.Thread(target=self._run, args=(job, cfg), daemon=True)
@@ -53,6 +121,7 @@ class JobStore:
         job.status = "running"
         job.progress = 0.1
         job.message = "extracting + diagnosing"
+        self._save(job)
         try:
             out_dir = self.work_dir / job.id
             out_dir.mkdir(exist_ok=True)
@@ -61,6 +130,7 @@ class JobStore:
             out_path = str(out_dir / f"translated{ext}")
             job.progress = 0.3
             job.message = "translating"
+            self._save(job)
             res = run(job.input_path, cfg, out_path)
             job.output_path = res.output_path
             job.report_path = res.report_path
@@ -74,6 +144,7 @@ class JobStore:
             job.status = "error"
             job.error = f"{e}\n{traceback.format_exc()}"
             job.message = str(e)
+        self._save(job)
 
 
 store = JobStore()
