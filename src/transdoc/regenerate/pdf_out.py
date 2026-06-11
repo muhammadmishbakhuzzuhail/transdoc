@@ -123,6 +123,20 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     import fitz
     from PIL import Image as _PILImage
 
+    # Nothing to overlay (OCR found no translatable text) -> return the source untouched
+    # instead of re-encoding/deskewing it, so a photo we can't read comes back identical.
+    overlay = [b for b in doc.ordered_blocks() if b.bbox and b.translated and b.is_translatable]
+    if not overlay:
+        ext = out_path.lower().rsplit(".", 1)[-1]
+        src_ext = (doc.source_path or "").lower().rsplit(".", 1)[-1]
+        if ext == src_ext:
+            import shutil
+            shutil.copyfile(doc.source_path, out_path)
+            return out_path
+        # different target format: re-encode without any overlay
+        _PILImage.open(doc.source_path).convert("RGB").save(out_path)
+        return out_path
+
     # Overlay on the deskewed copy when one exists (its geometry matches the OCR bboxes so
     # the translation lands straight and in-place); otherwise the original image.
     bg = doc.render_path or doc.source_path

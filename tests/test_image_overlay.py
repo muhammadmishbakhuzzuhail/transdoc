@@ -85,6 +85,19 @@ def test_overlay_uses_deskewed_render_path(tmp_path):
     assert Image.open(str(out)).size == (420, 140)
 
 
+def test_no_text_returns_image_untouched(tmp_path):
+    # OCR found nothing translatable -> the source image must come back byte-identical
+    # (no re-encode, no deskew), not a re-rendered copy.
+    import filecmp
+    src = tmp_path / "photo.png"
+    _make_png(str(src), w=300, h=100)
+    out = tmp_path / "photo.id.png"
+    doc = Document(source_path=str(src), mime="image", page_count=1)
+    doc.blocks = []  # nothing to overlay
+    render_image_overlay(doc, Config(target_lang="id"), str(out))
+    assert filecmp.cmp(str(src), str(out), shallow=False)
+
+
 def test_image_explicit_pdf_stays_pdf(tmp_path):
     src = tmp_path / "photo.png"
     _make_png(str(src))
