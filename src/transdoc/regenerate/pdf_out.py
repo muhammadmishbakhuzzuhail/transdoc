@@ -44,6 +44,13 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
 
     pdf = fitz.open(doc.source_path)
 
+    def _block_rect(b) -> "fitz.Rect":
+        # OCR blocks carry bbox in 300-dpi pixels (the page was rasterized for OCR); digital
+        # blocks are already in PDF points. Scale OCR boxes back to points so the redaction +
+        # overlay land on the original geometry instead of off-page.
+        s = 72.0 / 300.0 if b.confidence.source == "ocr" else 1.0
+        return fitz.Rect(b.bbox.x0 * s, b.bbox.y0 * s, b.bbox.x1 * s, b.bbox.y1 * s)
+
     # group translated blocks by page
     by_page: dict[int, list] = {}
     for b in doc.ordered_blocks():
@@ -56,7 +63,7 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         page = pdf[pno]
         # 1) redact originals
         for b in blocks:
-            r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
+            r = _block_rect(b)
             page.add_redact_annot(r, fill=(1, 1, 1))
         page.apply_redactions()
         # 2) overlay translations at original bbox, auto-fitting expanded text.
@@ -64,13 +71,22 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         #    shrinks the text to fit the original box and returns the scale factor;
         #    if it had to shrink hard, we flag the block for human review.
         for b in blocks:
-            r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
-            align = "right" if b.style.rtl else "left"
+            r = _block_rect(b)
+            rtl = b.style.rtl
             size = b.style.size or 11
             if _is_mixed_bidi(b.output_text):
                 b.flags["bidi_mixed"] = (
                     "mixed RTL+LTR on one line — insert_htmlbox may misorder words; verify")
-            htmlbox = (f'<div style="font-size:{size:.0f}px;text-align:{align};'
+            # Preserve source justification: body paragraphs flush both margins (justify),
+            # headings/short runs keep their natural edge. Stretching a single short line
+            # looks wrong, so only justify text long enough to wrap.
+            is_heading = b.type in (BlockType.TITLE, BlockType.HEADING)
+            if not is_heading and len(b.output_text) > 40:
+                align = "justify"
+            else:
+                align = "right" if rtl else "left"
+            dir_css = "direction:rtl;" if rtl else ""
+            htmlbox = (f'<div style="{dir_css}font-size:{size:.0f}px;text-align:{align};'
                        f'line-height:1.05">{_esc(b.output_text)}</div>')
             try:
                 # scale_low=0 lets PyMuPDF shrink text down to fit; returns (spare, scale)
