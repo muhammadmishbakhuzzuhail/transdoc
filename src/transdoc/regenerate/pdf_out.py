@@ -103,6 +103,53 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     return out_path
 
 
+def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
+    """LAYOUT fidelity for a photo/image source (jpg/png) — the Google-Lens-style path.
+
+    Keep the original image as the page background, cover each OCR'd text region, and place
+    the translation at that same spot. OCR bboxes are in the image's native pixels; opening
+    the image as a PyMuPDF document maps 1 pixel -> 1 point, so the bboxes apply 1:1.
+    """
+    import fitz
+
+    src = fitz.open(doc.source_path)
+    pdf = fitz.open("pdf", src.convert_to_pdf())  # image -> single-page PDF, same geometry
+    src.close()
+    page = pdf[0]
+
+    for b in doc.ordered_blocks():
+        if not (b.bbox and b.translated and b.is_translatable):
+            continue
+        r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
+        # cover the original text so the translation reads cleanly over the photo. Pad the
+        # box a little (OCR boxes hug the glyphs, leaving ascenders/descenders peeking) and
+        # use an opaque fill so the source text can't bleed through behind the translation.
+        pad = max(2.0, r.height * 0.2)
+        cover = fitz.Rect(r.x0 - 2, r.y0 - pad, r.x1 + 2, r.y1 + pad)
+        page.draw_rect(cover, color=None, fill=(1, 1, 1), fill_opacity=1.0)
+        if _is_mixed_bidi(b.output_text):
+            b.flags["bidi_mixed"] = (
+                "mixed RTL+LTR on one line — insert_htmlbox may misorder words; verify")
+        rtl = b.style.rtl
+        size = b.style.size or max(8.0, r.height * 0.7)
+        align = "right" if rtl else "left"
+        dir_css = "direction:rtl;" if rtl else ""
+        htmlbox = (f'<div style="{dir_css}font-size:{size:.0f}px;text-align:{align};'
+                   f'line-height:1.05">{_esc(b.output_text)}</div>')
+        try:
+            ret = page.insert_htmlbox(r, htmlbox, scale_low=0)
+            scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
+            if scale and scale < OVERFLOW_FLAG_SCALE:
+                b.flags["text_expansion"] = (
+                    f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
+        except Exception:
+            page.insert_textbox(r, b.output_text, fontsize=11, align=0)
+
+    pdf.save(out_path, garbage=4, deflate=True)
+    pdf.close()
+    return out_path
+
+
 def render_searchable(doc: Document, cfg: Config, out_path: str) -> str:
     """Add an invisible OCR text layer over the original scanned PDF -> searchable PDF.
 
