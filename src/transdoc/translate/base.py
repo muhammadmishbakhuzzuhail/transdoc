@@ -39,12 +39,16 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     # 1) collect (block paragraphs + table cells)
     items: list[tuple[str, object]] = []  # (text, sink)
     for b in doc.blocks:
-        if b.type.value == "table" and b.table:
-            for row in b.table.rows:
-                for cell in row:
-                    if cell.text.strip():
-                        items.append((cell.text, cell))
-        elif b.is_translatable:
+        if b.type.value == "table":
+            # structured table -> translate each cell; a merged numeric table block (no
+            # cells, from the PDF parser) is left verbatim so its grid survives.
+            if b.table:
+                for row in b.table.rows:
+                    for cell in row:
+                        if cell.text.strip():
+                            items.append((cell.text, cell))
+            continue
+        if b.is_translatable:
             items.append((b.text, b))
 
     if not items:
