@@ -67,6 +67,18 @@ def _looks_formula(text: str) -> bool:
     return len(words) <= 6 and len(singles) >= 3
 
 
+def _looks_tabular(text: str) -> bool:
+    """A block dominated by numeric tokens is a table's data row(s) that the PDF parser
+    merged into one block (PyMuPDF doesn't reconstruct cells). Translating it reflows the
+    numbers into running text and destroys the grid, so preserve it verbatim. Tuned to skip
+    prose that merely mentions a few numbers."""
+    toks = text.split()
+    if len(toks) < 8:
+        return False
+    nums = sum(1 for t in toks if re.fullmatch(r"[\d.,]+%?", t))
+    return nums >= 6 and nums / len(toks) > 0.35
+
+
 def _guess_type(size: float, body_size: float, flags: int) -> BlockType:
     """Heuristic: larger-than-body font -> heading; much larger -> title."""
     if size >= body_size * 1.6:
@@ -175,7 +187,12 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             if not text:
                 continue
             x0, y0, x1, y1 = blk["bbox"]
-            btype = BlockType.FORMULA if _looks_formula(text) else _guess_type(max_size, body, 0)
+            if _looks_formula(text):
+                btype = BlockType.FORMULA
+            elif _looks_tabular(text):
+                btype = BlockType.TABLE  # merged numeric table rows -> preserve verbatim
+            else:
+                btype = _guess_type(max_size, body, 0)
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
