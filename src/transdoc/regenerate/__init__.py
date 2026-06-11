@@ -35,12 +35,21 @@ def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
     # An image source can preserve layout the same way a PDF can (overlay on the original).
     fidelity = cfg.resolve_fidelity(src_is_pdf or src_is_image)
 
+    # Image source, layout fidelity: Lens-style overlay on the original. same-as-source ->
+    # a translated image (out_path keeps the source ext); -> pdf gives an image-backed PDF.
+    # render_image_overlay picks raster vs PDF from out_path's extension.
+    if src_is_image and fidelity == Fidelity.LAYOUT and fmt in (
+            OutputFormat.SAME, OutputFormat.PDF):
+        from . import pdf_out
+
+        return pdf_out.render_image_overlay(doc, cfg, out_path)
+
     if fmt == OutputFormat.SAME:
         src_ext = "." + src.rsplit(".", 1)[-1] if "." in src else ""
         if src_ext in _EXT_TO_FORMAT:
             fmt = _EXT_TO_FORMAT[src_ext]
-        elif src_is_pdf or src_is_image:
-            fmt = OutputFormat.PDF  # image -> image-backed PDF overlay
+        elif src_is_pdf:
+            fmt = OutputFormat.PDF
         else:
             fmt = OutputFormat.MARKDOWN
 
@@ -69,8 +78,7 @@ def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
     if fmt == OutputFormat.PDF:
         from . import pdf_out
 
-        if fidelity == Fidelity.LAYOUT and src_is_image:
-            return pdf_out.render_image_overlay(doc, cfg, out_path)
+        # image + LAYOUT + PDF is handled by the early return above; here LAYOUT means PDF src
         if fidelity == Fidelity.LAYOUT and src_is_pdf:
             return pdf_out.render_overlay(doc, cfg, out_path)
         return pdf_out.render_flow(doc, cfg, out_path)

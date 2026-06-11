@@ -111,11 +111,16 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     the image as a PyMuPDF document maps 1 pixel -> 1 point, so the bboxes apply 1:1.
     """
     import fitz
+    from PIL import Image as _PILImage
 
-    src = fitz.open(doc.source_path)
-    pdf = fitz.open("pdf", src.convert_to_pdf())  # image -> single-page PDF, same geometry
-    src.close()
-    page = pdf[0]
+    # Build the page at the image's exact PIXEL size so OCR bboxes (raw pixels) map 1 px ->
+    # 1 pt. (Opening the image directly and letting fitz interpret DPI metadata would scale
+    # the page by 72/dpi and misplace every box on any image not tagged at 72 dpi.)
+    with _PILImage.open(doc.source_path) as _im:
+        iw, ih = _im.size
+    pdf = fitz.open()
+    page = pdf.new_page(width=iw, height=ih)
+    page.insert_image(fitz.Rect(0, 0, iw, ih), filename=doc.source_path)
 
     for b in doc.ordered_blocks():
         if not (b.bbox and b.translated and b.is_translatable):
@@ -145,8 +150,16 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         except Exception:
             page.insert_textbox(r, b.output_text, fontsize=11, align=0)
 
-    pdf.save(out_path, garbage=4, deflate=True)
-    pdf.close()
+    # Output a translated image when the target is an image (the natural Lens-style result:
+    # upload a photo, get the photo back translated), else an image-backed PDF.
+    ext = out_path.lower().rsplit(".", 1)[-1]
+    if ext in ("png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"):
+        pix = page.get_pixmap()  # identity matrix -> original pixel dimensions
+        pdf.close()
+        pix.save(out_path)
+    else:
+        pdf.save(out_path, garbage=4, deflate=True)
+        pdf.close()
     return out_path
 
 
