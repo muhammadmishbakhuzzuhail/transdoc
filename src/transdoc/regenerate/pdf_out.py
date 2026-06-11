@@ -113,14 +113,18 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     import fitz
     from PIL import Image as _PILImage
 
+    # Overlay on the deskewed copy when one exists (its geometry matches the OCR bboxes so
+    # the translation lands straight and in-place); otherwise the original image.
+    bg = doc.render_path or doc.source_path
+
     # Build the page at the image's exact PIXEL size so OCR bboxes (raw pixels) map 1 px ->
     # 1 pt. (Opening the image directly and letting fitz interpret DPI metadata would scale
     # the page by 72/dpi and misplace every box on any image not tagged at 72 dpi.)
-    with _PILImage.open(doc.source_path) as _im:
+    with _PILImage.open(bg) as _im:
         iw, ih = _im.size
     pdf = fitz.open()
     page = pdf.new_page(width=iw, height=ih)
-    page.insert_image(fitz.Rect(0, 0, iw, ih), filename=doc.source_path)
+    page.insert_image(fitz.Rect(0, 0, iw, ih), filename=bg)
 
     for b in doc.ordered_blocks():
         if not (b.bbox and b.translated and b.is_translatable):
@@ -220,6 +224,12 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
             continue
         text = _esc(b.output_text.strip())
         if not text:
+            continue
+        # bilingual: source (muted italic) then translation, mirroring the other renderers
+        if cfg.bilingual and b.translated is not None and b.text.strip():
+            parts.append(
+                f'<p style="color:#888;font-style:italic">{_esc(b.text.strip())}</p>')
+            parts.append(f"<p>{_esc(b.translated.strip())}</p>")
             continue
         if b.type == BlockType.TITLE:
             parts.append(f"<h1>{text}</h1>")
