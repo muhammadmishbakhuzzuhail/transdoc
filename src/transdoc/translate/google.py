@@ -23,6 +23,16 @@ from ..config import Config
 # Google web endpoint rejects requests over ~5000 chars; stay safely under.
 _MAX_CHARS = int(os.environ.get("GOOGLE_TRANSLATE_MAX_CHARS", "4500"))
 
+# Google/deep-translator use a few non-ISO-639-1 codes. Normalize the common ISO inputs
+# so callers can pass the familiar code (e.g. "zh") and still hit Google. Anything not here
+# is passed through unchanged.
+_LANG_FIX = {
+    "zh": "zh-CN", "zh-hans": "zh-CN", "zh_cn": "zh-CN", "zh-cn": "zh-CN",
+    "zh-hant": "zh-TW", "zh_tw": "zh-TW", "zh-tw": "zh-TW",
+    "he": "iw",   # Google's legacy code for Hebrew
+    "jv": "jw",   # Javanese
+}
+
 
 def _split_long(text: str, limit: int) -> list[str]:
     """Split a single oversized segment on sentence/space boundaries, under ``limit``."""
@@ -56,7 +66,7 @@ class GoogleTranslator:
     def _code(self, lang: str | None) -> str:
         if not lang or lang == "auto":
             return "auto"
-        return lang
+        return _LANG_FIX.get(lang.lower(), lang)
 
     def _translate_one(self, text: str, source: str, target: str) -> str:
         """Translate a single string (splitting if it exceeds the char cap), with backoff."""
