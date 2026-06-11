@@ -6,6 +6,7 @@ layout. Scanned / mixed PDFs: rasterize the image-only pages and hand them to OC
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 from ..config import Config
@@ -47,6 +48,23 @@ def _parse_pages(spec: str | None, total: int) -> set[int] | None:
             if 1 <= p <= total:
                 sel.add(p - 1)
     return sel or None
+
+
+# Math operators/relations that signal a formula line (not just an inline "h = 8").
+_MATH_OPS = set("=<>≤≥≠≈∈∉⊂⊆∪∩∑∏∫√∂∇∞∼≅≡↦→⊕⊗±×÷·")
+
+
+def _looks_formula(text: str) -> bool:
+    """Heuristic: a short line with a math operator, few real words, and several lone
+    variable letters is an equation — mark it FORMULA so it is preserved verbatim instead
+    of being translated (which turns `head_i = Attention(...)` into `head; = Perhatian(...)`
+    and scrambles sub/superscripts). Tuned to skip prose with an inline `h = 8`."""
+    s = text.strip()
+    if not s or len(s) > 200 or not any(c in _MATH_OPS for c in s):
+        return False
+    words = re.findall(r"[A-Za-z]{4,}", s)            # multi-letter tokens = prose words
+    singles = re.findall(r"(?<![A-Za-z])[A-Za-z](?![A-Za-z])", s)  # lone variable letters
+    return len(words) <= 6 and len(singles) >= 3
 
 
 def _guess_type(size: float, body_size: float, flags: int) -> BlockType:
@@ -157,7 +175,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             if not text:
                 continue
             x0, y0, x1, y1 = blk["bbox"]
-            btype = _guess_type(max_size, body, 0)
+            btype = BlockType.FORMULA if _looks_formula(text) else _guess_type(max_size, body, 0)
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
