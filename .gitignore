@@ -39,3 +39,4 @@ documents/**/*.rtf
 *.bin
 .cache/
 salvage/
+/out/
