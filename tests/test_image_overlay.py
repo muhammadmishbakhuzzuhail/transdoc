@@ -98,6 +98,20 @@ def test_no_text_returns_image_untouched(tmp_path):
     assert filecmp.cmp(str(src), str(out), shallow=False)
 
 
+def test_low_confidence_ocr_not_overlaid(tmp_path):
+    # garbage OCR (low confidence) must not be painted over the original
+    import filecmp
+    src = tmp_path / "photo.png"
+    _make_png(str(src), w=300, h=100)
+    out = tmp_path / "photo.id.png"
+    doc = Document(source_path=str(src), mime="image", page_count=1)
+    doc.blocks = [Block(id="g", type=BlockType.PARAGRAPH, page=0, text="garble",
+                        translated="halo", bbox=BBox(x0=10, y0=10, x1=200, y1=40),
+                        confidence=Confidence(source="ocr", ocr=0.2))]
+    render_image_overlay(doc, Config(target_lang="id"), str(out))
+    assert filecmp.cmp(str(src), str(out), shallow=False)   # left untouched
+
+
 def test_image_explicit_pdf_stays_pdf(tmp_path):
     src = tmp_path / "photo.png"
     _make_png(str(src))

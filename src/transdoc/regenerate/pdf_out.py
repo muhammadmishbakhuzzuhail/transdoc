@@ -21,6 +21,13 @@ from ..ir import BlockType, Document
 # Below this shrink factor, the box was too small for the translation -> flag for review.
 OVERFLOW_FLAG_SCALE = 0.6
 
+# OCR below this confidence is unreliable (garbage); don't cover the original with it.
+OCR_OVERLAY_MIN = 0.5
+
+
+def _ocr_garbage(b) -> bool:
+    return b.confidence.ocr is not None and b.confidence.ocr < OCR_OVERLAY_MIN
+
 # RTL scripts: Hebrew, Arabic (+ supplements/presentation forms). insert_htmlbox shapes each
 # script via HarfBuzz but does NOT correctly order a single line that MIXES RTL + LTR runs
 # (PyMuPDF maintainer, discussion #3022). We can't fix it here, so we flag it for review.
@@ -64,6 +71,10 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         if b.bbox and b.translated and b.is_translatable:
             if _is_vertical(b):
                 b.flags["rotated_text"] = "vertical/rotated text left untranslated (verify)"
+                continue
+            if _ocr_garbage(b):
+                b.flags["ocr_unreliable"] = (
+                    f"OCR {b.confidence.ocr:.0%} — left original, not overlaid")
                 continue
             by_page.setdefault(b.page, []).append(b)
 
@@ -123,9 +134,10 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     import fitz
     from PIL import Image as _PILImage
 
-    # Nothing to overlay (OCR found no translatable text) -> return the source untouched
-    # instead of re-encoding/deskewing it, so a photo we can't read comes back identical.
-    overlay = [b for b in doc.ordered_blocks() if b.bbox and b.translated and b.is_translatable]
+    # Nothing reliable to overlay (no translatable text, or OCR is garbage) -> return the
+    # source untouched instead of covering it with low-confidence gibberish or re-encoding.
+    overlay = [b for b in doc.ordered_blocks()
+               if b.bbox and b.translated and b.is_translatable and not _ocr_garbage(b)]
     if not overlay:
         ext = out_path.lower().rsplit(".", 1)[-1]
         src_ext = (doc.source_path or "").lower().rsplit(".", 1)[-1]
@@ -151,7 +163,7 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     page.insert_image(fitz.Rect(0, 0, iw, ih), filename=bg)
 
     for b in doc.ordered_blocks():
-        if not (b.bbox and b.translated and b.is_translatable):
+        if not (b.bbox and b.translated and b.is_translatable) or _ocr_garbage(b):
             continue
         r = fitz.Rect(b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1)
         # cover the original text so the translation reads cleanly over the photo. Pad the
