@@ -25,7 +25,6 @@ def _para_type(style_name: str) -> tuple[BlockType, int]:
 
 def extract(path: str, cfg: Config) -> Document:
     from docx import Document as Docx
-    from docx.document import Document as _Doc
     from docx.oxml.table import CT_Tbl
     from docx.oxml.text.paragraph import CT_P
     from docx.table import Table as DocxTable

@@ -8,9 +8,8 @@ from .base import block_id, reflow_order
 
 
 def extract(path: str, cfg: Config) -> Document:
-    from odf import teletype, text
+    from odf import teletype
     from odf.opendocument import load
-    from odf.table import Table as OdfTable
     from odf.table import TableCell, TableRow
 
     doc = load(path)

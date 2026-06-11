@@ -128,8 +128,6 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
 
     pdf = fitz.open()
     page = pdf.new_page()
-    width = page.rect.width - 80
-    y = 50
     parts: list[str] = []
     for b in doc.ordered_blocks():
         text = _esc(b.output_text.strip())
