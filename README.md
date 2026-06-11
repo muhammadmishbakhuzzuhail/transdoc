@@ -28,7 +28,8 @@ output format without touching the rest.
 ## Stack (see `docs/RESEARCH.md` for the verified rationale)
 | Layer | Default | Fallback |
 |-------|---------|----------|
-| OCR + layout | Tesseract (CPU, 100+ langs) | Surya OCR 2 (GPU, non-commercial model) |
+| OCR + layout | Tesseract (CPU, 100+ langs); auto-OCR fallback when a page's digital text is CID-font garbage | Surya OCR 2 (GPU, non-commercial model) |
+| Language detect | langdetect (core, tiny) | lingua low-accuracy mode (`[detect]` extra — 100% vs 91% acc, deterministic, ~1.2GB RAM) |
 | PDF parse | PyMuPDF | — |
 | Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
 | Translate (free, CPU) | **`fallback`** — Google web endpoint → MyMemory → self-hosted LibreTranslate (no API key, runs CPU-only) | Offline NMT: MADLAD-400/Opus-MT/Argos (commercial-safe) · NLLB (non-commercial) · OpenRouter/Anthropic (API) |
@@ -56,6 +57,7 @@ pip install -e ".[surya]"        # GPU OCR
 pip install -e ".[nmt]"          # offline NMT (MADLAD/Opus-MT/NLLB)
 pip install -e ".[llm]"          # OpenRouter/Anthropic engines
 pip install -e ".[formats]"      # subtitles · EPUB · PowerPoint · Excel
+pip install -e ".[detect]"       # lingua language detection (more accurate, ~1.2GB RAM)
 ```
 
 ## Usage
