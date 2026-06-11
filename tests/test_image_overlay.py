@@ -71,6 +71,20 @@ def test_image_same_as_source_outputs_translated_image(tmp_path):
     assert Image.open(str(out)).format == "PNG"
 
 
+def test_overlay_uses_deskewed_render_path(tmp_path):
+    # when a deskewed copy is provided, the overlay backgrounds on it (geometry matches the
+    # OCR bboxes), not the original — verified via its distinct dimensions.
+    src = tmp_path / "photo.png"
+    _make_png(str(src), w=400, h=120)
+    deskewed = tmp_path / "deskewed.png"
+    _make_png(str(deskewed), w=420, h=140)  # different size -> proves which one was used
+    out = tmp_path / "out.png"
+    doc = _image_doc(str(src))
+    doc.render_path = str(deskewed)
+    render_image_overlay(doc, Config(target_lang="id"), str(out))
+    assert Image.open(str(out)).size == (420, 140)
+
+
 def test_image_explicit_pdf_stays_pdf(tmp_path):
     src = tmp_path / "photo.png"
     _make_png(str(src))

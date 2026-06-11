@@ -176,6 +176,9 @@ class Document(BaseModel):
     mime: Optional[str] = None
     source_lang: Optional[str] = None
     target_lang: Optional[str] = None
+    # For image sources: a deskewed copy whose geometry matches the OCR bboxes, used as the
+    # overlay background so the translation lands straight and in-place. None -> use source.
+    render_path: Optional[str] = None
 
     profile: DocProfile = Field(default_factory=DocProfile)
     blocks: list[Block] = Field(default_factory=list)

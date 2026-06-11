@@ -40,6 +40,13 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         if not text:
             continue
 
+        # bilingual: source (italic) then translation, mirroring the markdown renderer
+        if cfg.bilingual and b.translated is not None and b.text.strip():
+            src_p = d.add_paragraph()
+            src_p.add_run(b.text.strip()).italic = True
+            d.add_paragraph(b.translated.strip())
+            continue
+
         if b.type == BlockType.TITLE:
             d.add_heading(text, level=0)
         elif b.type == BlockType.HEADING:
