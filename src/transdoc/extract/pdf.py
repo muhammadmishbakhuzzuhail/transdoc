@@ -6,9 +6,26 @@ layout. Scanned / mixed PDFs: rasterize the image-only pages and hand them to OC
 
 from __future__ import annotations
 
+import unicodedata
+
 from ..config import Config
 from ..ir import BBox, Block, BlockType, Confidence, Document, Style
 from .base import block_id, reflow_order
+
+# Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
+# ids — control chars / mojibake, not real text. Valid pages (any script) have ~0% control
+# chars; the broken pages measured 34-49%. Above this fraction we don't trust the digital
+# text and rasterize the page for OCR instead.
+_GARBAGE_CTRL = 0.10
+_BAD_CATS = {"Cc", "Cf", "Co", "Cs", "Cn"}
+
+
+def _looks_garbage(text: str) -> bool:
+    s = text.strip()
+    if len(s) < 20:
+        return False
+    ctrl = sum(1 for c in s if c not in "\t\n\r" and unicodedata.category(c) in _BAD_CATS)
+    return ctrl / len(s) > _GARBAGE_CTRL
 
 
 def _guess_type(size: float, body_size: float, flags: int) -> BlockType:
@@ -49,15 +66,31 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     ocr = get_ocr(cfg) if ocr_pages else None
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_img_"))
 
+    def _ensure_ocr():
+        nonlocal ocr
+        if ocr is None:
+            ocr = get_ocr(cfg)
+        return ocr
+
+    def _ocr_page(page, pno) -> None:
+        eng = _ensure_ocr()
+        pix = page.get_pixmap(dpi=300)
+        out.blocks.extend(eng.recognize_image_bytes(pix.tobytes("png"), cfg, page=pno))
+
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
 
         if pno in ocr_pages:
-            pix = page.get_pixmap(dpi=300)
-            img_bytes = pix.tobytes("png")
-            ocr_blocks = ocr.recognize_image_bytes(img_bytes, cfg, page=pno)
-            out.blocks.extend(ocr_blocks)
+            _ocr_page(page, pno)
             continue
+
+        # Trust digital text only if it isn't CID-font garbage; otherwise OCR the page.
+        if _looks_garbage(page.get_text()):
+            try:
+                _ocr_page(page, pno)
+                continue
+            except Exception:
+                pass  # OCR unavailable -> fall through and keep whatever text we have
 
         # extract embedded images as FIGURE blocks (so flow output can reinsert them)
         for ii, info in enumerate(page.get_images(full=True)):

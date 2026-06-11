@@ -2,14 +2,43 @@
 
 from __future__ import annotations
 
+import os
 from collections import Counter
 
 from .config import Config
 from .ingest.detect import Detection, Kind
 from .ir import BlockType, Document, DocProfile
 
+# lingua (optional, `pip install -e .[detect]`) is more accurate than langdetect — 100% vs
+# 91% on our UDHR set (langdetect misreads Chinese full-text as Korean) and, in low-accuracy
+# mode, ~6x faster (1.5ms vs 9.1ms/call) and deterministic. Its cost is RAM (~1.2GB for all
+# language models), so it's opt-in: installed -> used; otherwise we fall back to langdetect.
+_LINGUA: dict = {"tried": False, "detector": None}
+
+
+def _lingua_detect(text: str) -> str | None:
+    if os.environ.get("TRANSDOC_DISABLE_LINGUA") == "1":
+        return None
+    if not _LINGUA["tried"]:
+        _LINGUA["tried"] = True
+        try:
+            from lingua import LanguageDetectorBuilder
+
+            _LINGUA["detector"] = (
+                LanguageDetectorBuilder.from_all_languages().with_low_accuracy_mode().build())
+        except Exception:
+            _LINGUA["detector"] = None
+    det = _LINGUA["detector"]
+    if det is None:
+        return None
+    r = det.detect_language_of(text)
+    return r.iso_code_639_1.name.lower() if r else None
+
 
 def detect_lang(text: str) -> str | None:
+    via = _lingua_detect(text)
+    if via:
+        return via
     try:
         from langdetect import detect
 

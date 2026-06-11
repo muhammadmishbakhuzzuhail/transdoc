@@ -45,6 +45,9 @@ api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9", "celery>=5.
 qe = ["unbabel-comet>=2.2"]
 # Extra round-trip formats: subtitles, EPUB, PowerPoint, Excel
 formats = ["python-pptx>=1.0", "openpyxl>=3.1", "ebooklib>=0.18", "srt>=3.5", "beautifulsoup4>=4.12"]
+# More accurate, deterministic language detection (lingua low-accuracy mode). Heavier RAM
+# (~1.2GB all-language models); without it the langdetect core path is used. pip install -e ".[detect]"
+detect = ["lingua-language-detector>=2.0"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]
