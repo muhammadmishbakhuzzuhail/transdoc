@@ -43,8 +43,26 @@ def test_lang_mapping():
     assert eng._lang(Config(target_lang="id", source_lang="de")) == "german"
     assert eng._lang(Config(target_lang="id", source_lang="zh")) == "ch"
     assert eng._lang(Config(target_lang="id", source_lang="hi")) == "hi"   # passthrough
-    assert eng._lang(Config(target_lang="id", source_lang="auto")) == "en"
+    assert eng._lang(Config(target_lang="id", source_lang="auto")) == "en"  # no image
     assert PADDLE_LANG["ja"] == "japan"
+
+
+def test_auto_uses_detected_script(monkeypatch):
+    import transdoc.ocr.paddle as mod
+    eng = PaddleOCREngine()
+    monkeypatch.setattr(mod, "detect_script_lang", lambda img: "hi")
+    # auto + image -> the script read off the image wins
+    assert eng._lang(Config(target_lang="id", source_lang="auto"), img=b"x") == "hi"
+    # explicit source ignores detection
+    assert eng._lang(Config(target_lang="id", source_lang="ar"), img=b"x") == "ar"
+
+
+def test_script_to_lang_map():
+    from transdoc.ocr.paddle import SCRIPT_TO_LANG
+    assert SCRIPT_TO_LANG["Devanagari"] == "hi"
+    assert SCRIPT_TO_LANG["Arabic"] == "ar"
+    assert SCRIPT_TO_LANG["Cyrillic"] == "ru"
+    assert SCRIPT_TO_LANG["Han"] == "ch"
 
 
 def test_maps_results_to_blocks():
