@@ -86,3 +86,35 @@ Report:      profile + glossary + repairs + flagged items + human-review list
 _Sources: surya (datalab-to/surya), olmOCR-bench, OmniDocBench (opendatalab), NLLB Nature
 2024 (s41586-024-07335-x), NLLB HF card, CTranslate2/OpenNMT, LibreTranslate, Argos,
 PyMuPDF/Artifex insert_htmlbox, ReportLab 4.4 changelog, HIN_EN_PDF_Translator, OCRmyPDF._
+
+## PaddleOCR-VL evaluation (2026-06) — candidate OCR upgrade tier
+
+Corpus stress test showed Tesseract averages 0.22–0.44 confidence on degraded/non-Latin
+scans (manuscripts, CJK/Hebrew/Devanagari) → garbage-skipped → untranslated. PaddleOCR-VL
+evaluated as the upgrade tier.
+
+**Verified (web research):**
+- **License: Apache-2.0 — commercial-safe.** This is the decisive advantage over Surya
+  (non-commercial model) and NLLB (CC-BY-NC). Removes the OCR licensing blocker.
+- Architecture: PaddleOCR-VL-0.9B = NaViT dynamic-resolution visual encoder + ERNIE-4.5-0.3B
+  LM. 109 languages; SOTA page- and element-level parsing (text/tables/formulas/charts);
+  strong on vertical CJK.
+- Accuracy (vendor multilingual tests): Arabic 93%+, Chinese 95%+, Japanese 94%+. Devanagari
+  NOT benchmarked; "Slavic/minority languages need strengthening".
+- CPU inference is supported ("runs on regular CPUs") — but **no published CPU latency
+  numbers**. GPU ~0.13 s/page (A100); OpenVINO claims 5.2× CPU speedup, Apple M4 6.1× (tiny).
+  Real CPU s/page on our hardware is still UNVERIFIED — the open risk.
+- Install: `pip install "paddleocr[doc-parser]"` + **PaddlePaddle** (heavy framework, ~GB;
+  separate from torch). Simple API: `PaddleOCRVL().predict(img)` → markdown/json with layout.
+
+**Decision: promising, but gate on an empirical CPU benchmark before integrating.** Plan:
+1. Throwaway-venv benchmark on the hardest scans (magna_carta, hindi, hebrew, diamond_sutra):
+   measure s/page on CPU + confidence/CER vs Tesseract. (Mind disk: PaddlePaddle is ~GB.)
+2. If CPU s/page is acceptable (target < ~10 s/page), add an opt-in `[paddleocr]` extra +
+   a `PaddleOCRVLEngine` implementing the `OCREngine` protocol (map VL layout output → Block
+   IR with bbox + confidence). Keep Tesseract the default; PaddleOCR-VL as `--ocr paddleocr`.
+3. Tesseract preprocessing (denoise/binarize/upscale) remains the zero-dep CPU fallback.
+
+_Sources: PaddlePaddle/PaddleOCR (GitHub), HF PaddlePaddle/PaddleOCR-VL, ERNIE blog
+(ernie.baidu.com/blog/posts/paddleocr-vl), PaddleOCR-VL deployment FAQ (issue #16823),
+dev.to PaddleOCR-VL-0.9B guide._
