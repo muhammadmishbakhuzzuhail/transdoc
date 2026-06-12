@@ -88,6 +88,11 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
 
     # 2) translate the protected misses, restore tokens, then fold cache hits back in
     fresh = tr.translate_batch(protected, cfg, src=doc.source_lang) if protected else []
+    if cfg.localize:
+        # Reformat numbers to the target locale while protected tokens are still [PH] tags,
+        # so verbatim currency/dates/codes are not touched.
+        from .localize import localize_numbers
+        fresh = [localize_numbers(t, target) for t in fresh]
     fresh = [protector.restore(t, m) for t, m in zip(fresh, maps)]
     fresh_map = dict(zip(todo, fresh))
     if ptm and fresh_map:

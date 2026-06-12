@@ -19,6 +19,9 @@ _PATTERNS = [
     r'(?:\+?\d[\d\s\-().]{7,}\d)',                              # phone numbers
     r'\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b',                # numeric dates
     r'\b\d+(?:[.,]\d+)?\s*(?:USD|IDR|MYR|THB|VND|PHP|SGD|EUR|JPY|CNY|kg|km|cm|mm|ml)\b',
+    r'\$[^$\n]{1,80}\$',                                        # inline LaTeX math $...$
+    r'\\[a-zA-Z]+(?:\{[^{}\n]*\})?',                           # LaTeX commands \alpha, \frac{..}
+    r'\b[A-Za-z][A-Za-z0-9]*[_^]\{?[A-Za-z0-9+\-]+\}?',       # sub/superscript var: head_i, W^Q
     r'\b[A-Z]{2,}-?\d{3,}(?:-\d+)?\b',                          # codes like INV-12345
 ]
 
