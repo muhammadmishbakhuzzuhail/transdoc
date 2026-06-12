@@ -82,6 +82,19 @@ while block counts still said "64/64 translated". Two fixes:
 - **Process lesson:** never report "translated OK" from progress/block counts — render and
   look at the output.
 
+## Formatting-feature fidelity (overlay) — honest limits
+Feature comparison (`scripts/compare_features.py`, original vs translated span styles):
+- **Fixed: bold/italic were over-applied.** Capturing "any span is bold" made the whole
+  reflowed block bold — BERT page 1 went from 18 bold spans (source) to 136 (overlay). Now
+  bold/italic are taken from the **character majority** of the block (heading stays bold; a
+  paragraph with one bold word does not). Bold dropped to ~4 (the genuine dominant-bold runs).
+- **Inherent limit: word-level emphasis can't survive.** The overlay inserts ONE styled box
+  per reflowed block, and translation breaks word-to-word alignment, so a single bold/italic/
+  coloured *word* inside a paragraph is lost — only block-dominant styling (size, dominant
+  colour/bold/italic) carries. Source colour 55 spans → 1 (the rest were inline links/marks).
+  This is a real limitation of layout-overlay translation, not a bug; `compare_features.py`
+  surfaces it instead of hiding it. (Font *family* is likewise approximated via Noto.)
+
 ## v2 backlog — empirical, from a corpus stress test
 Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/image → PDF).
 **Stability: 0 crashes, 0 zero-block on digital/office.** Quality findings, ranked:
