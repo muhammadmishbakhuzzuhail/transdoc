@@ -7,6 +7,7 @@ source term maps to one target rendering everywhere.
 
 from __future__ import annotations
 
+import re
 from typing import Protocol
 
 from ..config import Config
@@ -25,8 +26,16 @@ class Translator(Protocol):
 def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     """Enforce term consistency. Longest terms first to avoid partial overlaps."""
     for term in sorted(glossary, key=len, reverse=True):
-        if term and term in text:
-            text = text.replace(term, glossary[term])
+        if not term:
+            continue
+        repl = glossary[term]
+        # Word-boundary match for ASCII alphanumeric terms so "cat" doesn't fire inside
+        # "category". CJK / punctuation-edged terms have no \w boundary, so fall back to a
+        # plain substring replace for those.
+        if term.isascii() and term[0].isalnum() and term[-1].isalnum():
+            text = re.sub(rf"(?<!\w){re.escape(term)}(?!\w)", lambda _m, r=repl: r, text)
+        elif term in text:
+            text = text.replace(term, repl)
     return text
 
 

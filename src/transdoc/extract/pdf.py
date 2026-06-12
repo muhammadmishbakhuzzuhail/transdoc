@@ -50,6 +50,17 @@ def _parse_pages(spec: str | None, total: int) -> set[int] | None:
     return sel or None
 
 
+# A word hyphenated across a line break ("inter-\nnational") extracts as "inter- national"
+# once lines are space-joined. Re-stitch it: lowercase letter + "-" + spaces + lowercase
+# letter -> one word. Real compounds ("well-known") have no space after the hyphen, so they
+# are left intact.
+_HYPHEN_BREAK = re.compile(r"([a-zà-öø-ÿ])-\s+([a-zà-öø-ÿ])")
+
+
+def _dehyphenate(text: str) -> str:
+    return _HYPHEN_BREAK.sub(r"\1\2", text)
+
+
 # Math operators/relations that signal a formula line (not just an inline "h = 8").
 _MATH_OPS = set("=<>≤≥≠≈∈∉⊂⊆∪∩∑∏∫√∂∇∞∼≅≡↦→⊕⊗±×÷·")
 
@@ -201,7 +212,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                         if isinstance(c, int):
                             color = f"#{c & 0xFFFFFF:06x}"
                 text_parts.append(" ")
-            text = "".join(text_parts).strip()
+            text = _dehyphenate("".join(text_parts).strip())
             if not text:
                 continue
             x0, y0, x1, y1 = blk["bbox"]

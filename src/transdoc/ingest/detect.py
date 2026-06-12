@@ -92,8 +92,11 @@ def _classify_pdf(path: Path) -> tuple[Kind, list[str]]:
     pages_with_text = 0
     n = doc.page_count
     for page in doc:
-        # Heuristic: a page with > 20 non-space chars has a usable text layer.
-        if len(page.get_text("text").strip()) > 20:
+        # A page has a usable text layer if it carries enough real text AND a full-page
+        # image isn't dominating it. A scan with a tiny stray caption (e.g. a page number)
+        # has >20 chars but is really an image — treat it as scanned so it gets OCR'd.
+        chars = len(page.get_text("text").strip())
+        if chars > 20 and not _image_dominates(page):
             pages_with_text += 1
     doc.close()
 
@@ -104,6 +107,26 @@ def _classify_pdf(path: Path) -> tuple[Kind, list[str]]:
         return Kind.PDF_DIGITAL, notes
     notes.append(f"{pages_with_text}/{n} pages have text -> mixed, OCR the rest")
     return Kind.PDF_MIXED, notes
+
+
+def _image_dominates(page) -> bool:
+    """True if a single image covers most of the page and there's little text — i.e. the
+    'text' is just a stray caption/number over a scan, not a real digital text layer."""
+    try:
+        page_area = abs(page.rect.width * page.rect.height)
+        if page_area <= 0:
+            return False
+        for info in page.get_image_info():
+            bb = info.get("bbox")
+            if not bb:
+                continue
+            w, h = bb[2] - bb[0], bb[3] - bb[1]
+            if (w * h) / page_area > 0.6:        # one image covers >60% of the page
+                # only call it a scan if the text is sparse relative to a real text page
+                return len(page.get_text("text").strip()) < 200
+    except Exception:
+        return False
+    return False
 
 
 def detect(path: str | Path) -> Detection:
