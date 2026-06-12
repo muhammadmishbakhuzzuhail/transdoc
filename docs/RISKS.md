@@ -64,20 +64,27 @@ the free NMT chain has no tone control.
 Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/image → PDF).
 **Stability: 0 crashes, 0 zero-block on digital/office.** Quality findings, ranked:
 
-1. **OCR quality on degraded / non-Latin scans is the #1 content gap.** Tesseract averaged
+**Fixed (v2):**
+- **Silent source-passthrough on throttle** — a throttled Google endpoint returned None and
+  the engine kept the *source* text, leaving whole pages untranslated in long PDFs. Now
+  retried then raised to the fallback chain; substantial identical-to-source segments are
+  flagged `untranslated`.
+- **Brand/proper-noun translation** — "Google Brain" → "Google Otak" fixed with a
+  case-sensitive built-in brand list (user-extensible via glossary).
+- **`find_tables` cost** — skipped on pages with no vector graphics; diagram false positives
+  dropped by the filled-cell guard.
+
+**Open:**
+1. **OCR quality on degraded / non-Latin scans — the #1 content gap.** Tesseract averaged
    0.22–0.44 confidence on manuscripts and CJK/Hebrew/Devanagari scans (diamond_sutra, hebrew,
-   handwritten → 0 readable blocks; magna_carta 0.22, us_constitution 0.38, hindi 0.29). These
-   are correctly garbage-skipped (original preserved) but therefore **not translated**. Needs a
-   stronger OCR tier (Surya / PaddleOCR-VL) — see `docs/RESEARCH.md`.
-2. **Proper-noun / brand translation.** "Google Brain" → "Google Otak", org/product names get
-   translated. Add a brand/NER do-not-translate list to the protector (glossary path exists).
-3. **`find_tables` runs on every FLOW page** even tableless ones → notable latency on large
-   PDFs (arxiv). Gate it (only when ruled regions exist) or cache.
-4. **Vertical/rotated sidebar text** (arXiv ID) is mis-ordered and mis-classified as a heading
+   handwritten → 0 readable blocks; magna_carta 0.22, hindi 0.29). Correctly garbage-skipped
+   (original preserved) but therefore **not translated**. Needs a stronger OCR tier
+   (Surya / PaddleOCR-VL) — its own effort (new dep + GPU/license). See `docs/RESEARCH.md`.
+2. **Vertical/rotated sidebar text** (arXiv ID) is mis-ordered and mis-classified as a heading
    in FLOW output (LAYOUT already skips it).
-5. **Heading detection misses** some headings (e.g. "Abstract") when the font-size delta is
+3. **Heading detection misses** some headings (e.g. "Abstract") when the font-size delta is
    small — the size heuristic needs font-weight / numbering cues.
-6. **TM cache key isn't versioned by extractor behaviour** — an extraction change (dehyphenation,
-   segmentation) shifts segment text, so old cache entries miss. Harmless but worth a version tag.
-7. **Multi-column reading order** looked sane on the 2-column arxiv sample, but is unverified on
+4. **TM cache key isn't versioned by extractor behaviour** — an extraction change shifts
+   segment text, so old cache entries miss. Harmless but worth a version tag.
+5. **Multi-column reading order** looked sane on the 2-column arxiv sample, unverified on
    dense/mixed layouts; keep on watch.
