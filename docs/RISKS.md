@@ -73,18 +73,20 @@ Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/imag
   case-sensitive built-in brand list (user-extensible via glossary).
 - **`find_tables` cost** — skipped on pages with no vector graphics; diagram false positives
   dropped by the filled-cell guard.
+- **Heading detection** — numbered sections ("3.2 Attention") and short bold lines
+  ("Abstract") are now headings; author bylines stay paragraphs (~30 clean headings recovered
+  on arxiv_attention).
+- **Vertical sidebar text** (arXiv ID) demoted to CAPTION so it can't become a "# heading".
 
 **Open:**
-1. **OCR quality on degraded / non-Latin scans — the #1 content gap.** Tesseract averaged
-   0.22–0.44 confidence on manuscripts and CJK/Hebrew/Devanagari scans (diamond_sutra, hebrew,
-   handwritten → 0 readable blocks; magna_carta 0.22, hindi 0.29). Correctly garbage-skipped
-   (original preserved) but therefore **not translated**. Needs a stronger OCR tier
-   (Surya / PaddleOCR-VL) — its own effort (new dep + GPU/license). See `docs/RESEARCH.md`.
-2. **Vertical/rotated sidebar text** (arXiv ID) is mis-ordered and mis-classified as a heading
-   in FLOW output (LAYOUT already skips it).
-3. **Heading detection misses** some headings (e.g. "Abstract") when the font-size delta is
-   small — the size heuristic needs font-weight / numbering cues.
-4. **TM cache key isn't versioned by extractor behaviour** — an extraction change shifts
-   segment text, so old cache entries miss. Harmless but worth a version tag.
-5. **Multi-column reading order** looked sane on the 2-column arxiv sample, unverified on
+1. **OCR quality on degraded / non-Latin scans — the #1 remaining content gap.** Tesseract
+   averaged 0.22–0.44 confidence on manuscripts and CJK/Hebrew/Devanagari scans (diamond_sutra,
+   hebrew, handwritten → 0 readable blocks; magna_carta 0.22, hindi 0.29). Correctly
+   garbage-skipped (original preserved) but therefore **not translated**. Needs a stronger OCR
+   tier (Surya / PaddleOCR-VL) — its own effort (new dep + GPU/license). See `docs/RESEARCH.md`.
+2. **Vertical sidebar text reading order** — now demoted (not a heading) but still placed late
+   in FLOW reading order.
+3. **TM cache key isn't versioned by extractor behaviour** — low impact (changed text just
+   misses the cache, never serves stale).
+4. **Multi-column reading order** looked sane on the 2-column arxiv sample, unverified on
    dense/mixed layouts; keep on watch.
