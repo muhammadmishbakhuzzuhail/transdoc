@@ -25,6 +25,18 @@ _PATTERNS = [
     r'\b[A-Z]{2,}-?\d{3,}(?:-\d+)?\b',                          # codes like INV-12345
 ]
 
+# Built-in proper nouns that must stay verbatim. Kept conservative: multi-word or clearly
+# unique brand/product/org names (so a single common word like "Apple" isn't masked in
+# prose). Matched case-sensitively. Users extend this via the glossary (Protector(extra=...)).
+_BRANDS = [
+    "Google Brain", "Google Research", "Google Cloud", "Google Translate", "Google Scholar",
+    "Google DeepMind", "DeepMind", "OpenAI", "Hugging Face", "Microsoft Research", "Meta AI",
+    "Amazon Web Services", "OpenStreetMap", "PyTorch", "TensorFlow", "NVIDIA", "GitHub",
+    "GitLab", "LibreOffice", "LibreTranslate", "WhatsApp", "YouTube", "LinkedIn",
+]
+_BRANDS_RE = re.compile(r"\b(?:" + "|".join(re.escape(b) for b in
+                        sorted(_BRANDS, key=len, reverse=True)) + r")\b")
+
 # Placeholder that survives NMT + LLM translation intact (probed against Opus-MT/Marian):
 # bracketed ASCII tag with the "PH" prefix is copied verbatim, unlike unicode brackets which
 # get stripped/mangled. Restore is also tolerant of a stray leading/trailing space.
@@ -41,6 +53,8 @@ class Protector:
         for pat in _PATTERNS:
             for m in re.finditer(pat, text):
                 spans.append((m.start(), m.end()))
+        for m in _BRANDS_RE.finditer(text):
+            spans.append((m.start(), m.end()))
         for ent in self.extra:
             for m in re.finditer(re.escape(ent), text):
                 spans.append((m.start(), m.end()))

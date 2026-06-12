@@ -60,6 +60,17 @@ def test_plain_prose_not_over_protected():
     assert mapping == {}
 
 
+def test_brand_names_protected_case_sensitively():
+    p = Protector()
+    protected, mapping = p.protect("Ashish at Google Brain used PyTorch and OpenAI tools")
+    assert "Google Brain" not in protected   # multi-word brand kept verbatim
+    assert "PyTorch" not in protected
+    assert Protector.restore(protected, mapping) == "Ashish at Google Brain used PyTorch and OpenAI tools"
+    # lowercase common words must NOT be masked
+    out, m = p.protect("an apple and the brain are common words")
+    assert m == {}
+
+
 def test_load_glossary_missing_returns_empty(tmp_path):
     assert load_glossary(None) == {}
     assert load_glossary(tmp_path / "nope.json") == {}
