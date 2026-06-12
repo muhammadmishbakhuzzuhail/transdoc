@@ -16,12 +16,31 @@ Env:
 from __future__ import annotations
 
 import os
+import random
+import threading
 import time
 
 from ..config import Config
 
 # Google web endpoint rejects requests over ~5000 chars; stay safely under.
 _MAX_CHARS = int(os.environ.get("GOOGLE_TRANSLATE_MAX_CHARS", "4500"))
+
+# Anti-ban throttle: the free Google web endpoint IP-bans at scale, so optionally hold a
+# minimum gap between outbound requests (seconds; default 0 = off). The TM cache already
+# means each unique segment is sent at most once, so a small interval is usually enough.
+_MIN_INTERVAL = float(os.environ.get("GOOGLE_MIN_INTERVAL", "0"))
+_throttle_lock = threading.Lock()
+_last_call = [0.0]
+
+
+def _throttle() -> None:
+    if _MIN_INTERVAL <= 0:
+        return
+    with _throttle_lock:
+        wait = _MIN_INTERVAL - (time.monotonic() - _last_call[0])
+        if wait > 0:
+            time.sleep(wait)
+        _last_call[0] = time.monotonic()
 
 # Google/deep-translator use a few non-ISO-639-1 codes. Normalize the common ISO inputs
 # so callers can pass the familiar code (e.g. "zh") and still hit Google. Anything not here
@@ -90,6 +109,7 @@ class GoogleTranslator:
             result: str | None = None
             for attempt in range(5):
                 try:
+                    _throttle()                       # optional anti-ban pacing
                     eng = self._make(source, target)
                     res = eng.translate(chunk)
                     # A throttled web endpoint can answer None/empty for non-empty input.
@@ -100,9 +120,11 @@ class GoogleTranslator:
                     result = res
                     last = None
                     break
-                except Exception as e:  # rate-limit / transient — exponential backoff
+                except Exception as e:  # rate-limit / transient — exponential backoff + jitter
                     last = e
-                    time.sleep(0.6 * (2 ** attempt))
+                    # jitter (±50%) so many concurrent retries don't resynchronise into a
+                    # burst that looks like an attack and triggers a harder block.
+                    time.sleep(0.6 * (2 ** attempt) * (1 + random.random() * 0.5))
             if last is not None:
                 raise last  # retries exhausted -> let the fallback router try the next engine
             out.append(result if result is not None else chunk)

@@ -74,3 +74,34 @@ def test_persistent_none_raises_not_silent_source(monkeypatch):
     import pytest
     with pytest.raises(Exception):
         g._translate_one("hello", "en", "id")
+
+
+def test_throttle_enforces_min_interval(monkeypatch):
+    # anti-ban pacing: with a min interval set, consecutive calls are spaced apart
+    import importlib
+    import time
+
+    monkeypatch.setenv("GOOGLE_MIN_INTERVAL", "0.05")
+    import transdoc.translate.google as g
+    importlib.reload(g)
+    try:
+        t0 = time.monotonic()
+        for _ in range(3):
+            g._throttle()
+        assert time.monotonic() - t0 >= 0.09          # ~2 gaps of 0.05s
+    finally:
+        monkeypatch.delenv("GOOGLE_MIN_INTERVAL", raising=False)
+        importlib.reload(g)
+
+
+def test_throttle_off_by_default(monkeypatch):
+    import importlib
+    import time
+
+    monkeypatch.delenv("GOOGLE_MIN_INTERVAL", raising=False)
+    import transdoc.translate.google as g
+    importlib.reload(g)
+    t0 = time.monotonic()
+    for _ in range(5):
+        g._throttle()
+    assert time.monotonic() - t0 < 0.02               # no-op when unset
