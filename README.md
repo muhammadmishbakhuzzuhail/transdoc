@@ -9,9 +9,12 @@ tooling + OCR-to-editable-document**, built on a format-agnostic Intermediate
 Representation (IR) so any input maps to any output.
 
 ## Why it's different
-- **Layout-preserving translation.** Two fidelity modes: `flow` (clean editable output for
-  DOCX/MD) and `layout` (visual overlay that keeps the original page geometry — translate a
-  PDF and it still looks like the original). Most open-source tools can't do the latter.
+- **Clean readable reflow by default.** The default fidelity is `flow`: a clean, editable
+  reconstruction (headings/paragraphs/tables) — readable even when the translation is much
+  longer than the source. A `layout` mode (visual overlay that keeps the original page
+  geometry) is available via `-f layout`, but because translation expands text and breaks
+  word alignment it shrinks dense pages to illegibility and loses word-level emphasis, so it
+  is opt-in, not the default (see `docs/RISKS.md`).
 - **Any input.** Digital PDF, scanned PDF, photos, DOCX, ODT, legacy DOC, images.
 - **Any script.** Latin, Arabic (RTL), CJK, Cyrillic, Devanagari, Thai — full Noto coverage.
 - **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.

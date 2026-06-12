@@ -38,9 +38,11 @@ def test_flow_recovers_table_grid(tmp_path):
 
 
 def test_layout_keeps_per_block(tmp_path):
+    from transdoc.config import Fidelity
     src = tmp_path / "t.pdf"
     _table_pdf(str(src))
-    doc = extract(str(src), Config(target_lang="id", output_format=OutputFormat.PDF))
-    # LAYOUT overlay path: no cell-bearing Table blocks (cells are positioned text blocks)
+    # explicit LAYOUT overlay: cells stay positioned text blocks, no cell-bearing Table block
+    doc = extract(str(src), Config(target_lang="id", output_format=OutputFormat.PDF,
+                                   fidelity=Fidelity.LAYOUT))
     assert not [b for b in doc.blocks if b.type == BlockType.TABLE and b.table]
     assert any(b.text.strip() for b in doc.blocks)

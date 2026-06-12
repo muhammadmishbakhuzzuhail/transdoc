@@ -42,13 +42,6 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         import fitz
         with fitz.open(input_path) as _d:
             check_pages(_d.page_count)
-            # An AcroForm (fillable form) is dense tiny fields — the LAYOUT overlay shrinks
-            # the longer translation to an illegible size. Reflow it instead (readable, at the
-            # cost of the exact form geometry). Only override when fidelity was left on AUTO.
-            from .config import Fidelity as _F
-            if (_d.is_form_pdf and cfg.fidelity == _F.AUTO
-                    and cfg.resolve_fidelity(True) == _F.LAYOUT):
-                cfg.fidelity = _F.FLOW
     elif det.kind.value in _ZIP_KINDS:
         check_zip_bomb(input_path)
 
@@ -101,23 +94,6 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # --- Phase 6: Regenerate + Report ---
     outp = _resolve_out(input_path, cfg, out_path)
     regenerate(doc, cfg, outp)
-
-    # Dense-page fallback: if the LAYOUT overlay had to shrink most of the page below
-    # readability (a form-like layout AcroForm detection missed), reflow it instead. Only for
-    # AUTO fidelity, and only when a large fraction is illegible — a few stray small blocks
-    # (e.g. captions) keep the faithful overlay.
-    if cfg.fidelity == Fidelity.AUTO and cfg.resolve_fidelity(source_is_pdf) == Fidelity.LAYOUT:
-        trans = [b for b in doc.blocks if b.is_translatable and b.translated]
-        illeg = sum(1 for b in trans if "illegible" in b.flags)
-        if trans and illeg / len(trans) > 0.4:
-            from .extract.base import reorder_vertical_last
-            from .headers import strip_running_headers
-            cfg.fidelity = Fidelity.FLOW
-            for b in doc.blocks:
-                b.flags.pop("illegible", None)        # reflow won't shrink; clear stale flags
-            strip_running_headers(doc)
-            reorder_vertical_last(doc)
-            regenerate(doc, cfg, outp)
 
     report = build_report(doc, cfg)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
