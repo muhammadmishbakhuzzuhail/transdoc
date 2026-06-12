@@ -45,15 +45,19 @@ Closed: box-expand fit (`--`overflow grows into whitespace before shrinking), in
 protection (LaTeX + sub/superscript vars), locale number formatting (`cfg.localize`).
 
 ### 🔒 Security & operations (before public hosting)
-1. **LibreOffice subprocess** on untrusted `.doc`/`.rtf` is a large CVE surface — has a 120 s
-   timeout but is not sandboxed (run it in a jail/container for public use).
-2. **Google endpoint rate-limit / IP-ban at scale** (known). Mitigated by TM cache, batching,
+1. **Google endpoint rate-limit / IP-ban at scale** (known). Mitigated by TM cache, batching,
    backoff, and the fallback chain; needs real throughput limits + proxy rotation for prod.
+2. **LibreOffice memory** — the subprocess is sandboxed (isolated profile + CPU/output-size
+   rlimits + wall timeout), but real-memory is not capped (RLIMIT_AS aborts LO); cap it with a
+   cgroup/container in production.
 
 Closed: resource limits (file size / page count / image megapixels / zip decompression) in
 `limits.py`, enforced in `pipeline.run` + the API (HTTP 413), Pillow pixel cap, and a privacy
 disclosure in the README. SSRF is low-risk (the LibreTranslate URL is operator-env, not a
 request field); API uses temp files + internal paths only (no caller-supplied output path).
+**LibreOffice conversion is sandboxed** — throwaway UserInstallation profile (no shared
+state/macro config), CPU + output-size rlimits on the child, `--norestore`/`--nolockcheck`,
+and profile cleanup; a malicious legacy doc can't hang or fill the disk.
 
 ## Translation quality
 **Formally benchmarked** (round-trip back-translation EN→lang→EN, chrF, fallback chain;
