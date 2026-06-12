@@ -42,7 +42,7 @@ class Fidelity(str, Enum):
     LAYOUT: visual overlay. Keep original page geometry, redact source text, place the
             translation at the original bbox (PyMuPDF insert_htmlbox). Pixel-faithful.
             Best for PDF->PDF. The differentiator most tools lack.
-    AUTO  : pick per target — editable target -> FLOW; PDF<-PDF -> LAYOUT.
+    AUTO  : FLOW for everything (the readable default). LAYOUT is opt-in via -f layout.
     """
 
     AUTO = "auto"
@@ -105,9 +105,10 @@ class Config(BaseModel):
         return self.target_lang
 
     def resolve_fidelity(self, source_is_pdf: bool) -> Fidelity:
-        """AUTO -> LAYOUT only for PDF->PDF (visual overlay), else FLOW (editable)."""
+        """AUTO -> FLOW (clean, readable reflow). The LAYOUT visual overlay is opt-in via
+        ``-f layout``: it preserves page geometry but, because translation expands text and
+        breaks word alignment, it shrinks dense pages to illegibility and loses word-level
+        emphasis (see docs/RISKS.md). Reflow is the readable default."""
         if self.fidelity != Fidelity.AUTO:
             return self.fidelity
-        if source_is_pdf and self.output_format in (OutputFormat.PDF, OutputFormat.SAME):
-            return Fidelity.LAYOUT
         return Fidelity.FLOW

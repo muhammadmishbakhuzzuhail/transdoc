@@ -42,8 +42,9 @@ def test_regenerate_routes_image_to_overlay(tmp_path):
     src = tmp_path / "photo.png"
     _make_png(str(src))
     out = tmp_path / "out.pdf"
+    # Lens-style image overlay is now opt-in via -f layout (AUTO reflows).
     cfg = Config(target_lang="id", engine=Engine.ECHO,
-                 output_format=OutputFormat.PDF, fidelity=Fidelity.AUTO)
+                 output_format=OutputFormat.PDF, fidelity=Fidelity.LAYOUT)
     regenerate(_image_doc(str(src)), cfg, str(out))
     pdf = fitz.open(str(out))
     # image-backed (not a blank flow page): the source image is embedded
@@ -66,7 +67,8 @@ def test_image_same_as_source_outputs_translated_image(tmp_path):
     src = tmp_path / "photo.png"
     _make_png(str(src))
     out = tmp_path / "photo.id.png"
-    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.SAME)
+    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.SAME,
+                 fidelity=Fidelity.LAYOUT)
     regenerate(_image_doc(str(src)), cfg, str(out))
     assert Image.open(str(out)).format == "PNG"
 
@@ -116,6 +118,7 @@ def test_image_explicit_pdf_stays_pdf(tmp_path):
     src = tmp_path / "photo.png"
     _make_png(str(src))
     out = tmp_path / "out.pdf"
-    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.PDF)
+    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.PDF,
+                 fidelity=Fidelity.LAYOUT)
     regenerate(_image_doc(str(src)), cfg, str(out))
     assert len(fitz.open(str(out))[0].get_images()) >= 1
