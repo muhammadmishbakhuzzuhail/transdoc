@@ -45,15 +45,15 @@ Closed: box-expand fit (`--`overflow grows into whitespace before shrinking), in
 protection (LaTeX + sub/superscript vars), locale number formatting (`cfg.localize`).
 
 ### 🔒 Security & operations (before public hosting)
-11. **Malicious input** — PDF bombs / embedded JS, zip bombs in docx/epub/xlsx. Add size,
-    page, and entry-count limits + sandboxing.
-12. **LibreOffice subprocess** on untrusted `.doc`/`.rtf` is a large CVE surface — sandbox or
-    gate it.
-13. **SSRF** via a user-supplied LibreTranslate URL; **path traversal** via output paths.
-14. **Privacy disclosure** — the free Google web endpoint sends document text to Google; the
-    public service must disclose this and offer the self-hosted LibreTranslate path.
-15. **Google endpoint rate-limit / IP-ban at scale** (known). Mitigated by TM cache, batching,
-    backoff, and the fallback chain; needs real throughput limits + proxy rotation for prod.
+1. **LibreOffice subprocess** on untrusted `.doc`/`.rtf` is a large CVE surface — has a 120 s
+   timeout but is not sandboxed (run it in a jail/container for public use).
+2. **Google endpoint rate-limit / IP-ban at scale** (known). Mitigated by TM cache, batching,
+   backoff, and the fallback chain; needs real throughput limits + proxy rotation for prod.
+
+Closed: resource limits (file size / page count / image megapixels / zip decompression) in
+`limits.py`, enforced in `pipeline.run` + the API (HTTP 413), Pillow pixel cap, and a privacy
+disclosure in the README. SSRF is low-risk (the LibreTranslate URL is operator-env, not a
+request field); API uses temp files + internal paths only (no caller-supplied output path).
 
 ## Translation quality
 MT meaning preserved + token protection 100% verbatim across id/ar/zh/ru/ja/fr/hi (spot-checked,
