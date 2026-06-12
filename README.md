@@ -85,5 +85,17 @@ OCR (Tesseract/Surya) + translate (free Google-chain/libretranslate/offline NMT/
 SQLite TM) + regenerate (round-trip pptx/xlsx/epub/srt · md/docx/pdf overlay) + report are in place.
 Test corpus under `documents/` (real downloads) and `samples/` (synthetic ground-truth).
 
+## Privacy
+The default `fallback`/`google` engine sends document text to Google's public translation
+endpoint, and `mymemory` to MyMemory — translation happens **off-device**. Do not use them for
+confidential documents. For fully local/offline translation use a **self-hosted LibreTranslate**
+(`-e libretranslate`) or an **offline NMT** engine (`-e madlad|opusmt|argos`); these never leave
+your machine. A persistent SQLite TM means any segment is sent to an external engine at most once.
+
+## Limits
+Uploads are bounded against malicious/pathological input (env-overridable in `limits.py`):
+`TRANSDOC_MAX_FILE_MB` (300), `TRANSDOC_MAX_PAGES` (5000), `TRANSDOC_MAX_IMAGE_MP` (300),
+`TRANSDOC_MAX_ZIP_MB` (1000) + a decompression-ratio cap (zip-bomb guard for office/EPUB).
+
 ## License
 Apache-2.0 (code). Bundled model weights carry their own licenses — see above.
