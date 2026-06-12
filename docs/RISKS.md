@@ -56,9 +56,15 @@ disclosure in the README. SSRF is low-risk (the LibreTranslate URL is operator-e
 request field); API uses temp files + internal paths only (no caller-supplied output path).
 
 ## Translation quality
-MT meaning preserved + token protection 100% verbatim across id/ar/zh/ru/ja/fr/hi (spot-checked,
-not formally benchmarked). Register/tone (formal/casual) only via the opt-in LLM engines —
-the free NMT chain has no tone control.
+**Formally benchmarked** (round-trip back-translation EN→lang→EN, chrF, fallback chain;
+`scripts/bench_quality.py`): average chrF **88.2** across 9 languages, all in a tight 85–91
+band — id 91, es 91, hi 90, de 89, zh 89, ru 87, fr 86, ar 86, ja 85. Consistent across
+Latin / RTL / CJK / Devanagari / Cyrillic; back-translations are faithful paraphrases. Token
+protection stays 100% verbatim. Register/tone (formal/casual) only via the opt-in LLM engines
+— the free NMT chain has no tone control.
+
+Minor finding: back-translations sometimes carry stray zero-width spaces (`​`) — likely
+a Google-endpoint artifact; worth checking whether forward output is affected.
 
 ## v2 backlog — empirical, from a corpus stress test
 Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/image → PDF).
