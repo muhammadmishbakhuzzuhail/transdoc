@@ -77,13 +77,16 @@ Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/imag
   ("Abstract") are now headings; author bylines stay paragraphs (~30 clean headings recovered
   on arxiv_attention).
 - **Vertical sidebar text** (arXiv ID) demoted to CAPTION so it can't become a "# heading".
+- **OCR quality on degraded / non-Latin scans** — added the PaddleOCR (PP-OCRv5/v6) engine
+  (`--ocr paddle`, `[paddleocr]` extra). Benchmarked far above Tesseract (Devanagari 0.95 vs
+  0.29, Fraktur 0.98 vs 0.67, Cyrillic 0.76 vs 0.31), CPU-capable, Apache-2.0. Verified
+  end-to-end on the Hindi scan (clean Devanagari; low-conf flags 135→16). The 0.9B PaddleOCR-VL
+  was rejected (OOM on 6 GB GPU / 11 GB RAM). See `docs/RESEARCH.md`.
 
 **Open:**
-1. **OCR quality on degraded / non-Latin scans — the #1 remaining content gap.** Tesseract
-   averaged 0.22–0.44 confidence on manuscripts and CJK/Hebrew/Devanagari scans (diamond_sutra,
-   hebrew, handwritten → 0 readable blocks; magna_carta 0.22, hindi 0.29). Correctly
-   garbage-skipped (original preserved) but therefore **not translated**. Needs a stronger OCR
-   tier (Surya / PaddleOCR-VL) — its own effort (new dep + GPU/license). See `docs/RESEARCH.md`.
+1. **PaddleOCR not yet wired into AUTO-OCR fallback for low-confidence Tesseract pages** — it's
+   opt-in (`--ocr paddle`); a future pass could auto-escalate when Tesseract confidence is low.
+   Also still needs `--source <iso>` for the right language model.
 2. **Vertical sidebar text reading order** — now demoted (not a heading) but still placed late
    in FLOW reading order.
 3. **TM cache key isn't versioned by extractor behaviour** — low impact (changed text just
