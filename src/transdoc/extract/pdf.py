@@ -212,7 +212,9 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         # Recover real tables (FLOW only) as Table/Cell IR; remember their regions so the
         # same text isn't also emitted as loose paragraphs below.
         table_rects: list = []
-        if flow_target:
+        # find_tables is ~130 ms/page; a page with zero vector graphics can't hold a ruled
+        # table, so skip it there (cheap get_drawings gate) without losing any real tables.
+        if flow_target and page.get_drawings():
             try:
                 for ti, tbl in enumerate(page.find_tables().tables):
                     grid = [[Cell(text=(c or "").strip()) for c in row]
