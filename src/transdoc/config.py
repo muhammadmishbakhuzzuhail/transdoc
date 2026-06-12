@@ -82,6 +82,8 @@ class Config(BaseModel):
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
     bilingual: bool = False                     # emit source + translation together
     quality_check: bool = False                 # run reference-free QE, flag weak segments
+    ocr_figures: bool = False                   # OCR text inside large embedded images
+                                                # (a scanned image sitting on a digital page)
 
     engine: Engine = Engine.FALLBACK           # free resilient chain: google->mymemory->libretranslate
     ocr_engine: OCREngine = OCREngine.AUTO

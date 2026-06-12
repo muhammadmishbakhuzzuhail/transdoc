@@ -149,6 +149,24 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         pix = page.get_pixmap(dpi=300)
         out.blocks.extend(eng.recognize_image_bytes(pix.tobytes("png"), cfg, page=pno))
 
+    _PT_TO_300 = 300.0 / 72.0
+
+    def _ocr_figure(page, bb, pno) -> None:
+        """OCR a large embedded image (a scan dropped onto a digital page) and emit its text
+        as translatable OCR blocks, with bboxes mapped to the page in the 300-dpi-pixel space
+        the overlay expects (so `_block_rect` scales them back to points correctly)."""
+        page_area = abs(page.rect.width * page.rect.height) or 1.0
+        if abs((bb.x1 - bb.x0) * (bb.y1 - bb.y0)) / page_area < 0.08:
+            return  # too small (icon/logo/chart marker) to be worth OCRing
+        eng = _ensure_ocr()
+        pm = page.get_pixmap(clip=bb, dpi=300)
+        for ob in eng.recognize_image_bytes(pm.tobytes("png"), cfg, page=pno):
+            if ob.bbox:
+                ox, oy = bb.x0 * _PT_TO_300, bb.y0 * _PT_TO_300
+                ob.bbox = BBox(x0=ob.bbox.x0 + ox, y0=ob.bbox.y0 + oy,
+                               x1=ob.bbox.x1 + ox, y1=ob.bbox.y1 + oy)
+            out.blocks.append(ob)
+
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
 
@@ -183,6 +201,11 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     image_path=str(fpath),
                     bbox=BBox(x0=bb.x0, y0=bb.y0, x1=bb.x1, y1=bb.y1) if bb else None,
                     confidence=Confidence(source="digital")))
+                if cfg.ocr_figures and bb is not None:
+                    try:
+                        _ocr_figure(page, bb, pno)
+                    except Exception:
+                        pass  # OCR unavailable / failed on this image -> keep the figure only
             except Exception:
                 continue
 
