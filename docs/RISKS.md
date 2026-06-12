@@ -32,18 +32,17 @@ Companion to `docs/ARCHITECTURE.md`. Updated as gaps are closed.
    paragraph-level; mostly bites multi-column/page wraps.
 
 ### 🟠 Quality / fidelity
-4. **Box-expand fit step is missing** (`ARCHITECTURE.md §5.1` ladder step 2): overflow jumps
-   straight to font shrink instead of first growing into adjacent whitespace.
-5. **Localization** of numbers/dates/currency (`cfg.localize`) is defined but not implemented
-   (1.250,00 ↔ 1,250.00).
-6. **Inline math** inside a paragraph isn't protected — only standalone formula lines are.
-7. **Multi-column reading order** relies on (page, parse-order) and can mis-order heavy
+1. **Multi-column reading order** relies on (page, parse-order) and can mis-order heavy
    multi-column pages.
-8. **`find_tables` false positives** — a figure/diagram can be detected as a table in FLOW
+2. **`find_tables` false positives** — a figure/diagram can be detected as a table in FLOW
    output (guarded to ≥2×2 but not perfect). LAYOUT is unaffected.
-9. **Font family** is captured but the overlay renders with Noto substitution, not the
+3. **Font family** is captured but the overlay renders with Noto substitution, not the
    original face; **underline** isn't reproduced (PyMuPDF exposes no reliable underline flag).
-10. **AcroForm widget fields** (interactive form values) may not be extracted/translated.
+4. **AcroForm widget fields** (interactive form values) may not be extracted/translated.
+5. **Localize** covers only number separators — not date order, units, or currency symbols.
+
+Closed: box-expand fit (`--`overflow grows into whitespace before shrinking), inline-math
+protection (LaTeX + sub/superscript vars), locale number formatting (`cfg.localize`).
 
 ### 🔒 Security & operations (before public hosting)
 11. **Malicious input** — PDF bombs / embedded JS, zip bombs in docx/epub/xlsx. Add size,
