@@ -93,12 +93,27 @@ def _looks_tabular(text: str) -> bool:
     return nums >= 6 and nums / len(toks) > 0.35
 
 
-def _guess_type(size: float, body_size: float, flags: int) -> BlockType:
-    """Heuristic: larger-than-body font -> heading; much larger -> title."""
+_NUMBERED_HEADING = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
+
+
+def _guess_type(size: float, body_size: float, bold: bool = False,
+                text: str = "") -> BlockType:
+    """Larger-than-body font -> heading/title. Also catch same-size headings the font ratio
+    misses: a short bold line with no terminal punctuation ("Abstract"), or a section-numbered
+    line ("3.1 Model Architecture")."""
     if size >= body_size * 1.6:
         return BlockType.TITLE
     if size >= body_size * 1.2:
         return BlockType.HEADING
+    t = text.strip()
+    if t and len(t) <= 70:
+        if _NUMBERED_HEADING.match(t):
+            return BlockType.HEADING
+        # bold same-size heading: short, no terminal punctuation, and not an author/affiliation
+        # byline (those are bold too but carry an email and several name tokens).
+        no_terminal = not t.endswith((".", ":", ";", ",", "!", "?"))
+        if bold and no_terminal and "@" not in t and len(t.split()) <= 8:
+            return BlockType.HEADING
     return BlockType.PARAGRAPH
 
 
@@ -275,12 +290,18 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
                 if any(r.contains(fitz.Point(cx, cy)) for r in table_rects):
                     continue  # this text is already captured as a table cell
+            # Tall, very narrow blocks are rotated/vertical sidebar text (e.g. an arXiv ID);
+            # never promote them to a heading/title — they pollute reflowed output.
+            w, h = x1 - x0, y1 - y0
+            vertical = w < 40 and h > w * 4
             if _looks_formula(text):
                 btype = BlockType.FORMULA
             elif _looks_tabular(text):
                 btype = BlockType.TABLE  # merged numeric table rows -> preserve verbatim
+            elif vertical:
+                btype = BlockType.CAPTION
             else:
-                btype = _guess_type(max_size, body, 0)
+                btype = _guess_type(max_size, body, bold, text)
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
