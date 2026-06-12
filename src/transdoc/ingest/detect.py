@@ -162,15 +162,43 @@ def detect(path: str | Path) -> Detection:
     return Detection(kind=kind, mime=mime, path=path, notes=notes)
 
 
-def convert_to_docx(path: Path, out_dir: Path) -> Path:
-    """Convert legacy .doc / .rtf / .odt to .docx via headless LibreOffice."""
+def convert_to_docx(path: Path, out_dir: Path, timeout: int = 90) -> Path:
+    """Convert legacy .doc / .rtf / .odt to .docx via headless LibreOffice — sandboxed.
+
+    LibreOffice on an untrusted file is a real attack surface (document macros, parser CVEs),
+    so we contain it: a throwaway UserInstallation profile (no shared/persistent state, no
+    inherited macro config, and it avoids the shared-profile lock that hangs concurrent runs),
+    plus OS resource limits (CPU time, address space, output size) applied to the child via a
+    POSIX rlimit hook so a malicious doc can't hang or exhaust the host.
+    """
+    import os
+    import shutil
+    import tempfile
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["soffice", "--headless", "--convert-to", "docx", "--outdir", str(out_dir), str(path)],
-        check=True,
-        capture_output=True,
-        timeout=120,
-    )
+    profile = tempfile.mkdtemp(prefix="transdoc_lo_")
+
+    preexec = None
+    if os.name == "posix":
+        import resource
+
+        def preexec():  # runs in the child before exec
+            # CPU-time + output-size caps. (No RLIMIT_AS — LibreOffice reserves a large virtual
+            # address space and aborts under an AS cap; the wall-clock timeout + CPU limit are
+            # what actually bound a hang/CPU-bomb. Cap real memory with a cgroup in production.)
+            resource.setrlimit(resource.RLIMIT_CPU, (60, 60))                  # 60 s CPU
+            resource.setrlimit(resource.RLIMIT_FSIZE, (512 * 1024 ** 2,) * 2)  # 512 MB output
+
+    try:
+        subprocess.run(
+            ["soffice", "--headless", "--norestore", "--nolockcheck",
+             f"-env:UserInstallation=file://{profile}",
+             "--convert-to", "docx", "--outdir", str(out_dir), str(path)],
+            check=True, capture_output=True, timeout=timeout, preexec_fn=preexec,
+        )
+    finally:
+        shutil.rmtree(profile, ignore_errors=True)
+
     out = out_dir / (path.stem + ".docx")
     if not out.exists():
         raise RuntimeError(f"LibreOffice conversion failed for {path}")
