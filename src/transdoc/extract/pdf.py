@@ -95,6 +95,10 @@ def _looks_tabular(text: str) -> bool:
 
 _NUMBERED_HEADING = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
 
+# Bullet (•, -, *, –, …) or "N." / "N)" at line start = a list item. Numbered headings
+# ("1 Overview", no period) are not matched and fall through to heading detection.
+_LIST_MARKER = re.compile(r"^\s*(?:[•◦▪‣·*\-–—]|\d{1,2}[.)])\s+")
+
 
 def _guess_type(size: float, body_size: float, bold: bool = False,
                 text: str = "") -> BlockType:
@@ -307,6 +311,10 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 btype = BlockType.TABLE  # merged numeric table rows -> preserve verbatim
             elif vertical:
                 btype = BlockType.CAPTION
+            elif _LIST_MARKER.match(text):
+                btype = BlockType.LIST_ITEM
+                # strip the bullet/number marker — the reflow's <li> adds its own
+                text = _LIST_MARKER.sub("", text, count=1)
             else:
                 btype = _guess_type(max_size, body, bold, text)
             out.blocks.append(
