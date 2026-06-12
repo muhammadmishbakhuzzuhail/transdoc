@@ -18,20 +18,18 @@ Companion to `docs/ARCHITECTURE.md`. Updated as gaps are closed.
 | Page routing | caption over a full-page scan trusted as digital text | image-dominance check → OCR |
 | Tables (FLOW) | digital tables reflowed to paragraphs, grid lost | `find_tables` → real Cell grid for cross-format |
 | Source lang | bad OCR-detected code crashed all engines | auto-detect fallback in google engine |
+| OCR-in-figure | text inside an embedded scan on a digital page never read | `--ocr-figures`: OCR large embedded images, map bboxes to page |
+| Running headers | header/footer repeated on every page cluttered FLOW output | FLOW-gated pass strips blocks repeating in the top/bottom band |
 
-90 tests, ruff clean, GitHub Actions CI (py3.11 + 3.12).
+94 tests, ruff clean, GitHub Actions CI (py3.11 + 3.12).
 
 ## Open gaps — ranked for v1.x
 
 ### 🔴 Correctness (next)
-1. **OCR inside embedded images.** A digital page embedding a *scanned image with text*
-   keeps the image as a `FIGURE` but never OCRs the text in it → that text isn't translated.
-   Fix: optionally OCR `FIGURE` regions above a size threshold.
-2. **Repeated headers/footers** are translated once per page (clutter + wasted engine calls).
-   Fix: detect blocks repeating at the same y-band across pages, translate once.
-3. **Sentence split across blocks.** A sentence broken across two layout blocks is translated
+1. **Sentence split across blocks.** A sentence broken across two layout blocks is translated
    independently, losing MT context. Fix: merge adjacent same-style blocks before translate
-   in FLOW (LAYOUT must stay per-bbox).
+   in FLOW (LAYOUT must stay per-bbox). Low impact today — PyMuPDF blocks are already
+   paragraph-level; mostly bites multi-column/page wraps.
 
 ### 🟠 Quality / fidelity
 4. **Box-expand fit step is missing** (`ARCHITECTURE.md §5.1` ladder step 2): overflow jumps
