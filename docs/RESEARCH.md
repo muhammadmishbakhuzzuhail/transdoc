@@ -107,7 +107,27 @@ evaluated as the upgrade tier.
 - Install: `pip install "paddleocr[doc-parser]"` + **PaddlePaddle** (heavy framework, ~GB;
   separate from torch). Simple API: `PaddleOCRVL().predict(img)` → markdown/json with layout.
 
-**Decision: promising, but gate on an empirical CPU benchmark before integrating.** Plan:
+**EMPIRICAL BENCHMARK (2026-06, dev machine: i5-13450HX, 11 GB RAM, RTX 3050 6 GB):**
+- **CPU: not viable — OOM.** The VL rec model loads ~4.7 GB; with the PaddlePaddle runtime it
+  pushed the 11 GB-RAM box into zram-swap thrash (10/11 GB RAM + 10/11 GB swap) and was
+  OOM-killed before producing output. Needs ≳16 GB RAM.
+- **GPU RTX 3050 6 GB: not viable — OOM.** Model occupies 4.7 GB fp32; PaddlePaddle's memory
+  pool + first forward pass exceed 6 GB ("available only ~105 MB", needs 144 MB). OOM persists
+  after capping input to 1024–1280 px and disabling orientation/unwarp sub-models — the
+  **model size (fp32), not input resolution, is the limit.** Needs ≳8 GB VRAM, or an fp16/int8
+  build (~2.4 GB, would fit 6 GB).
+- **No accuracy numbers** — could not complete a forward pass on this hardware.
+- **Escape hatch:** `PaddleOCRVL` exposes `vl_rec_backend` + `vl_rec_server_url` /
+  `vl_rec_api_key` → the VL recognizer can run on a **remote GPU server**, matching transdoc's
+  proxy economics (offload hard-scan OCR like Google proxies translation), keeping the node
+  CPU-only.
+
+**Revised decision:** not runnable locally here. Paths: (a) **Tesseract preprocessing**
+(denoise/binarize/upscale), zero-dep CPU near-term win; (b) PaddleOCR-VL as a **remote-backend**
+OCR tier (hosted GPU) — architecturally clean; (c) local PaddleOCR-VL only with **fp16/int8**
+on ≥8 GB VRAM. The integration plan below applies once one of these unblocks it.
+
+Original gating plan (superseded by the measured result above):
 1. Throwaway-venv benchmark on the hardest scans (magna_carta, hindi, hebrew, diamond_sutra):
    measure s/page on CPU + confidence/CER vs Tesseract. (Mind disk: PaddlePaddle is ~GB.)
 2. If CPU s/page is acceptable (target < ~10 s/page), add an opt-in `[paddleocr]` extra +
