@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from ..config import Config
-from ..ir import BBox, Block, BlockType, Confidence, Document, Style
+from ..config import Config, Fidelity
+from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Style, Table
 from .base import block_id, reflow_order
 
 # Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
@@ -128,6 +128,12 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
 
+    # Real cell-level table recovery (PyMuPDF find_tables) is only used for FLOW output
+    # (->DOCX/MD/flow-PDF), where the renderer builds a grid from Table/Cell IR. The LAYOUT
+    # overlay keeps the per-text-block path (each cell is already a positioned block, and the
+    # grid lines are preserved by the line-art-keeping redaction), so we don't reshape it.
+    flow_target = cfg.resolve_fidelity(source_is_pdf=True) == Fidelity.FLOW
+
     selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
     ocr = get_ocr(cfg) if ocr_pages else None
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_img_"))
@@ -180,6 +186,26 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             except Exception:
                 continue
 
+        # Recover real tables (FLOW only) as Table/Cell IR; remember their regions so the
+        # same text isn't also emitted as loose paragraphs below.
+        table_rects: list = []
+        if flow_target:
+            try:
+                for ti, tbl in enumerate(page.find_tables().tables):
+                    grid = [[Cell(text=(c or "").strip()) for c in row]
+                            for row in tbl.extract()]
+                    ncols = max((len(r) for r in grid), default=0)
+                    if len(grid) >= 2 and ncols >= 2:   # real grid, not a false positive
+                        tb = tbl.bbox
+                        out.blocks.append(Block(
+                            id=f"p{pno}-tbl{ti}", type=BlockType.TABLE, page=pno,
+                            table=Table(rows=grid),
+                            bbox=BBox(x0=tb[0], y0=tb[1], x1=tb[2], y1=tb[3]),
+                            confidence=Confidence(source="digital")))
+                        table_rects.append(fitz.Rect(tb))
+            except Exception:
+                pass
+
         body = _body_size(page)
         d = page.get_text("dict")
         idx = 0
@@ -216,6 +242,10 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             if not text:
                 continue
             x0, y0, x1, y1 = blk["bbox"]
+            if table_rects:
+                cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+                if any(r.contains(fitz.Point(cx, cy)) for r in table_rects):
+                    continue  # this text is already captured as a table cell
             if _looks_formula(text):
                 btype = BlockType.FORMULA
             elif _looks_tabular(text):
