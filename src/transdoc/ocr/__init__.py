@@ -22,23 +22,8 @@ def get_ocr(cfg: Config) -> OCREngine:
 
         return TesseractOCR()
 
-    # AUTO: prefer PaddleOCR if installed (stronger, CPU-capable), else Surya (GPU), else
-    # Tesseract (always available).
-    try:
-        import paddleocr  # noqa: F401
+    # AUTO: Tesseract first, escalating low-confidence pages to PaddleOCR when installed
+    # (fast common case, strong fallback on degraded/non-Latin scans).
+    from .auto import EscalatingOCR
 
-        from .paddle import PaddleOCREngine
-
-        return PaddleOCREngine()
-    except Exception:
-        pass
-    try:
-        import surya  # noqa: F401
-
-        from .surya import SuryaOCR
-
-        return SuryaOCR()
-    except Exception:
-        from .tesseract import TesseractOCR
-
-        return TesseractOCR()
+    return EscalatingOCR()

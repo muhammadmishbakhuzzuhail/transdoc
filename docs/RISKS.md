@@ -83,10 +83,13 @@ Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/imag
   end-to-end on the Hindi scan (clean Devanagari; low-conf flags 135→16). The 0.9B PaddleOCR-VL
   was rejected (OOM on 6 GB GPU / 11 GB RAM). See `docs/RESEARCH.md`.
 
+- **AUTO OCR escalation** — `--ocr auto` (default) now runs Tesseract first and re-OCRs only
+  the low-confidence pages (<0.60 avg) with PaddleOCR when installed, keeping the better
+  result. Fast on clean pages, strong on degraded/non-Latin scans.
+
 **Open:**
-1. **PaddleOCR not yet wired into AUTO-OCR fallback for low-confidence Tesseract pages** — it's
-   opt-in (`--ocr paddle`); a future pass could auto-escalate when Tesseract confidence is low.
-   Also still needs `--source <iso>` for the right language model.
+1. **PaddleOCR still needs `--source <iso>`** for the right language model on escalated pages
+   (auto language detection of the scan script is not yet wired).
 2. **Vertical sidebar text reading order** — now demoted (not a heading) but still placed late
    in FLOW reading order.
 3. **TM cache key isn't versioned by extractor behaviour** — low impact (changed text just

@@ -13,7 +13,7 @@ pytest.importorskip("numpy")
 from PIL import Image  # noqa: E402
 
 from transdoc.config import Config  # noqa: E402
-from transdoc.ir import BlockType, Confidence  # noqa: E402
+from transdoc.ir import BlockType  # noqa: E402
 from transdoc.ocr.paddle import PADDLE_LANG, PaddleOCREngine  # noqa: E402
 
 
