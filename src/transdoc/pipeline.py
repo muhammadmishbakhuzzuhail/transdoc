@@ -54,6 +54,15 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     # --- Phases 3-5: Terminology + Translate + Self-review ---
     cfg.require_target()
+
+    # FLOW output reflows the text, so running headers/footers just clutter it (and waste
+    # translation calls). Strip them before translating. LAYOUT keeps them in place.
+    from .config import Fidelity
+    source_is_pdf = (doc.mime == "application/pdf")
+    if cfg.resolve_fidelity(source_is_pdf) == Fidelity.FLOW:
+        from .headers import strip_running_headers
+        strip_running_headers(doc)
+
     from .translate import get_translator, translate_document
 
     tr = get_translator(cfg)
