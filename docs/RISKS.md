@@ -67,6 +67,18 @@ Minor finding (resolved): stray zero-width spaces appear in some back-translatio
 **forward output is clean** (ZWSP=0 verified for en→id/de/ar) — a Google-endpoint artifact on
 certain reverse pairs only, not in user-facing output.
 
+## Layout overlay legibility (fixed)
+Visual review of generated PDFs (not just block counts!) showed dense layouts render badly:
+on the IRS-1040 form the expanded Indonesian text shrank to an illegible, overlapping mess
+while block counts still said "64/64 translated". Two fixes:
+- **Legibility floor + honest report.** The overlay no longer silently ships text shrunk below
+  ~6 pt — it flags the block `illegible`, and the report's "Rendering quality" section counts
+  them and suggests `--fidelity flow` / `--to docx`.
+- **AcroForm PDFs auto-reflow.** A fillable form (PyMuPDF `is_form_pdf`) with AUTO fidelity now
+  uses FLOW instead of the overlay — readable reflowed text instead of a mangled grid.
+- **Process lesson:** never report "translated OK" from progress/block counts — render and
+  look at the output.
+
 ## v2 backlog — empirical, from a corpus stress test
 Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/image → PDF).
 **Stability: 0 crashes, 0 zero-block on digital/office.** Quality findings, ranked:

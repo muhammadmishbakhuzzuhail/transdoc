@@ -42,6 +42,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         import fitz
         with fitz.open(input_path) as _d:
             check_pages(_d.page_count)
+            # An AcroForm (fillable form) is dense tiny fields — the LAYOUT overlay shrinks
+            # the longer translation to an illegible size. Reflow it instead (readable, at the
+            # cost of the exact form geometry). Only override when fidelity was left on AUTO.
+            from .config import Fidelity as _F
+            if (_d.is_form_pdf and cfg.fidelity == _F.AUTO
+                    and cfg.resolve_fidelity(True) == _F.LAYOUT):
+                cfg.fidelity = _F.FLOW
     elif det.kind.value in _ZIP_KINDS:
         check_zip_bomb(input_path)
 

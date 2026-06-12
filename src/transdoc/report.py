@@ -38,6 +38,20 @@ def build_report(doc: Document, cfg: Config) -> str:
             L.append(f"- [{r.block_id}] {r.reason}: `{r.before[:40]}` → `{r.after[:40]}`")
         L.append("")
 
+    # Rendering quality: how many overlaid blocks came out too small / shrunk to fit.
+    illegible = [b for b in doc.blocks if "illegible" in b.flags]
+    shrunk = [b for b in doc.blocks if "text_expansion" in b.flags]
+    if illegible or shrunk:
+        L.append("## Rendering quality (layout overlay)")
+        if illegible:
+            L.append(f"- ⚠️ **{len(illegible)} block(s) rendered below readable size** "
+                     f"(< 6 pt) — the translation didn't fit the original box. This page is "
+                     f"dense (e.g. a form); consider `--fidelity flow` or `--to docx` for a "
+                     f"readable reflow.")
+        if shrunk:
+            L.append(f"- {len(shrunk)} block(s) shrunk to fit (still legible).")
+        L.append("")
+
     flagged = doc.flagged_blocks()
     if flagged:
         L.append("## Flagged items (needs human check)")

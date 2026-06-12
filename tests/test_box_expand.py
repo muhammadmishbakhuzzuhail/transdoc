@@ -45,4 +45,6 @@ def test_grows_into_whitespace_no_shrink(tmp_path):
 
 def test_blocked_below_falls_back_to_shrink(tmp_path):
     block = _make(tmp_path, crowded=True)
-    assert "text_expansion" in block.flags          # no room -> shrinks -> flagged
+    # no room to grow -> shrinks to fit -> flagged (text_expansion if still legible, or
+    # illegible if it had to shrink below the readable floor)
+    assert "text_expansion" in block.flags or "illegible" in block.flags

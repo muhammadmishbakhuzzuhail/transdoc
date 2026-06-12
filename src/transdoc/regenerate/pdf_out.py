@@ -21,6 +21,10 @@ from ..ir import BlockType, Document
 # Below this shrink factor, the box was too small for the translation -> flag for review.
 OVERFLOW_FLAG_SCALE = 0.6
 
+# Effective font size (pt) below which overlaid text is too small to read. We don't silently
+# ship illegibly-shrunk text — we flag it so the report can count and surface it.
+LEGIBLE_MIN_PT = 6.0
+
 # OCR below this confidence is unreliable (garbage); don't cover the original with it.
 OCR_OVERLAY_MIN = 0.5
 
@@ -140,7 +144,13 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
                 # scale_low=0 lets PyMuPDF shrink text down to fit; returns (spare, scale)
                 ret = page.insert_htmlbox(r, htmlbox, scale_low=0)
                 scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
-                if scale and scale < OVERFLOW_FLAG_SCALE:
+                effective = (size or 11) * (scale or 1.0)
+                if effective < LEGIBLE_MIN_PT:
+                    # honest signal: the translation only fit by shrinking below readable size
+                    b.flags["illegible"] = (
+                        f"rendered at {effective:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — "
+                        f"too small to read; box too tight for the translation")
+                elif scale and scale < OVERFLOW_FLAG_SCALE:
                     b.flags["text_expansion"] = (
                         f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
             except Exception:
@@ -211,7 +221,11 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         try:
             ret = page.insert_htmlbox(r, htmlbox, scale_low=0)
             scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
-            if scale and scale < OVERFLOW_FLAG_SCALE:
+            effective = (size or 11) * (scale or 1.0)
+            if effective < LEGIBLE_MIN_PT:
+                b.flags["illegible"] = (
+                    f"rendered at {effective:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — too small to read")
+            elif scale and scale < OVERFLOW_FLAG_SCALE:
                 b.flags["text_expansion"] = (
                     f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
         except Exception:
