@@ -293,11 +293,56 @@ def render_searchable(doc: Document, cfg: Config, out_path: str) -> str:
     return out_path
 
 
+def _flow_style(b) -> str:
+    """Inline CSS carrying the block's captured styling into the reflow."""
+    s: list[str] = []
+    if b.style.bold:
+        s.append("font-weight:bold")
+    if b.style.italic:
+        s.append("font-style:italic")
+    if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
+        s.append(f"color:{b.style.color}")
+    if b.style.align in ("center", "right", "justify"):
+        s.append(f"text-align:{b.style.align}")
+    return ";".join(s)
+
+
 def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
+    import os
+
     import fitz
 
-    parts: list[str] = []
+    # Build an image archive so embedded figures can be reflowed back in (referenced by base
+    # name in <img src=...>). Without this the reconstruction would silently drop every image.
+    archive = fitz.Archive()
+    img_names: dict[str, str] = {}
     for b in doc.ordered_blocks():
+        if b.type == BlockType.FIGURE and b.image_path and os.path.exists(b.image_path):
+            d = os.path.dirname(b.image_path)
+            try:
+                archive.add(d)
+            except Exception:
+                continue
+            img_names[b.id] = os.path.basename(b.image_path)
+
+    parts: list[str] = []
+    open_list = False
+
+    def _close_list():
+        nonlocal open_list
+        if open_list:
+            parts.append("</ul>")
+            open_list = False
+
+    for b in doc.ordered_blocks():
+        if b.type != BlockType.LIST_ITEM:
+            _close_list()
+
+        if b.type == BlockType.FIGURE:
+            name = img_names.get(b.id)
+            if name:
+                parts.append(f'<p><img src="{name}" style="max-width:90%"></p>')
+            continue
         # Tables carry their text in cells, not output_text — handle before the empty-text
         # skip below, or the whole table gets dropped.
         if b.type == BlockType.TABLE and b.table:
@@ -321,15 +366,21 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
                 f'<p style="color:#888;font-style:italic">{_esc(b.text.strip())}</p>')
             parts.append(f"<p>{_esc(b.translated.strip())}</p>")
             continue
+        style = _flow_style(b)
+        attr = f' style="{style}"' if style else ""
         if b.type == BlockType.TITLE:
-            parts.append(f"<h1>{text}</h1>")
+            parts.append(f"<h1{attr}>{text}</h1>")
         elif b.type == BlockType.HEADING:
             lvl = max(2, min(6, b.style.heading_level or 2))
-            parts.append(f"<h{lvl}>{text}</h{lvl}>")
+            parts.append(f"<h{lvl}{attr}>{text}</h{lvl}>")
         elif b.type == BlockType.LIST_ITEM:
-            parts.append(f"<li>{text}</li>")
+            if not open_list:
+                parts.append("<ul>")
+                open_list = True
+            parts.append(f"<li{attr}>{text}</li>")
         else:
-            parts.append(f"<p>{text}</p>")
+            parts.append(f"<p{attr}>{text}</p>")
+    _close_list()
 
     body = f'<div style="font-family:sans-serif">{"".join(parts)}</div>'
 
@@ -338,7 +389,7 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
     # PyMuPDF returns a (spare_height, scale) tuple instead, which broke multi-page output.)
     mediabox = fitz.paper_rect("a4")
     where = mediabox + (40, 40, -40, -40)
-    story = fitz.Story(html=body)
+    story = fitz.Story(html=body, archive=archive)
     writer = fitz.DocumentWriter(out_path)
     more = 1
     while more:
