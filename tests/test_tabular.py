@@ -21,6 +21,15 @@ def test_prose_not_tabular():
     assert not _looks_tabular("short line")
 
 
+def test_dotted_leaders_not_tabular():
+    # IRS form line-items: dotted leaders (". . . . .") must NOT count as numeric tokens,
+    # else the English label row gets frozen verbatim and never translated.
+    assert not _looks_tabular(
+        "1 a Total amount from Form(s) W-2, box 1 (see instructions) . . . . . . 1a")
+    assert not _looks_tabular(
+        "2a Tax-exempt interest . . . 2a b Taxable interest . . . . . . . 2b")
+
+
 def test_merged_table_block_left_verbatim():
     doc = Document(source_path="x.pdf", mime="application/pdf")
     # a TABLE-typed block with no .table = merged numeric rows -> must not be translated

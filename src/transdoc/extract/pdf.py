@@ -75,7 +75,10 @@ def _looks_tabular(text: str) -> bool:
     toks = text.split()
     if len(toks) < 8:
         return False
-    nums = sum(1 for t in toks if re.fullmatch(r"[\d.,]+%?", t))
+    # A token counts as numeric only if it actually contains a digit. Without the digit
+    # guard, the dotted leaders in form line-items (". . . . . .") match [\d.,]+ and inflate
+    # the count, so IRS-style label rows get frozen verbatim and never translated.
+    nums = sum(1 for t in toks if re.fullmatch(r"[\d.,]+%?", t) and any(c.isdigit() for c in t))
     return nums >= 6 and nums / len(toks) > 0.35
 
 
