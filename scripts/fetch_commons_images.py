@@ -1,6 +1,6 @@
 """Fetch script-diverse real document images from Wikimedia Commons via the search API.
 
-Wikimedia requires a descriptive User-Agent. Saves into documents/full_image/.
+Wikimedia requires a descriptive User-Agent. Saves into corpus/real/full_image/.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import json
 
 UA = "transdoc-research/0.1 (https://github.com/muhammadmishbakhuzzuhail/translate)"
 CTX = ssl.create_default_context()
-OUT = "documents/full_image"
+OUT = "corpus/real/full_image"
 
 TARGETS = {
     "manuscript_arabic": "arabic manuscript page text",

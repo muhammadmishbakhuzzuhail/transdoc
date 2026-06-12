@@ -83,7 +83,8 @@ Engines (`-e`): `fallback` (default — google→mymemory→libretranslate) · `
 Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
 OCR (Tesseract/Surya) + translate (free Google-chain/libretranslate/offline NMT/LLM, persistent
 SQLite TM) + regenerate (round-trip pptx/xlsx/epub/srt · md/docx/pdf overlay) + report are in place.
-Test corpus under `documents/` (real downloads) and `samples/` (synthetic ground-truth).
+Test corpus under `corpus/` — `corpus/real/` (real downloads) + `corpus/synthetic/` (generated
+ground-truth); see `corpus/README.md`.
 
 ## Privacy
 The default `fallback`/`google` engine sends document text to Google's public translation

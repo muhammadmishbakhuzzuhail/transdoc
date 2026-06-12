@@ -18,7 +18,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-S = ROOT / "samples"
+S = ROOT / "corpus" / "synthetic"
 
 NOTO = "/usr/share/fonts/noto/NotoSans-Regular.ttf"
 NOTO_AR = "/usr/share/fonts/noto/NotoSansArabic-Regular.ttf"
@@ -126,4 +126,4 @@ if __name__ == "__main__":
     make_scanned_pdf(S / "multilingual" / "udhr_russian.pdf", S / "scanned_pdf" / "udhr_russian_scanned.pdf")
     make_photo(S / "image_only" / "text_en.png", S / "photo" / "photo_en.jpg")
     make_docx(S / "docx" / "structured.docx")
-    print("\nDONE. Convert docx->odt with: soffice --headless --convert-to odt --outdir samples/odt samples/docx/structured.docx")
+    print("\nDONE. Convert docx->odt with: soffice --headless --convert-to odt --outdir corpus/synthetic/odt corpus/synthetic/docx/structured.docx")
