@@ -46,3 +46,20 @@ def test_epub_roundtrip_translates_in_place(tmp_path):
     text = bodies.decode("utf-8")
     assert "[id] Chapter One" in text
     assert "[id] First paragraph." in text
+
+
+def test_epub_skips_xml_declaration_and_doctype(tmp_path):
+    # The <?xml ?> declaration and <!DOCTYPE html> are NavigableString subclasses; they must
+    # not be extracted as translatable text (they leaked into markdown/plain output before).
+    from bs4 import BeautifulSoup
+
+    from transdoc.extract.epub import iter_text_nodes
+
+    soup = BeautifulSoup(
+        "<?xml version='1.0' encoding='utf-8'?><!DOCTYPE html>"
+        "<html><body><p>Real text.</p></body></html>",
+        "html.parser",
+    )
+    texts = [str(node).strip() for _, node in iter_text_nodes(soup)]
+    assert texts == ["Real text."]
+    assert not any("xml" in t.lower() or "doctype" in t.lower() for t in texts)
