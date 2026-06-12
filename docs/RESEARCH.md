@@ -107,6 +107,31 @@ evaluated as the upgrade tier.
 - Install: `pip install "paddleocr[doc-parser]"` + **PaddlePaddle** (heavy framework, ~GB;
   separate from torch). Simple API: `PaddleOCRVL().predict(img)` → markdown/json with layout.
 
+## DECISION: use PaddleOCR PP-OCRv6 (lightweight), NOT the 0.9B VL
+
+The heavy `PaddleOCR-VL-0.9B` OOM'd on both CPU (11 GB RAM) and the 6 GB GPU (below). The
+**classic lightweight PaddleOCR pipeline (PP-OCRv6 det+rec, ~126 MB total)** fits this
+hardware and decisively beats Tesseract. Measured GPU, avg recognition confidence vs the
+Tesseract baseline from the corpus sweep:
+
+| scan (lang) | PP-OCR conf | Tesseract conf | s/page | note |
+|---|---|---|---|---|
+| us_constitution (en) | **0.88** | 0.38 | 4.5 | real English recovered |
+| udhr_hindi (hi) | **0.95** | 0.29 | 1.5 | real Devanagari |
+| newspaper (german) | **0.98** | 0.67 | 5.3 | 236 lines of Fraktur |
+| document_cyrillic (ru) | **0.76** | 0.31 | 0.8 | big lift |
+| manuscript_arabic (ar) | 0.49 | 0.43 | 0.7 | degraded source, low ceiling |
+| magna_carta (la) | 0.36 | 0.22 | 1.6 | degraded medieval, low ceiling |
+
+Models are tiny (det+rec per language, tens of MB) so this runs **CPU-only** as well — it is a
+CPU-compatible upgrade, not a GPU-only tier. API: `PaddleOCR(lang=<iso>).predict(img)` →
+`rec_texts` + `rec_scores` + `rec_polys` (boxes), which map cleanly to the Block IR
+(text + bbox + confidence). Lang codes are per-language ISO (`en/la/hi/ar/german/ru/el/...`),
+NOT script-group names. **Plan: add an opt-in `[paddleocr]` extra + a `PaddleOCREngine`;
+Tesseract stays the always-installed default.** The VL model stays a future remote-backend
+option only.
+
+### Appendix — why the 0.9B VL was rejected (OOM benchmark)
 **EMPIRICAL BENCHMARK (2026-06, dev machine: i5-13450HX, 11 GB RAM, RTX 3050 6 GB):**
 - **CPU: not viable — OOM.** The VL rec model loads ~4.7 GB; with the PaddlePaddle runtime it
   pushed the 11 GB-RAM box into zram-swap thrash (10/11 GB RAM + 10/11 GB swap) and was

@@ -67,6 +67,7 @@ class Engine(str, Enum):
 class OCREngine(str, Enum):
     TESSERACT = "tesseract"   # system tesseract, always available
     SURYA = "surya"           # GPU, layout + reading order + strong non-Latin
+    PADDLE = "paddle"         # PaddleOCR PP-OCRv5/v6 (lightweight, CPU/GPU) — strong non-Latin
     AUTO = "auto"
 
 

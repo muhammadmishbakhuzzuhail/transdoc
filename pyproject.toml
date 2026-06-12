@@ -37,6 +37,10 @@ quant = ["bitsandbytes>=0.43", "accelerate>=0.30"]
 argos = ["argostranslate>=1.9"]
 # Modern OCR: layout + reading order + strong non-Latin. pip install -e ".[surya]"
 surya = ["surya-ocr>=0.6"]
+# PaddleOCR PP-OCRv5/v6 — lightweight det+rec, far stronger than Tesseract on degraded /
+# non-Latin scans, runs CPU-only. pip install -e ".[paddleocr]"  then  --ocr paddle
+# (commercial-safe Apache-2.0). Use a GPU build of paddlepaddle for speed if available.
+paddleocr = ["paddlepaddle>=3.0", "paddleocr>=3.0"]
 # PDF regeneration with full layout/RTL/CJK font support.
 pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
 # Async job API

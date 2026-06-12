@@ -47,7 +47,7 @@ def translate(
                                     "nllb|openrouter|anthropic|echo "
                                     "(free default: fallback = google->mymemory->libretranslate; "
                                     "commercial-safe offline: madlad/opusmt/argos)"),
-    ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|surya"),
+    ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|paddle|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),
     localize: bool = typer.Option(False, "--localize"),
