@@ -37,7 +37,7 @@ output format without touching the rest.
 | Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
 | Translate (free, CPU) | **`fallback`** — Google web endpoint → MyMemory → self-hosted LibreTranslate (no API key, runs CPU-only) | Offline NMT: MADLAD-400/Opus-MT/Argos (commercial-safe) · NLLB (non-commercial) · OpenRouter/Anthropic (API) |
 | Translation memory | persistent SQLite cache (cross-run, cuts engine calls) | in-memory dedupe |
-| Regenerate | round-trip in place (pptx/xlsx/epub/srt/vtt) · PyMuPDF `insert_htmlbox` overlay · python-docx | Markdown |
+| Regenerate | **in-place** text swap for Office (docx/pptx/xlsx/epub/srt/vtt) — keeps all formatting, the DeepL strategy · PDF/image reflow (reconstruct) · `-f layout` overlay opt-in | Markdown |
 
 > **Free public service (DocTranslator-style):** the default `fallback` engine proxies the
 > free Google Translate web endpoint, so the server hosts no model and runs CPU-only. When

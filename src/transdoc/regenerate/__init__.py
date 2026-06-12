@@ -71,6 +71,13 @@ def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
         return out_path
 
     if fmt == OutputFormat.DOCX:
+        # docx source -> mutate it in place (DeepL-style: keep all formatting, only swap text).
+        # Any other source (PDF/image/...) has no docx to mutate, so rebuild one from the IR.
+        # Bilingual output also rebuilds (it needs to interleave source + translation).
+        if src.endswith(".docx") and not cfg.bilingual:
+            from .docx_inplace import render as render_inplace
+
+            return render_inplace(doc, cfg, out_path)
         from .docx_out import render
 
         return render(doc, cfg, out_path)
