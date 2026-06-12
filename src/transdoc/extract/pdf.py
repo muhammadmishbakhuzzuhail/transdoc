@@ -100,6 +100,22 @@ _NUMBERED_HEADING = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
 _LIST_MARKER = re.compile(r"^\s*(?:[•◦▪‣·*\-–—]|\d{1,2}[.)])\s+")
 
 
+def _alignment(x0: float, x1: float, page_width: float) -> str | None:
+    """Infer paragraph alignment from where the block sits across the page. Full-width body
+    text -> None (left); a narrow block with big equal margins -> center; flush-right -> right.
+    Returned in Style.align and applied by the reflow renderer."""
+    if page_width <= 0:
+        return None
+    left, right = x0, page_width - x1
+    if (x1 - x0) > page_width * 0.8:          # spans most of the width -> ordinary left/justify
+        return None
+    if abs(left - right) < page_width * 0.06 and left > page_width * 0.12:
+        return "center"
+    if right < page_width * 0.08 and left > page_width * 0.25:
+        return "right"
+    return None
+
+
 def _guess_type(size: float, body_size: float, bold: bool = False,
                 text: str = "") -> BlockType:
     """Larger-than-body font -> heading/title. Also catch same-size headings the font ratio
@@ -317,6 +333,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 text = _LIST_MARKER.sub("", text, count=1)
             else:
                 btype = _guess_type(max_size, body, bold, text)
+            align = _alignment(x0, x1, page.rect.width)
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
@@ -325,7 +342,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     text=text,
                     bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1),
                     style=Style(size=max_size, bold=bold, italic=italic, font=font,
-                                color=color,
+                                color=color, align=align,
                                 heading_level=1 if btype == BlockType.HEADING else 0),
                     confidence=Confidence(source="digital"),
                 )
