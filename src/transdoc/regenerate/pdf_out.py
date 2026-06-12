@@ -156,9 +156,22 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
             except Exception:
                 page.insert_textbox(r, b.output_text, fontsize=size, align=0)
 
+    # If only some pages were selected (--pages), the overlay covered just those; the rest are
+    # still the untranslated original. Drop them so the output isn't a mix of translated and
+    # source-language pages.
+    _subset_pages(pdf, cfg)
+
     pdf.save(out_path, garbage=4, deflate=True)
     pdf.close()
     return out_path
+
+
+def _subset_pages(pdf, cfg) -> None:
+    """Keep only the pages named by cfg.pages (1-based spec). No-op when unset/all."""
+    from ..extract.pdf import _parse_pages
+    sel = _parse_pages(getattr(cfg, "pages", None), pdf.page_count)
+    if sel is not None and len(sel) < pdf.page_count:
+        pdf.select(sorted(sel))
 
 
 def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:

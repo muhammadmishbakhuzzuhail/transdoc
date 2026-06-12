@@ -10,7 +10,6 @@ Run with the project venv: .venv/bin/python scripts/make_samples.py
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -73,7 +72,6 @@ def make_scanned_pdf(src: Path, dst: Path, dpi: int = 150):
     out = fitz.open()
     for page in doc:
         pix = page.get_pixmap(dpi=dpi)
-        img_pdf = fitz.open("pdf", fitz.open("png", pix.tobytes("png")).convert_to_pdf())
         rect = fitz.Rect(0, 0, pix.width * 72 / dpi, pix.height * 72 / dpi)
         p = out.new_page(width=rect.width, height=rect.height)
         p.insert_image(rect, pixmap=pix)
