@@ -218,7 +218,11 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     grid = [[Cell(text=(c or "").strip()) for c in row]
                             for row in tbl.extract()]
                     ncols = max((len(r) for r in grid), default=0)
-                    if len(grid) >= 2 and ncols >= 2:   # real grid, not a false positive
+                    ncells = sum(len(r) for r in grid) or 1
+                    filled = sum(1 for r in grid for c in r if c.text)
+                    # real grid: >=2x2 AND mostly-populated cells (a diagram detected as a
+                    # table is typically sparse), so figures don't get mangled into tables.
+                    if len(grid) >= 2 and ncols >= 2 and filled / ncells >= 0.5:
                         tb = tbl.bbox
                         out.blocks.append(Block(
                             id=f"p{pno}-tbl{ti}", type=BlockType.TABLE, page=pno,
