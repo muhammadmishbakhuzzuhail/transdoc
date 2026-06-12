@@ -15,12 +15,14 @@ _ROUNDTRIP = {
     OutputFormat.EPUB: ("epub_out", (".epub",)),
     OutputFormat.SRT: ("subtitle_out", (".srt", ".vtt")),
     OutputFormat.VTT: ("subtitle_out", (".srt", ".vtt")),
+    OutputFormat.ODT: ("odt_inplace", (".odt",)),
 }
 
-# When output==SAME, map the source extension to the round-trip renderer.
+# When output==SAME, map the source extension to its in-place / round-trip renderer.
 _EXT_TO_FORMAT = {
     ".pptx": OutputFormat.PPTX, ".xlsx": OutputFormat.XLSX, ".epub": OutputFormat.EPUB,
     ".srt": OutputFormat.SRT, ".vtt": OutputFormat.VTT,
+    ".odt": OutputFormat.ODT, ".docx": OutputFormat.DOCX,
 }
 
 

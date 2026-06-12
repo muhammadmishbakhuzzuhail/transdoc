@@ -24,6 +24,7 @@ class OutputFormat(str, Enum):
     EPUB = "epub"
     SRT = "srt"
     VTT = "vtt"
+    ODT = "odt"
     SAME = "same-as-source"
 
 
