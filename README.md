@@ -69,6 +69,7 @@ transdoc translate subs.srt   --lang id --to same-as-source # subtitles, timing 
 transdoc translate sign.jpg   --lang id --to pdf            # photo → OCR → translation overlaid on the original image (Lens-style)
 transdoc translate scan.png   --lang en --ocr tesseract     # image → OCR → translate
 transdoc translate hindi.pdf  --lang id --source hi          # non-English scan: pass --source for the right OCR model
+transdoc translate paper.pdf  --lang id --glossary terms.json # enforce {source term: target term} consistently
 transdoc translate doc.pdf    --lang ar --to pdf -f layout  # layout-preserving overlay
 transdoc translate x.pdf      --lang id -e libretranslate   # privacy/offline (self-host backstop)
 transdoc convert  in.pdf      --to docx                     # OCR/convert only, no translation
