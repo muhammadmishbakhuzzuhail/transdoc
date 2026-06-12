@@ -57,6 +57,8 @@ def translate(
     quality: bool = typer.Option(False, "--quality", "-q", help="QE: score+flag weak segments"),
     ocr_figures: bool = typer.Option(False, "--ocr-figures",
                                      help="OCR text inside large embedded images (scan-in-page)"),
+    glossary: str = typer.Option(None, "--glossary", "-g",
+                                 help='JSON file of {source term: target term} to enforce'),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
@@ -64,6 +66,9 @@ def translate(
     cfg.bilingual = bilingual
     cfg.quality_check = quality
     cfg.ocr_figures = ocr_figures
+    if glossary:
+        from .translate.protect import load_glossary
+        cfg.glossary = load_glossary(glossary)
     _execute(input, cfg, out)
 
 

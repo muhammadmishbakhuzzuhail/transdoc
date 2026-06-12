@@ -94,9 +94,11 @@ Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/imag
   English Latin model. Within Latin, per-language refinement (fr/german) is still a TODO.
 
 **Open:**
-1. **Vertical sidebar text reading order** — now demoted (not a heading) but still placed late
-   in FLOW reading order.
-3. **TM cache key isn't versioned by extractor behaviour** — low impact (changed text just
+1. **Within-Latin OCR language refinement** — when OSD reports Latin we use the `en` model; a
+   fr/de/es scan could use its specific PaddleOCR model. Marginal (same Latin recognizer), low
+   priority.
+2. **TM cache key isn't versioned by extractor behaviour** — low impact (changed text just
    misses the cache, never serves stale).
-4. **Multi-column reading order** looked sane on the 2-column arxiv sample, unverified on
-   dense/mixed layouts; keep on watch.
+3. **Multi-column reading order — VERIFIED OK.** PyMuPDF parse order is column-aware: on a true
+   2-column ACL page (BERT) the left column reads fully top-to-bottom before the right
+   (sequence `LLLLRRR`, one column flip). No custom sorter needed.
