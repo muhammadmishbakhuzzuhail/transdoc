@@ -93,12 +93,28 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
             graphics=fitz.PDF_REDACT_LINE_ART_NONE,   # keep rule lines / table borders
             text=fitz.PDF_REDACT_TEXT_REMOVE,         # remove only the original glyphs
         )
-        # 2) overlay translations at original bbox, auto-fitting expanded text.
-        #    Translation often expands (+20-30% EN->ID). insert_htmlbox(scale_low=0)
-        #    shrinks the text to fit the original box and returns the scale factor;
-        #    if it had to shrink hard, we flag the block for human review.
+        # Obstacles for box growth: every block with a bbox on this page (not just the
+        # translated ones) so we never grow a box over a figure, formula, or neighbour.
+        obstacles = [_block_rect(x) for x in doc.ordered_blocks()
+                     if x.page == pno and x.bbox]
+
+        def _grow_down(r):
+            """Grow the box down into the empty space before the next block below (or the page
+            edge), so expanded text keeps its font size instead of being shrunk. Text is
+            top-aligned, so extra height under a short run is harmless."""
+            limit = page.rect.height
+            for o in obstacles:
+                if o.y0 >= r.y1 - 1 and min(r.x1, o.x1) - max(r.x0, o.x0) > 2:
+                    limit = min(limit, o.y0)
+            new_y1 = limit - 2.0
+            return fitz.Rect(r.x0, r.y0, r.x1, new_y1) if new_y1 > r.y1 + 1 else r
+
+        # 2) overlay translations at original bbox, auto-fitting expanded text. Translation
+        #    often expands (+20-30% EN->ID): first grow the box into adjacent whitespace
+        #    (keeps font size), then insert_htmlbox(scale_low=0) shrinks only if still needed
+        #    and returns the scale factor; a hard shrink is flagged for human review.
         for b in blocks:
-            r = _block_rect(b)
+            r = _grow_down(_block_rect(b))
             rtl = b.style.rtl
             size = b.style.size or 11
             if _is_mixed_bidi(b.output_text):
