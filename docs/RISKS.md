@@ -63,8 +63,9 @@ Latin / RTL / CJK / Devanagari / Cyrillic; back-translations are faithful paraph
 protection stays 100% verbatim. Register/tone (formal/casual) only via the opt-in LLM engines
 — the free NMT chain has no tone control.
 
-Minor finding: back-translations sometimes carry stray zero-width spaces (`​`) — likely
-a Google-endpoint artifact; worth checking whether forward output is affected.
+Minor finding (resolved): stray zero-width spaces appear in some back-translations but
+**forward output is clean** (ZWSP=0 verified for en→id/de/ar) — a Google-endpoint artifact on
+certain reverse pairs only, not in user-facing output.
 
 ## v2 backlog — empirical, from a corpus stress test
 Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/image → PDF).
