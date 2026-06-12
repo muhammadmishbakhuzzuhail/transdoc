@@ -10,6 +10,7 @@ from ..config import Config
 
 class EchoTranslator:
     name = "echo"
+    cacheable = False        # never write "[id] ..." placeholders to the persistent TM
 
     def translate_batch(self, texts: list[str], cfg: Config,
                         src: str | None = None) -> list[str]:

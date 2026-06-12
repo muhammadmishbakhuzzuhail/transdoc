@@ -104,7 +104,9 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         fresh = [localize_numbers(t, target) for t in fresh]
     fresh = [protector.restore(t, m) for t, m in zip(fresh, maps)]
     fresh_map = dict(zip(todo, fresh))
-    if ptm and fresh_map:
+    # Only persist real translations. A no-op engine (echo) marks itself non-cacheable so its
+    # "[id] ..." placeholder output never poisons the cross-run TM for later real runs.
+    if ptm and fresh_map and getattr(tr, "cacheable", True):
         ptm.put_many(fresh_map, target)
     translated_unique = [cached.get(u) or fresh_map.get(u, u) for u in unique]
 
