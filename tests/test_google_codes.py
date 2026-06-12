@@ -38,3 +38,39 @@ def test_make_falls_back_to_auto_on_bad_source():
     g._G = _Eng
     g._make("tn", "id")           # "tn" rejected -> falls back to auto
     assert calls == ["tn", "auto"]
+
+
+def test_none_result_retries_then_recovers(monkeypatch):
+    # a throttled endpoint answering None on the first call must be retried, not silently
+    # passed through as source text.
+    g = GoogleTranslator()
+    seq = [None, None, "halo"]
+
+    class _Eng:
+        def __init__(self, source, target):
+            pass
+
+        def translate(self, chunk):
+            return seq.pop(0)
+
+    g._G = _Eng
+    monkeypatch.setattr("transdoc.translate.google.time.sleep", lambda *_: None)
+    assert g._translate_one("hello", "en", "id") == "halo"
+
+
+def test_persistent_none_raises_not_silent_source(monkeypatch):
+    # if every attempt fails, raise (so the fallback chain runs) instead of keeping source.
+    g = GoogleTranslator()
+
+    class _Eng:
+        def __init__(self, source, target):
+            pass
+
+        def translate(self, chunk):
+            return None
+
+    g._G = _Eng
+    monkeypatch.setattr("transdoc.translate.google.time.sleep", lambda *_: None)
+    import pytest
+    with pytest.raises(Exception):
+        g._translate_one("hello", "en", "id")

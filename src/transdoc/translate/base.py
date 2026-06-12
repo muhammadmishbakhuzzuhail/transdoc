@@ -23,6 +23,15 @@ class Translator(Protocol):
         ...
 
 
+def _looks_untranslated(src: str, out: str) -> bool:
+    """A substantial segment that came back byte-identical to its source probably wasn't
+    translated (engine skipped/throttled it). Short or proper-noun-only spans legitimately
+    stay the same, so require several real words before flagging."""
+    if out.strip() != src.strip():
+        return False
+    return len(re.findall(r"[^\W\d_]{4,}", src)) >= 3
+
+
 def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     """Enforce term consistency. Longest terms first to avoid partial overlaps."""
     for term in sorted(glossary, key=len, reverse=True):
@@ -108,6 +117,9 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         if isinstance(sink, Block):
             sink.translated = translated
             sink.confidence.translation = sink.confidence.translation or 0.9
+            if _looks_untranslated(src_text, translated):
+                sink.flags["untranslated"] = (
+                    "translation equals source — engine may have skipped this segment")
         else:  # Cell
             sink.translated = translated
 

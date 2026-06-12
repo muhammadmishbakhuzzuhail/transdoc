@@ -87,18 +87,25 @@ class GoogleTranslator:
                 out.append(chunk)
                 continue
             last: Exception | None = None
-            for attempt in range(4):
+            result: str | None = None
+            for attempt in range(5):
                 try:
                     eng = self._make(source, target)
                     res = eng.translate(chunk)
-                    out.append(res if res is not None else chunk)
+                    # A throttled web endpoint can answer None/empty for non-empty input.
+                    # Treat that as a soft failure and retry, rather than silently keeping the
+                    # source text (which left whole pages untranslated in long documents).
+                    if res is None or (chunk.strip() and not res.strip()):
+                        raise ValueError("empty translation (endpoint throttled?)")
+                    result = res
                     last = None
                     break
                 except Exception as e:  # rate-limit / transient — exponential backoff
                     last = e
-                    time.sleep(0.5 * (2 ** attempt))
+                    time.sleep(0.6 * (2 ** attempt))
             if last is not None:
-                raise last  # let the fallback router try the next engine
+                raise last  # retries exhausted -> let the fallback router try the next engine
+            out.append(result if result is not None else chunk)
         return "".join(out)
 
     def translate_batch(self, texts: list[str], cfg: Config,
