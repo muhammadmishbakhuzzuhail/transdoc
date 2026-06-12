@@ -47,7 +47,7 @@ def translate(
                                     "nllb|openrouter|anthropic|echo "
                                     "(free default: fallback = google->mymemory->libretranslate; "
                                     "commercial-safe offline: madlad/opusmt/argos)"),
-    ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|surya"),
+    ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|paddle|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),
     localize: bool = typer.Option(False, "--localize"),
@@ -55,12 +55,15 @@ def translate(
     pages: str = typer.Option(None, "--pages", "-p", help='e.g. "3-7,10"'),
     bilingual: bool = typer.Option(False, "--bilingual", "-b", help="source + translation"),
     quality: bool = typer.Option(False, "--quality", "-q", help="QE: score+flag weak segments"),
+    ocr_figures: bool = typer.Option(False, "--ocr-figures",
+                                     help="OCR text inside large embedded images (scan-in-page)"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
     cfg = _cfg(lang, source, to, engine, ocr, fidelity, domain, localize, register, pages)
     cfg.bilingual = bilingual
     cfg.quality_check = quality
+    cfg.ocr_figures = ocr_figures
     _execute(input, cfg, out)
 
 

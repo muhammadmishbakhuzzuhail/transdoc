@@ -26,9 +26,24 @@ class Result:
     report_text: str
 
 
+_ZIP_KINDS = {"docx", "xlsx", "pptx", "epub", "odt"}
+
+
 def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
+    # --- Safety guards (reject pathological/malicious input before any heavy work) ---
+    from .limits import apply_pil_cap, check_file_size, check_pages, check_zip_bomb
+    apply_pil_cap()
+    check_file_size(input_path)
+
     # --- Ingest + detect ---
     det = detect(input_path)
+
+    if det.mime == "application/pdf":
+        import fitz
+        with fitz.open(input_path) as _d:
+            check_pages(_d.page_count)
+    elif det.kind.value in _ZIP_KINDS:
+        check_zip_bomb(input_path)
 
     # --- Extract -> IR ---
     doc = extract_ir(det, cfg)
@@ -54,6 +69,15 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     # --- Phases 3-5: Terminology + Translate + Self-review ---
     cfg.require_target()
+
+    # FLOW output reflows the text, so running headers/footers just clutter it (and waste
+    # translation calls). Strip them before translating. LAYOUT keeps them in place.
+    from .config import Fidelity
+    source_is_pdf = (doc.mime == "application/pdf")
+    if cfg.resolve_fidelity(source_is_pdf) == Fidelity.FLOW:
+        from .headers import strip_running_headers
+        strip_running_headers(doc)
+
     from .translate import get_translator, translate_document
 
     tr = get_translator(cfg)

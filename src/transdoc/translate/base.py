@@ -7,6 +7,7 @@ source term maps to one target rendering everywhere.
 
 from __future__ import annotations
 
+import re
 from typing import Protocol
 
 from ..config import Config
@@ -22,11 +23,28 @@ class Translator(Protocol):
         ...
 
 
+def _looks_untranslated(src: str, out: str) -> bool:
+    """A substantial segment that came back byte-identical to its source probably wasn't
+    translated (engine skipped/throttled it). Short or proper-noun-only spans legitimately
+    stay the same, so require several real words before flagging."""
+    if out.strip() != src.strip():
+        return False
+    return len(re.findall(r"[^\W\d_]{4,}", src)) >= 3
+
+
 def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     """Enforce term consistency. Longest terms first to avoid partial overlaps."""
     for term in sorted(glossary, key=len, reverse=True):
-        if term and term in text:
-            text = text.replace(term, glossary[term])
+        if not term:
+            continue
+        repl = glossary[term]
+        # Word-boundary match for ASCII alphanumeric terms so "cat" doesn't fire inside
+        # "category". CJK / punctuation-edged terms have no \w boundary, so fall back to a
+        # plain substring replace for those.
+        if term.isascii() and term[0].isalnum() and term[-1].isalnum():
+            text = re.sub(rf"(?<!\w){re.escape(term)}(?!\w)", lambda _m, r=repl: r, text)
+        elif term in text:
+            text = text.replace(term, repl)
     return text
 
 
@@ -79,6 +97,11 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
 
     # 2) translate the protected misses, restore tokens, then fold cache hits back in
     fresh = tr.translate_batch(protected, cfg, src=doc.source_lang) if protected else []
+    if cfg.localize:
+        # Reformat numbers to the target locale while protected tokens are still [PH] tags,
+        # so verbatim currency/dates/codes are not touched.
+        from .localize import localize_numbers
+        fresh = [localize_numbers(t, target) for t in fresh]
     fresh = [protector.restore(t, m) for t, m in zip(fresh, maps)]
     fresh_map = dict(zip(todo, fresh))
     if ptm and fresh_map:
@@ -94,6 +117,9 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         if isinstance(sink, Block):
             sink.translated = translated
             sink.confidence.translation = sink.confidence.translation or 0.9
+            if _looks_untranslated(src_text, translated):
+                sink.flags["untranslated"] = (
+                    "translation equals source — engine may have skipped this segment")
         else:  # Cell
             sink.translated = translated
 

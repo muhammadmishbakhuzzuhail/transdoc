@@ -17,11 +17,17 @@ _SKIP_PARENTS = {"script", "style", "title"}
 
 def iter_text_nodes(soup):
     """Yield (ordinal, NavigableString) for translatable text nodes, in document order."""
-    from bs4 import NavigableString
+    from bs4 import (
+        CData, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction,
+    )
+
+    # Comment/Declaration/Doctype/PI/CData are NavigableString *subclasses* — the XML decl
+    # (<?xml ...?>) and <!DOCTYPE html> would otherwise leak in as translatable "text".
+    special = (CData, Comment, Declaration, Doctype, ProcessingInstruction)
 
     n = 0
     for node in soup.find_all(string=True):
-        if not isinstance(node, NavigableString):
+        if not isinstance(node, NavigableString) or isinstance(node, special):
             continue
         parent = node.parent.name if node.parent else ""
         if parent in _SKIP_PARENTS:

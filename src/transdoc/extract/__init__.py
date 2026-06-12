@@ -23,10 +23,14 @@ def extract(det: Detection, cfg: Config) -> Document:
         n = fitz.open(p).page_count
         return ex(p, cfg, ocr_pages=set(range(n)))
     if k == Kind.PDF_MIXED:
+        from ..ingest.detect import _image_dominates
         from .pdf import extract as ex
         import fitz
         d = fitz.open(p)
-        ocr_pages = {i for i, pg in enumerate(d) if len(pg.get_text().strip()) <= 20}
+        # OCR the pages with no real text layer: empty/near-empty, OR a page whose text is
+        # just a caption over a dominating scan image (matches detect._classify_pdf).
+        ocr_pages = {i for i, pg in enumerate(d)
+                     if len(pg.get_text().strip()) <= 20 or _image_dominates(pg)}
         d.close()
         return ex(p, cfg, ocr_pages=ocr_pages)
     if k == Kind.DOCX:

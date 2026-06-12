@@ -46,6 +46,31 @@ def test_extra_entities_protected():
     assert Protector.restore(protected, mapping) == "Welcome to ACME Corp headquarters"
 
 
+def test_inline_math_protected():
+    p = Protector()
+    text = "The head_i = Attention(W^Q) and $x_{ij}$ values"
+    protected, mapping = p.protect(text)
+    assert "head_i" not in protected and "W^Q" not in protected and "$x_{ij}$" not in protected
+    assert Protector.restore(protected, mapping) == text
+
+
+def test_plain_prose_not_over_protected():
+    p = Protector()
+    out, mapping = p.protect("the cat sat on the mat today")
+    assert mapping == {}
+
+
+def test_brand_names_protected_case_sensitively():
+    p = Protector()
+    protected, mapping = p.protect("Ashish at Google Brain used PyTorch and OpenAI tools")
+    assert "Google Brain" not in protected   # multi-word brand kept verbatim
+    assert "PyTorch" not in protected
+    assert Protector.restore(protected, mapping) == "Ashish at Google Brain used PyTorch and OpenAI tools"
+    # lowercase common words must NOT be masked
+    out, m = p.protect("an apple and the brain are common words")
+    assert m == {}
+
+
 def test_load_glossary_missing_returns_empty(tmp_path):
     assert load_glossary(None) == {}
     assert load_glossary(tmp_path / "nope.json") == {}

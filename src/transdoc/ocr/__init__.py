@@ -13,19 +13,17 @@ def get_ocr(cfg: Config) -> OCREngine:
         from .surya import SuryaOCR
 
         return SuryaOCR()
+    if choice == OCRChoice.PADDLE:
+        from .paddle import PaddleOCREngine
+
+        return PaddleOCREngine()
     if choice == OCRChoice.TESSERACT:
         from .tesseract import TesseractOCR
 
         return TesseractOCR()
 
-    # AUTO: try Surya, fall back to Tesseract.
-    try:
-        import surya  # noqa: F401
+    # AUTO: Tesseract first, escalating low-confidence pages to PaddleOCR when installed
+    # (fast common case, strong fallback on degraded/non-Latin scans).
+    from .auto import EscalatingOCR
 
-        from .surya import SuryaOCR
-
-        return SuryaOCR()
-    except Exception:
-        from .tesseract import TesseractOCR
-
-        return TesseractOCR()
+    return EscalatingOCR()

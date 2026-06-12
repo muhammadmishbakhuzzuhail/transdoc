@@ -11,6 +11,7 @@ def extract(path: str, cfg: Config) -> Document:
     from odf import teletype
     from odf.opendocument import load
     from odf.table import TableCell, TableRow
+    from odf.text import P
 
     doc = load(path)
     out = Document(source_path=path, mime="odt")
@@ -19,7 +20,17 @@ def extract(path: str, cfg: Config) -> Document:
     body = doc.text
     for node in body.childNodes:
         qname = getattr(node, "qname", (None, None))[1]
-        if qname in ("h", "p"):
+        if qname == "list":
+            # Each list item holds one or more paragraphs -> one LIST_ITEM block per paragraph.
+            for p in node.getElementsByType(P):
+                content = teletype.extractText(p).strip()
+                if not content:
+                    continue
+                out.blocks.append(
+                    Block(id=block_id(0, idx), type=BlockType.LIST_ITEM, text=content,
+                          confidence=Confidence(source="digital")))
+                idx += 1
+        elif qname in ("h", "p"):
             content = teletype.extractText(node).strip()
             if not content:
                 continue

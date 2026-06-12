@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from ..config import Config
-from ..ir import BBox, Block, BlockType, Confidence, Document, Style
+from ..config import Config, Fidelity
+from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Style, Table
 from .base import block_id, reflow_order
 
 # Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
@@ -50,6 +50,17 @@ def _parse_pages(spec: str | None, total: int) -> set[int] | None:
     return sel or None
 
 
+# A word hyphenated across a line break ("inter-\nnational") extracts as "inter- national"
+# once lines are space-joined. Re-stitch it: lowercase letter + "-" + spaces + lowercase
+# letter -> one word. Real compounds ("well-known") have no space after the hyphen, so they
+# are left intact.
+_HYPHEN_BREAK = re.compile(r"([a-zà-öø-ÿ])-\s+([a-zà-öø-ÿ])")
+
+
+def _dehyphenate(text: str) -> str:
+    return _HYPHEN_BREAK.sub(r"\1\2", text)
+
+
 # Math operators/relations that signal a formula line (not just an inline "h = 8").
 _MATH_OPS = set("=<>≤≥≠≈∈∉⊂⊆∪∩∑∏∫√∂∇∞∼≅≡↦→⊕⊗±×÷·")
 
@@ -75,16 +86,34 @@ def _looks_tabular(text: str) -> bool:
     toks = text.split()
     if len(toks) < 8:
         return False
-    nums = sum(1 for t in toks if re.fullmatch(r"[\d.,]+%?", t))
+    # A token counts as numeric only if it actually contains a digit. Without the digit
+    # guard, the dotted leaders in form line-items (". . . . . .") match [\d.,]+ and inflate
+    # the count, so IRS-style label rows get frozen verbatim and never translated.
+    nums = sum(1 for t in toks if re.fullmatch(r"[\d.,]+%?", t) and any(c.isdigit() for c in t))
     return nums >= 6 and nums / len(toks) > 0.35
 
 
-def _guess_type(size: float, body_size: float, flags: int) -> BlockType:
-    """Heuristic: larger-than-body font -> heading; much larger -> title."""
+_NUMBERED_HEADING = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
+
+
+def _guess_type(size: float, body_size: float, bold: bool = False,
+                text: str = "") -> BlockType:
+    """Larger-than-body font -> heading/title. Also catch same-size headings the font ratio
+    misses: a short bold line with no terminal punctuation ("Abstract"), or a section-numbered
+    line ("3.1 Model Architecture")."""
     if size >= body_size * 1.6:
         return BlockType.TITLE
     if size >= body_size * 1.2:
         return BlockType.HEADING
+    t = text.strip()
+    if t and len(t) <= 70:
+        if _NUMBERED_HEADING.match(t):
+            return BlockType.HEADING
+        # bold same-size heading: short, no terminal punctuation, and not an author/affiliation
+        # byline (those are bold too but carry an email and several name tokens).
+        no_terminal = not t.endswith((".", ":", ";", ",", "!", "?"))
+        if bold and no_terminal and "@" not in t and len(t.split()) <= 8:
+            return BlockType.HEADING
     return BlockType.PARAGRAPH
 
 
@@ -114,6 +143,12 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
 
+    # Real cell-level table recovery (PyMuPDF find_tables) is only used for FLOW output
+    # (->DOCX/MD/flow-PDF), where the renderer builds a grid from Table/Cell IR. The LAYOUT
+    # overlay keeps the per-text-block path (each cell is already a positioned block, and the
+    # grid lines are preserved by the line-art-keeping redaction), so we don't reshape it.
+    flow_target = cfg.resolve_fidelity(source_is_pdf=True) == Fidelity.FLOW
+
     selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
     ocr = get_ocr(cfg) if ocr_pages else None
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_img_"))
@@ -128,6 +163,24 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         eng = _ensure_ocr()
         pix = page.get_pixmap(dpi=300)
         out.blocks.extend(eng.recognize_image_bytes(pix.tobytes("png"), cfg, page=pno))
+
+    _PT_TO_300 = 300.0 / 72.0
+
+    def _ocr_figure(page, bb, pno) -> None:
+        """OCR a large embedded image (a scan dropped onto a digital page) and emit its text
+        as translatable OCR blocks, with bboxes mapped to the page in the 300-dpi-pixel space
+        the overlay expects (so `_block_rect` scales them back to points correctly)."""
+        page_area = abs(page.rect.width * page.rect.height) or 1.0
+        if abs((bb.x1 - bb.x0) * (bb.y1 - bb.y0)) / page_area < 0.08:
+            return  # too small (icon/logo/chart marker) to be worth OCRing
+        eng = _ensure_ocr()
+        pm = page.get_pixmap(clip=bb, dpi=300)
+        for ob in eng.recognize_image_bytes(pm.tobytes("png"), cfg, page=pno):
+            if ob.bbox:
+                ox, oy = bb.x0 * _PT_TO_300, bb.y0 * _PT_TO_300
+                ob.bbox = BBox(x0=ob.bbox.x0 + ox, y0=ob.bbox.y0 + oy,
+                               x1=ob.bbox.x1 + ox, y1=ob.bbox.y1 + oy)
+            out.blocks.append(ob)
 
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
@@ -163,8 +216,39 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     image_path=str(fpath),
                     bbox=BBox(x0=bb.x0, y0=bb.y0, x1=bb.x1, y1=bb.y1) if bb else None,
                     confidence=Confidence(source="digital")))
+                if cfg.ocr_figures and bb is not None:
+                    try:
+                        _ocr_figure(page, bb, pno)
+                    except Exception:
+                        pass  # OCR unavailable / failed on this image -> keep the figure only
             except Exception:
                 continue
+
+        # Recover real tables (FLOW only) as Table/Cell IR; remember their regions so the
+        # same text isn't also emitted as loose paragraphs below.
+        table_rects: list = []
+        # find_tables is ~130 ms/page; a page with zero vector graphics can't hold a ruled
+        # table, so skip it there (cheap get_drawings gate) without losing any real tables.
+        if flow_target and page.get_drawings():
+            try:
+                for ti, tbl in enumerate(page.find_tables().tables):
+                    grid = [[Cell(text=(c or "").strip()) for c in row]
+                            for row in tbl.extract()]
+                    ncols = max((len(r) for r in grid), default=0)
+                    ncells = sum(len(r) for r in grid) or 1
+                    filled = sum(1 for r in grid for c in r if c.text)
+                    # real grid: >=2x2 AND mostly-populated cells (a diagram detected as a
+                    # table is typically sparse), so figures don't get mangled into tables.
+                    if len(grid) >= 2 and ncols >= 2 and filled / ncells >= 0.5:
+                        tb = tbl.bbox
+                        out.blocks.append(Block(
+                            id=f"p{pno}-tbl{ti}", type=BlockType.TABLE, page=pno,
+                            table=Table(rows=grid),
+                            bbox=BBox(x0=tb[0], y0=tb[1], x1=tb[2], y1=tb[3]),
+                            confidence=Confidence(source="digital")))
+                        table_rects.append(fitz.Rect(tb))
+            except Exception:
+                pass
 
         body = _body_size(page)
         d = page.get_text("dict")
@@ -175,24 +259,49 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 continue
             text_parts: list[str] = []
             max_size = 0.0
-            bold = False
+            bold = italic = False
+            # Carry the font + colour of the dominant (largest) span so the overlay can
+            # reproduce them — keeping the page's look (bold/italic/colour), not just size.
+            dom_size = -1.0
+            font: str | None = None
+            color: str | None = None
             for line in lines:
                 for span in line.get("spans", []):
                     text_parts.append(span.get("text", ""))
-                    max_size = max(max_size, span.get("size", 0))
-                    if span.get("flags", 0) & 2 ** 4:  # bold flag
+                    sz = span.get("size", 0)
+                    max_size = max(max_size, sz)
+                    flags = span.get("flags", 0)
+                    if flags & 2 ** 4:   # bold
                         bold = True
+                    if flags & 2 ** 1:   # italic
+                        italic = True
+                    if sz > dom_size and span.get("text", "").strip():
+                        dom_size = sz
+                        font = span.get("font") or font
+                        c = span.get("color")
+                        if isinstance(c, int):
+                            color = f"#{c & 0xFFFFFF:06x}"
                 text_parts.append(" ")
-            text = "".join(text_parts).strip()
+            text = _dehyphenate("".join(text_parts).strip())
             if not text:
                 continue
             x0, y0, x1, y1 = blk["bbox"]
+            if table_rects:
+                cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+                if any(r.contains(fitz.Point(cx, cy)) for r in table_rects):
+                    continue  # this text is already captured as a table cell
+            # Tall, very narrow blocks are rotated/vertical sidebar text (e.g. an arXiv ID);
+            # never promote them to a heading/title — they pollute reflowed output.
+            w, h = x1 - x0, y1 - y0
+            vertical = w < 40 and h > w * 4
             if _looks_formula(text):
                 btype = BlockType.FORMULA
             elif _looks_tabular(text):
                 btype = BlockType.TABLE  # merged numeric table rows -> preserve verbatim
+            elif vertical:
+                btype = BlockType.CAPTION
             else:
-                btype = _guess_type(max_size, body, 0)
+                btype = _guess_type(max_size, body, bold, text)
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
@@ -200,7 +309,8 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     page=pno,
                     text=text,
                     bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1),
-                    style=Style(size=max_size, bold=bold,
+                    style=Style(size=max_size, bold=bold, italic=italic, font=font,
+                                color=color,
                                 heading_level=1 if btype == BlockType.HEADING else 0),
                     confidence=Confidence(source="digital"),
                 )

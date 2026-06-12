@@ -46,6 +46,14 @@ async def translate(
     with tmp as f:
         shutil.copyfileobj(file.file, f)
 
+    # reject oversized uploads before scheduling any work
+    from ..limits import InputTooLarge, check_file_size
+    try:
+        check_file_size(tmp.name)
+    except InputTooLarge as e:
+        Path(tmp.name).unlink(missing_ok=True)
+        raise HTTPException(413, str(e))
+
     try:
         cfg = Config(
             source_lang=source_lang,
