@@ -76,6 +76,9 @@ while block counts still said "64/64 translated". Two fixes:
   them and suggests `--fidelity flow` / `--to docx`.
 - **AcroForm PDFs auto-reflow.** A fillable form (PyMuPDF `is_form_pdf`) with AUTO fidelity now
   uses FLOW instead of the overlay — readable reflowed text instead of a mangled grid.
+- **Dense-page fallback.** Even a non-AcroForm page is re-rendered as FLOW when the overlay
+  left >40% of its blocks illegible (a form-like layout the AcroForm check missed). A few stray
+  illegible blocks (e.g. the arabic article at 15%) keep the faithful overlay.
 - **Process lesson:** never report "translated OK" from progress/block counts — render and
   look at the output.
 
