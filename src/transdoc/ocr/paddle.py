@@ -23,6 +23,41 @@ PADDLE_LANG = {
     "zh-hant": "chinese_cht", "zh-tw": "chinese_cht",
 }
 
+# Tesseract OSD script name -> a representative PaddleOCR language model. Lets us pick the
+# right model for a scan when --source is "auto", since the script can be read off the image
+# (via Tesseract OSD) without first knowing the language. Refined within Latin by a text
+# language-detect pass after the first OCR.
+SCRIPT_TO_LANG = {
+    "Latin": "en", "Cyrillic": "ru", "Greek": "el", "Devanagari": "hi",
+    "Arabic": "ar", "Hebrew": "he", "Han": "ch", "HanS": "ch", "HanT": "chinese_cht",
+    "Japanese": "japan", "Hangul": "korean", "Korean": "korean", "Thai": "th",
+    "Bengali": "bn", "Tamil": "ta", "Telugu": "te",
+}
+
+
+# OSD script confidence below this is noise — a clean script reads high (e.g. Devanagari
+# ~45), false positives read ~0.1. Below the gate we return None and fall back to English
+# (which is the right model for Latin scripts anyway, so only false non-Latin hits are risky).
+_OSD_MIN_CONF = 1.5
+
+
+def detect_script_lang(img: bytes) -> str | None:
+    """Read the dominant script off the image with Tesseract OSD and map it to a PaddleOCR
+    language. Returns None if OSD is unavailable or its confidence is too low."""
+    try:
+        import io
+
+        import pytesseract
+        from PIL import Image
+
+        osd = pytesseract.image_to_osd(
+            Image.open(io.BytesIO(img)), output_type=pytesseract.Output.DICT)
+        if float(osd.get("script_conf", 0)) < _OSD_MIN_CONF:
+            return None
+        return SCRIPT_TO_LANG.get(osd.get("script"))
+    except Exception:
+        return None
+
 
 class PaddleOCREngine:
     name = "paddle"
@@ -30,10 +65,11 @@ class PaddleOCREngine:
     def __init__(self):
         self._cache: dict[str, object] = {}   # lang -> PaddleOCR (heavy init, reuse per lang)
 
-    def _lang(self, cfg: Config) -> str:
-        src = (cfg.source_lang or "en").lower()
+    def _lang(self, cfg: Config, img: bytes | None = None) -> str:
+        src = (cfg.source_lang or "auto").lower()
         if src == "auto":
-            src = "en"
+            # no source given -> read the script off the image, fall back to English
+            return (detect_script_lang(img) if img else None) or "en"
         return PADDLE_LANG.get(src, src)
 
     def _engine(self, lang: str):
@@ -55,7 +91,7 @@ class PaddleOCREngine:
         from PIL import Image
 
         arr = np.array(Image.open(io.BytesIO(img)).convert("RGB"))
-        result = self._engine(self._lang(cfg)).predict(arr)
+        result = self._engine(self._lang(cfg, img)).predict(arr)
 
         blocks: list[Block] = []
         idx = 0

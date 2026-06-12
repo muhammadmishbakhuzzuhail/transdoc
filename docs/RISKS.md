@@ -87,10 +87,13 @@ Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/imag
   the low-confidence pages (<0.60 avg) with PaddleOCR when installed, keeping the better
   result. Fast on clean pages, strong on degraded/non-Latin scans.
 
+- **PaddleOCR scan-language auto-detect** — when `--source` is "auto", the script is read off
+  the image via Tesseract OSD (confidence-gated) and mapped to a PaddleOCR model (Devanagari→hi,
+  Arabic→ar, Han→ch, …). Verified: Hindi→hi, Arabic→ar; low-confidence/Latin fall back to the
+  English Latin model. Within Latin, per-language refinement (fr/german) is still a TODO.
+
 **Open:**
-1. **PaddleOCR still needs `--source <iso>`** for the right language model on escalated pages
-   (auto language detection of the scan script is not yet wired).
-2. **Vertical sidebar text reading order** — now demoted (not a heading) but still placed late
+1. **Vertical sidebar text reading order** — now demoted (not a heading) but still placed late
    in FLOW reading order.
 3. **TM cache key isn't versioned by extractor behaviour** — low impact (changed text just
    misses the cache, never serves stale).
