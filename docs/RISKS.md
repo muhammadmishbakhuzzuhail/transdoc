@@ -76,7 +76,8 @@ Sweep of `documents/` (70 runs: 19 digital/office × 3 targets + 13 scanned/imag
 - **Heading detection** — numbered sections ("3.2 Attention") and short bold lines
   ("Abstract") are now headings; author bylines stay paragraphs (~30 clean headings recovered
   on arxiv_attention).
-- **Vertical sidebar text** (arXiv ID) demoted to CAPTION so it can't become a "# heading".
+- **Vertical sidebar text** (arXiv ID) demoted to CAPTION so it can't become a "# heading",
+  and (FLOW) moved to the end of its page in reading order so it no longer interrupts reflow.
 - **OCR quality on degraded / non-Latin scans** — added the PaddleOCR (PP-OCRv5/v6) engine
   (`--ocr paddle`, `[paddleocr]` extra). Benchmarked far above Tesseract (Devanagari 0.95 vs
   0.29, Fraktur 0.98 vs 0.67, Cyrillic 0.76 vs 0.31), CPU-capable, Apache-2.0. Verified

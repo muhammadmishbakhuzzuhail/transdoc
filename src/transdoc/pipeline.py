@@ -75,8 +75,10 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     from .config import Fidelity
     source_is_pdf = (doc.mime == "application/pdf")
     if cfg.resolve_fidelity(source_is_pdf) == Fidelity.FLOW:
+        from .extract.base import reorder_vertical_last
         from .headers import strip_running_headers
         strip_running_headers(doc)
+        reorder_vertical_last(doc)        # push margin/rotated text to end of its page
 
     from .translate import get_translator, translate_document
 
