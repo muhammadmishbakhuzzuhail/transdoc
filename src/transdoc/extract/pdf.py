@@ -259,29 +259,36 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 continue
             text_parts: list[str] = []
             max_size = 0.0
-            bold = italic = False
-            # Carry the font + colour of the dominant (largest) span so the overlay can
-            # reproduce them — keeping the page's look (bold/italic/colour), not just size.
+            # The overlay applies one style to the whole (reflowed) block, so derive bold/
+            # italic from the CHARACTER MAJORITY — a heading (all bold) stays bold, but a
+            # paragraph with one bold word does not turn the whole block bold. Font + colour
+            # come from the dominant (largest) span.
+            bold_chars = ital_chars = total_chars = 0
             dom_size = -1.0
             font: str | None = None
             color: str | None = None
             for line in lines:
                 for span in line.get("spans", []):
-                    text_parts.append(span.get("text", ""))
+                    txt = span.get("text", "")
+                    text_parts.append(txt)
                     sz = span.get("size", 0)
                     max_size = max(max_size, sz)
                     flags = span.get("flags", 0)
+                    nchar = len(txt.strip())
+                    total_chars += nchar
                     if flags & 2 ** 4:   # bold
-                        bold = True
+                        bold_chars += nchar
                     if flags & 2 ** 1:   # italic
-                        italic = True
-                    if sz > dom_size and span.get("text", "").strip():
+                        ital_chars += nchar
+                    if sz > dom_size and txt.strip():
                         dom_size = sz
                         font = span.get("font") or font
                         c = span.get("color")
                         if isinstance(c, int):
                             color = f"#{c & 0xFFFFFF:06x}"
                 text_parts.append(" ")
+            bold = total_chars > 0 and bold_chars > total_chars * 0.5
+            italic = total_chars > 0 and ital_chars > total_chars * 0.5
             text = _dehyphenate("".join(text_parts).strip())
             if not text:
                 continue
