@@ -82,11 +82,17 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         if pno >= pdf.page_count:
             continue
         page = pdf[pno]
-        # 1) redact originals
+        # 1) redact ONLY the source text, leaving images + vector art in place. A logo or
+        #    coloured box sitting behind the text (page background) is preserved instead of
+        #    being punched out by an opaque white fill.
         for b in blocks:
             r = _block_rect(b)
-            page.add_redact_annot(r, fill=(1, 1, 1))
-        page.apply_redactions()
+            page.add_redact_annot(r)  # no fill -> keep whatever is behind the text
+        page.apply_redactions(
+            images=fitz.PDF_REDACT_IMAGE_NONE,        # don't touch background logos/images
+            graphics=fitz.PDF_REDACT_LINE_ART_NONE,   # keep rule lines / table borders
+            text=fitz.PDF_REDACT_TEXT_REMOVE,         # remove only the original glyphs
+        )
         # 2) overlay translations at original bbox, auto-fitting expanded text.
         #    Translation often expands (+20-30% EN->ID). insert_htmlbox(scale_low=0)
         #    shrinks the text to fit the original box and returns the scale factor;
@@ -107,7 +113,12 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
             else:
                 align = "right" if rtl else "left"
             dir_css = "direction:rtl;" if rtl else ""
-            htmlbox = (f'<div style="{dir_css}font-size:{size:.0f}px;text-align:{align};'
+            # Carry the source character styling so the translation looks like the original.
+            weight_css = "font-weight:bold;" if b.style.bold else ""
+            italic_css = "font-style:italic;" if b.style.italic else ""
+            color_css = f"color:{b.style.color};" if b.style.color else ""
+            htmlbox = (f'<div style="{dir_css}{weight_css}{italic_css}{color_css}'
+                       f'font-size:{size:.0f}px;text-align:{align};'
                        f'line-height:1.05">{_esc(b.output_text)}</div>')
             try:
                 # scale_low=0 lets PyMuPDF shrink text down to fit; returns (spare, scale)

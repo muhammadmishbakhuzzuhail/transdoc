@@ -178,13 +178,28 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 continue
             text_parts: list[str] = []
             max_size = 0.0
-            bold = False
+            bold = italic = False
+            # Carry the font + colour of the dominant (largest) span so the overlay can
+            # reproduce them — keeping the page's look (bold/italic/colour), not just size.
+            dom_size = -1.0
+            font: str | None = None
+            color: str | None = None
             for line in lines:
                 for span in line.get("spans", []):
                     text_parts.append(span.get("text", ""))
-                    max_size = max(max_size, span.get("size", 0))
-                    if span.get("flags", 0) & 2 ** 4:  # bold flag
+                    sz = span.get("size", 0)
+                    max_size = max(max_size, sz)
+                    flags = span.get("flags", 0)
+                    if flags & 2 ** 4:   # bold
                         bold = True
+                    if flags & 2 ** 1:   # italic
+                        italic = True
+                    if sz > dom_size and span.get("text", "").strip():
+                        dom_size = sz
+                        font = span.get("font") or font
+                        c = span.get("color")
+                        if isinstance(c, int):
+                            color = f"#{c & 0xFFFFFF:06x}"
                 text_parts.append(" ")
             text = "".join(text_parts).strip()
             if not text:
@@ -203,7 +218,8 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     page=pno,
                     text=text,
                     bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1),
-                    style=Style(size=max_size, bold=bold,
+                    style=Style(size=max_size, bold=bold, italic=italic, font=font,
+                                color=color,
                                 heading_level=1 if btype == BlockType.HEADING else 0),
                     confidence=Confidence(source="digital"),
                 )
