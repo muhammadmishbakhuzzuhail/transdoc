@@ -50,3 +50,20 @@ def test_list_items_grouped(tmp_path):
     out = tmp_path / "o.pdf"
     render_flow(doc, Config(target_lang="id"), str(out))      # must not crash; groups <ul>
     assert fitz.open(str(out)).page_count >= 1
+
+
+def test_flow_preserves_font_size_hierarchy():
+    from transdoc.ir import Block, BlockType, Confidence, Style
+    title = Block(id="t", type=BlockType.TITLE, page=0, text="T",
+                  style=Style(size=20.0), confidence=Confidence(source="digital"))
+    body = Block(id="b", type=BlockType.PARAGRAPH, page=0, text="b",
+                 style=Style(size=11.0), confidence=Confidence(source="digital"))
+    assert "font-size:20.0pt" in _flow_style(title)
+    assert "font-size:11.0pt" in _flow_style(body)
+
+
+def test_flow_no_size_omits_font_size():
+    from transdoc.ir import Block, BlockType, Confidence, Style
+    b = Block(id="x", type=BlockType.PARAGRAPH, page=0, text="x",
+              style=Style(), confidence=Confidence(source="digital"))
+    assert "font-size" not in _flow_style(b)
