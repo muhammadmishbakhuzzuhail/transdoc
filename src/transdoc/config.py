@@ -49,6 +49,8 @@ class Fidelity(str, Enum):
     AUTO = "auto"
     FLOW = "flow"
     LAYOUT = "layout"
+    RECONSTRUCT = "reconstruct"   # positioned per-page rebuild: source page size/count +
+                                  # original block positions, text reflowed in place (DeepL-like)
 
 
 class Engine(str, Enum):
@@ -106,10 +108,12 @@ class Config(BaseModel):
         return self.target_lang
 
     def resolve_fidelity(self, source_is_pdf: bool) -> Fidelity:
-        """AUTO -> FLOW (clean, readable reflow). The LAYOUT visual overlay is opt-in via
-        ``-f layout``: it preserves page geometry but, because translation expands text and
-        breaks word alignment, it shrinks dense pages to illegibility and loses word-level
-        emphasis (see docs/RISKS.md). Reflow is the readable default."""
+        """AUTO: a PDF kept as PDF -> RECONSTRUCT (positioned per-page rebuild that preserves
+        the source page size, page count, block positions and images — the DeepL approach);
+        anything flowing (-> DOCX/MD/TXT) -> FLOW (clean single-column reflow). LAYOUT overlay
+        and FLOW are still selectable with ``-f layout`` / ``-f flow``."""
         if self.fidelity != Fidelity.AUTO:
             return self.fidelity
+        if source_is_pdf and self.output_format in (OutputFormat.PDF, OutputFormat.SAME):
+            return Fidelity.RECONSTRUCT
         return Fidelity.FLOW

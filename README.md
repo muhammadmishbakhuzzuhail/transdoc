@@ -9,12 +9,12 @@ tooling + OCR-to-editable-document**, built on a format-agnostic Intermediate
 Representation (IR) so any input maps to any output.
 
 ## Why it's different
-- **Clean readable reflow by default.** The default fidelity is `flow`: a clean, editable
-  reconstruction (headings/paragraphs/tables) — readable even when the translation is much
-  longer than the source. A `layout` mode (visual overlay that keeps the original page
-  geometry) is available via `-f layout`, but because translation expands text and breaks
-  word alignment it shrinks dense pages to illegibility and loses word-level emphasis, so it
-  is opt-in, not the default (see `docs/RISKS.md`).
+- **Layout-preserving PDF reconstruction by default** (the DeepL approach). PDF→PDF rebuilds a
+  fresh page at the **source page size** for every source page and places each block's
+  translation at its **original position**, reflowed in place — so page count, page size,
+  multi-column layout and images are preserved, only the text is translated. `-f flow` gives a
+  clean single-column reflow (best for →DOCX/MD); `-f layout` is the pixel overlay (niche; see
+  `docs/RISKS.md`).
 - **Any input.** Digital PDF, scanned PDF, photos, DOCX, ODT, legacy DOC, images.
 - **Any script.** Latin, Arabic (RTL), CJK, Cyrillic, Devanagari, Thai — full Noto coverage.
 - **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.
