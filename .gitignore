@@ -1,38 +1,36 @@
-# venv / build
+# venv / build (match anywhere — backend/.venv, backend/layout_venv, etc.)
 .venv/
+layout_venv/
 __pycache__/
 *.egg-info/
 *.pyc
 build/
 dist/
 
-# pipeline outputs
+# pipeline outputs + caches
 out/
+.cache/
+.pytest_cache/
+.ruff_cache/
 
-# test corpus binaries — reproducible via scripts/fetch_corpus.sh + scripts/make_samples.py
-corpus/**/*.pdf
-corpus/**/*.jpg
-corpus/**/*.jpeg
-corpus/**/*.png
-corpus/**/*.tif
-corpus/**/*.tiff
-corpus/**/*.docx
-corpus/**/*.odt
-corpus/**/*.pptx
-corpus/**/*.ppt
-corpus/**/*.xlsx
-corpus/**/*.doc
-corpus/**/*.rtf
-
-# keep the manifest (negated)
-!corpus/README.md
-
-# models / caches
+# models
 *.pt
 *.bin
-.cache/
-salvage/
-/out/
 
-# isolated paddle venv for --layout (multi-GB, see paddle-torch-venv-conflict memory)
-layout_venv/
+# test corpus binaries — reproducible via backend/scripts/fetch_corpus.sh + make_samples.py
+**/corpus/**/*.pdf
+**/corpus/**/*.jpg
+**/corpus/**/*.jpeg
+**/corpus/**/*.png
+**/corpus/**/*.tif
+**/corpus/**/*.tiff
+**/corpus/**/*.docx
+**/corpus/**/*.odt
+**/corpus/**/*.pptx
+**/corpus/**/*.ppt
+**/corpus/**/*.xlsx
+**/corpus/**/*.doc
+**/corpus/**/*.rtf
+
+# keep the manifest
+!**/corpus/README.md

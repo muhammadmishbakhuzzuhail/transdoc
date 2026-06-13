@@ -43,8 +43,10 @@ surya = ["surya-ocr>=0.6"]
 paddleocr = ["paddlepaddle>=3.0", "paddleocr>=3.0"]
 # PDF regeneration with full layout/RTL/CJK font support.
 pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
-# Async job API
-api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9", "celery>=5.4", "redis>=5.0"]
+# Web API the React frontend talks to (thread-backed job store — no broker needed).
+api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
+# Optional: move the job store onto a Celery/Redis broker to scale past one node.
+scale = ["celery>=5.4", "redis>=5.0"]
 # Reference-free translation quality estimation (COMET-Kiwi)
 qe = ["unbabel-comet>=2.2"]
 # Extra round-trip formats: subtitles, EPUB, PowerPoint, Excel
@@ -52,7 +54,7 @@ formats = ["python-pptx>=1.0", "openpyxl>=3.1", "ebooklib>=0.18", "srt>=3.5", "b
 # More accurate, deterministic language detection (lingua low-accuracy mode). Heavier RAM
 # (~1.2GB all-language models); without it the langdetect core path is used. pip install -e ".[detect]"
 detect = ["lingua-language-detector>=2.0"]
-dev = ["pytest>=8.0", "ruff>=0.5"]
+dev = ["pytest>=8.0", "ruff>=0.5", "httpx>=0.25"]   # httpx: FastAPI TestClient
 
 [project.scripts]
 transdoc = "transdoc.cli:app"
