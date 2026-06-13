@@ -99,10 +99,20 @@ def extract_structured(path: str, cfg: Config) -> Document:
                     confidence=Confidence(source="digital")))
                 continue
             if r.label == "formula":
+                # Keep the LaTeX (Markdown renders it as $$…$$) AND a verbatim crop so
+                # image-based outputs (DOCX/PDF) get pixel-perfect math.
+                rect = fitz.Rect(r.x0, r.y0, r.x1, r.y1)
+                fn = img_dir / f"p{pno}-formula{cidx}.png"
+                try:
+                    page.get_pixmap(clip=rect, dpi=200).save(str(fn))
+                    fpath = str(fn)
+                    cidx += 1
+                except Exception:
+                    fpath = None
                 out.blocks.append(Block(
                     id=f"p{pno}-r{r.order}", type=BlockType.FORMULA, page=pno,
                     reading_order=r.order, bbox=bbox, text=r.content.strip(),
-                    confidence=Confidence(source="digital")))  # LaTeX, never translated
+                    image_path=fpath, confidence=Confidence(source="digital")))  # never translated
                 continue
             # text-like: prefer the digital text layer (perfect); fall back to OCR content
             digital = page.get_textbox(fitz.Rect(r.x0, r.y0, r.x1, r.y1)).strip()
