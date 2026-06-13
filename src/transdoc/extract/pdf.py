@@ -395,26 +395,57 @@ def _apply_layout(fdoc, out: Document, cfg: Config) -> None:
             kept.extend(page_blocks)
             continue
         nontext = [r for r in det.detect(fdoc[pno]) if r.label in NON_TEXT_LABELS]
-        if not nontext:
+        # Only DISPLAY (block-level) formulas are cropped. Inline math ($d_k$, $\sqrt{d_k}$
+        # inside a prose line) is left as flowing text: its crop is tiny and would be painted
+        # ON TOP of the reflowed translation, covering the surrounding words. Subscripts are
+        # lost (flattened text), but the prose stays clean and nothing is overwritten.
+        crop = [r for r in nontext if _crop_worthy(r)]
+        if not crop:
             kept.extend(page_blocks)
             continue
-
-        def _inside(b, regions=nontext):
-            if not b.bbox:
-                return False
-            cx, cy = (b.bbox.x0 + b.bbox.x1) / 2, (b.bbox.y0 + b.bbox.y1) / 2
-            return any(r.x0 <= cx <= r.x1 and r.y0 <= cy <= r.y1 for r in regions)
 
         for b in page_blocks:
             if b.type == BlockType.FIGURE:
                 continue                       # heuristic figures replaced by region crops
-            if _inside(b):
-                continue                       # part of a figure/formula/table -> cropped
+            if b.bbox and any(_covers(b.bbox, r, b.text) for r in crop):
+                continue                       # block sits in / under a cropped region -> drop
             kept.append(b)
-        for r in nontext:
+        for r in crop:
             kept.append(Block(
                 id=f"p{pno}-crop{ridx}", type=BlockType.FIGURE, page=pno, crop_region=True,
                 bbox=BBox(x0=r.x0, y0=r.y0, x1=r.x1, y1=r.y1),
                 confidence=Confidence(source="digital")))
             ridx += 1
     out.blocks = kept
+
+
+# Inline formulas are small; anything below this (in points) is treated as inline text, not
+# cropped. Display equations and figures/tables/charts are well above it.
+_INLINE_MAX_W = 50.0
+_INLINE_MAX_H = 20.0
+
+
+def _crop_worthy(r) -> bool:
+    """A detected non-text region big enough to crop verbatim. Tiny formula regions are
+    inline math and must stay as text (see _apply_layout)."""
+    if r.label in ("formula", "formula_number"):
+        return (r.x1 - r.x0) >= _INLINE_MAX_W or (r.y1 - r.y0) >= _INLINE_MAX_H
+    return True
+
+
+def _covers(bbox, r, text: str = "", frac: float = 0.5) -> bool:
+    """True if the block bbox belongs to cropped region r and should be dropped:
+      - its center is inside r, or
+      - r covers >= ``frac`` (0.5) of the block's area, or
+      - the block is a SHORT fragment (< 40 chars) overlapping r by > 0.1.
+    The last case catches an equation's ragged tail (e.g. ``√dk )V (1)``) that the detector's
+    formula box under-covers — these get painted over the crop. A long prose paragraph that
+    merely grazes a region edge needs the full 0.5 and is protected."""
+    cx, cy = (bbox.x0 + bbox.x1) / 2, (bbox.y0 + bbox.y1) / 2
+    if r.x0 <= cx <= r.x1 and r.y0 <= cy <= r.y1:
+        return True
+    ix = max(0.0, min(bbox.x1, r.x1) - max(bbox.x0, r.x0))
+    iy = max(0.0, min(bbox.y1, r.y1) - max(bbox.y0, r.y0))
+    area = max((bbox.x1 - bbox.x0) * (bbox.y1 - bbox.y0), 1e-6)
+    ov = (ix * iy) / area
+    return ov >= frac or (ov > 0.1 and len(text.strip()) < 40)
