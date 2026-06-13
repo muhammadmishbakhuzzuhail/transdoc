@@ -17,15 +17,15 @@ def test_require_target_raises_when_unset():
     assert Config(target_lang="id").require_target() == "id"
 
 
-def test_auto_fidelity_is_flow_even_for_pdf_to_pdf():
-    # reflow is the readable default; the visual overlay is opt-in via -f layout
+def test_auto_fidelity_pdf_to_pdf_is_reconstruct():
+    # PDF->PDF default = positioned reconstruction (keeps page size/count/positions)
     cfg = Config(target_lang="id", output_format=OutputFormat.PDF, fidelity=Fidelity.AUTO)
-    assert cfg.resolve_fidelity(source_is_pdf=True) == Fidelity.FLOW
+    assert cfg.resolve_fidelity(source_is_pdf=True) == Fidelity.RECONSTRUCT
 
 
-def test_auto_fidelity_same_as_source_pdf_is_flow():
+def test_auto_fidelity_same_as_source_pdf_is_reconstruct():
     cfg = Config(target_lang="id", output_format=OutputFormat.SAME, fidelity=Fidelity.AUTO)
-    assert cfg.resolve_fidelity(source_is_pdf=True) == Fidelity.FLOW
+    assert cfg.resolve_fidelity(source_is_pdf=True) == Fidelity.RECONSTRUCT
 
 
 def test_auto_fidelity_pdf_to_docx_is_flow():

@@ -405,3 +405,112 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
     finally:
         writer.close()      # always close so the output isn't left truncated on error
     return out_path
+
+
+def _norm_rect(b):
+    """Block bbox -> PDF points. OCR blocks carry 300-dpi pixels (page was rasterised); digital
+    blocks are already in points."""
+    import fitz
+    s = 72.0 / 300.0 if b.confidence.source == "ocr" else 1.0
+    bb = b.bbox
+    return fitz.Rect(bb.x0 * s, bb.y0 * s, bb.x1 * s, bb.y1 * s)
+
+
+def _grow_rect(r, obstacles, page_height):
+    """Grow a box down into the empty space before the next block (or page edge)."""
+    import fitz
+    limit = page_height
+    for o in obstacles:
+        if o.y0 >= r.y1 - 1 and min(r.x1, o.x1) - max(r.x0, o.x0) > 2:
+            limit = min(limit, o.y0)
+    new_y1 = limit - 2.0
+    return fitz.Rect(r.x0, r.y0, r.x1, new_y1) if new_y1 > r.y1 + 1 else r
+
+
+def _block_html(b):
+    """Styled HTML for a block (size/bold/italic/colour/align/rtl) -> (html, size_pt)."""
+    size = b.style.size or 11
+    rtl = b.style.rtl
+    is_heading = b.type in (BlockType.TITLE, BlockType.HEADING)
+    if b.style.align in ("center", "right", "justify"):
+        align = b.style.align
+    elif not is_heading and len(b.output_text) > 40:
+        align = "right" if rtl else "justify"
+    else:
+        align = "right" if rtl else "left"
+    css = [f"font-size:{size:.1f}pt", f"text-align:{align}", "line-height:1.05"]
+    if rtl:
+        css.append("direction:rtl")
+    if b.style.bold:
+        css.append("font-weight:bold")
+    if b.style.italic:
+        css.append("font-style:italic")
+    if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
+        css.append(f"color:{b.style.color}")
+    return f'<div style="{";".join(css)}">{_esc(b.output_text)}</div>', size
+
+
+def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
+    """Positioned per-page reconstruction — the DeepL approach. A fresh page at the SOURCE page
+    size for every source page, with each block's translation placed at its ORIGINAL bbox and
+    reflowed within it; figures go back at their original position. Preserves page count, page
+    size, block positions and images — only the text changes. Dense boxes grow into adjacent
+    whitespace, then shrink to fit (flagged 'illegible' below the readable floor)."""
+    import fitz
+
+    by_page: dict[int, list] = {}
+    for b in doc.ordered_blocks():
+        by_page.setdefault(b.page, []).append(b)
+    npages = doc.page_count or ((max(by_page) + 1) if by_page else 1)
+
+    out = fitz.open()
+    try:
+        for pno in range(npages):
+            w, h = doc.page_sizes.get(pno, (595.0, 842.0))
+            page = out.new_page(width=w, height=h)
+            blocks = by_page.get(pno, [])
+            obstacles = [_norm_rect(b) for b in blocks if b.bbox]
+            for b in blocks:
+                if not b.bbox:
+                    continue
+                r = _norm_rect(b)
+                if b.type == BlockType.FIGURE:
+                    if b.image_path:
+                        try:
+                            page.insert_image(r, filename=b.image_path)
+                        except Exception:
+                            pass
+                    continue
+                if b.type == BlockType.TABLE and b.table:
+                    cell = "border:1px solid #000;padding:2px;font-size:8pt"
+                    rows = "".join(
+                        "<tr>" + "".join(f'<td style="{cell}">{_esc(c.output_text)}</td>'
+                                         for c in row) + "</tr>" for row in b.table.rows)
+                    try:
+                        page.insert_htmlbox(
+                            r, f'<table style="border-collapse:collapse">{rows}</table>',
+                            scale_low=0)
+                    except Exception:
+                        pass
+                    continue
+                if not b.output_text.strip():
+                    continue
+                if _is_mixed_bidi(b.output_text):
+                    b.flags["bidi_mixed"] = (
+                        "mixed RTL+LTR on one line — verify word order")
+                htmlbox, size = _block_html(b)
+                grown = _grow_rect(r, obstacles, h)
+                try:
+                    ret = page.insert_htmlbox(grown, htmlbox, scale_low=0)
+                    scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
+                    eff = (size or 11) * (scale or 1.0)
+                    if eff < LEGIBLE_MIN_PT:
+                        b.flags["illegible"] = (
+                            f"rendered at {eff:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — box too tight")
+                except Exception:
+                    page.insert_textbox(r, b.output_text, fontsize=size, align=0)
+        _subset_pages(out, cfg)
+        out.save(out_path, garbage=4, deflate=True)
+    finally:
+        out.close()
+    return out_path

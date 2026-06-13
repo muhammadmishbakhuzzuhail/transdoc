@@ -96,14 +96,16 @@ does — chosen by what the format can do, not a global toggle:
 | Format class | Strategy | How | Fidelity |
 |---|---|---|---|
 | Office with a layout engine — **docx · odt · pptx · xlsx · epub · srt · vtt** | **in-place** | re-open the source file, swap only the run/cell text, leave structure untouched; the app's own engine reflows the longer text | **perfect** — every style/image/table/section preserved |
-| **PDF · image · text/html** (no layout engine) | **reconstruct (FLOW)** | detect structure (title/heading/paragraph/list/table/figure + bold/italic/colour/alignment), rebuild a clean flowing document | readable; structure preserved, exact pixel position **not** (inherent — text reflows) |
-| opt-in **`-f layout`** | **overlay** | redact the source text bbox, place the translation at the same bbox (`insert_htmlbox`), keep background/images/lines | pixel-faithful **but** shrinks dense pages to illegibility and loses word-level emphasis — niche |
+| **PDF → PDF (AUTO default)** | **reconstruct** (`render_reconstruct`) | a fresh page at the **source page size** for every source page; each block's translation placed at its **original bbox** and reflowed within it, images re-placed at their position | **keeps page count, page size, multi-column positions and images** — the DeepL approach; dense boxes grow into whitespace then shrink (flagged) |
+| PDF/image → DOCX/MD/TXT, or `-f flow` | **flow** | rebuild a clean single-column flowing document | readable; geometry not preserved (repaginates to A4) — for editable targets |
+| opt-in **`-f layout`** | **overlay** | redact the source text bbox, place the translation at the same bbox on the original page | pixel-faithful background **but** shrinks dense pages to illegibility — niche |
 
-`config.py:resolve_fidelity` returns **FLOW for AUTO** (the readable default). The LAYOUT
-overlay is opt-in (`-f layout`) — it was the wrong default: translation expansion in fixed
-boxes mangles forms and tables (see `docs/RISKS.md`). The fundamental trade-off: **exact
-position (overlay, breaks) vs readability (reflow, repositions) — you cannot have both when
-the text length changes.** DeepL makes the same call (reconstruct PDF, in-place Office).
+`config.py:resolve_fidelity`: AUTO → **RECONSTRUCT** for PDF→PDF (positioned, source geometry
+preserved), **FLOW** for flowing targets. Earlier a naive single-column A4 flow was the PDF
+default — it changed page count and forced US-Letter docs to A4; RECONSTRUCT fixes that. The
+fundamental trade-off still holds — exact position vs readability when text length changes —
+but reconstruct keeps the page *geometry* and reflows only *within* each region, which is what
+DeepL does for PDF.
 
 ## 5.1 Text fit & cross-script rendering — the expansion problem
 

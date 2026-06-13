@@ -90,6 +90,10 @@ def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
         # image + LAYOUT + PDF is handled by the early return above; here LAYOUT means PDF src
         if fidelity == Fidelity.LAYOUT and src_is_pdf:
             return pdf_out.render_overlay(doc, cfg, out_path)
+        # RECONSTRUCT (the PDF AUTO default): positioned per-page rebuild keeping source page
+        # size/count/positions. Needs source page geometry, so only for a PDF source.
+        if fidelity == Fidelity.RECONSTRUCT and src_is_pdf and doc.page_sizes:
+            return pdf_out.render_reconstruct(doc, cfg, out_path)
         return pdf_out.render_flow(doc, cfg, out_path)
 
     raise ValueError(f"unsupported output format: {fmt}")
