@@ -25,6 +25,41 @@ class StructRegion:
     order: int
 
 
+_FIG = {"image", "figure", "chart", "seal", "stamp"}
+
+
+def _iou(a, b) -> float:
+    ix = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+    iy = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+    inter = ix * iy
+    if inter <= 0:
+        return 0.0
+    area_a = max((a[2] - a[0]) * (a[3] - a[1]), 1e-6)
+    area_b = max((b[2] - b[0]) * (b[3] - b[1]), 1e-6)
+    return inter / (area_a + area_b - inter)
+
+
+def parse_regions(root: dict) -> list[dict]:
+    """Normalize a PP-StructureV3 result dict into region dicts (bbox in points). Merges in
+    figure/image boxes from layout_det_res, which parsing_res_list omits (they carry no text)."""
+    root = root.get("res", root)
+    out = []
+    for b in root.get("parsing_res_list", []):
+        bb = b.get("block_bbox") or [0, 0, 0, 0]
+        out.append({"label": b.get("block_label"), "bbox": [c * _SCALE for c in bb],
+                    "content": b.get("block_content", ""), "order": b.get("block_order") or 0})
+    for box in root.get("layout_det_res", {}).get("boxes", []):
+        if box.get("label") not in _FIG:
+            continue
+        bb = [c * _SCALE for c in (box.get("coordinate") or [0, 0, 0, 0])]
+        if any(_iou(bb, o["bbox"]) > 0.5 for o in out):
+            continue
+        above = [o["order"] for o in out if o["bbox"][1] < bb[1]]
+        out.append({"label": box["label"], "bbox": bb, "content": "",
+                    "order": (max(above) + 0.5) if above else -0.5})
+    return out
+
+
 class _InProcess:
     def __init__(self):
         self._pipe = None
@@ -49,13 +84,8 @@ class _InProcess:
             res = list(pipe.predict(arr))
             regs: list[StructRegion] = []
             if res:
-                root = res[0].json
-                root = root.get("res", root)
-                for b in root.get("parsing_res_list", []):
-                    bb = b.get("block_bbox") or [0, 0, 0, 0]
-                    regs.append(StructRegion(
-                        b.get("block_label"), *[c * _SCALE for c in bb],
-                        b.get("block_content", ""), b.get("block_order") or 0))
+                for d in parse_regions(res[0].json):
+                    regs.append(StructRegion(d["label"], *d["bbox"], d["content"], d["order"]))
             out[pno] = regs
         return out
 

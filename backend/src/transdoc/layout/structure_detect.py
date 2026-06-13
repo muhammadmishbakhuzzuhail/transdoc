@@ -24,23 +24,12 @@ def _regions_for_page(pipe, page) -> list[dict]:
     import numpy as np
     from PIL import Image
 
+    from .structure import parse_regions
+
     pix = page.get_pixmap(dpi=_DPI)
     arr = np.array(Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB"))
     res = list(pipe.predict(arr))
-    if not res:
-        return []
-    root = res[0].json
-    root = root.get("res", root)
-    out = []
-    for b in root.get("parsing_res_list", []):
-        bb = b.get("block_bbox") or [0, 0, 0, 0]
-        out.append({
-            "label": b.get("block_label"),
-            "bbox": [c * _SCALE for c in bb],
-            "content": b.get("block_content", ""),
-            "order": b.get("block_order") or 0,
-        })
-    return out
+    return parse_regions(res[0].json) if res else []
 
 
 def main(argv: list[str]) -> int:

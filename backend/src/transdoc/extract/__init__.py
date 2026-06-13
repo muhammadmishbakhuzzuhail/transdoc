@@ -19,7 +19,7 @@ def extract(det: Detection, cfg: Config) -> Document:
         # when layout is requested. Falls back to the standard extractor if paddle is absent.
         from ..config import OutputFormat
         if (getattr(cfg, "layout", "off") in ("paddle", "auto")
-                and cfg.output_format == OutputFormat.MARKDOWN):
+                and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX)):
             try:
                 from .structured import extract_structured
                 return extract_structured(p, cfg)

@@ -24,6 +24,15 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
                 pass
             continue
 
+        # Formula: a verbatim crop (pixel-perfect math) when available, else the LaTeX text.
+        if b.type == BlockType.FORMULA and b.image_path:
+            try:
+                w = (b.bbox.x1 - b.bbox.x0) / 72.0 if b.bbox else 3.0
+                d.add_picture(b.image_path, width=Inches(max(0.5, min(5.5, w))))
+            except Exception:
+                d.add_paragraph(b.output_text.strip())
+            continue
+
         if b.type == BlockType.TABLE and b.table and b.table.rows:
             rows = b.table.rows
             ncols = max(len(r) for r in rows)
