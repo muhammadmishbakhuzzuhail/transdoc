@@ -2,16 +2,31 @@
 keeping **formulas as LaTeX** and figures/tables/seals as verbatim crops. Text regions use the
 digital text layer when present (perfect), falling back to the region's OCR content (scans).
 
-Phase 1 target: PDF -> Markdown. Tables and images are emitted as cropped pictures for now;
-table-HTML -> cells is a later phase. See ppstructurev3-region-router."""
+Targets PDF -> Markdown/DOCX. Formulas keep LaTeX (display + inline), tables become cells,
+figures/seals are verbatim crops. See ppstructurev3-region-router."""
 
 from __future__ import annotations
 
+import re
 import tempfile
 from pathlib import Path
 
 from ..config import Config
 from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Style, Table
+
+# PP-FormulaNet spaces every character inside \operatorname{}/\text{} ("A t t e n t i o n",
+# "s o f t m a x"). In math mode spaces are ignored, but inside those upright groups they
+# render literally — collapse single-letter spacing so it reads "Attention", "softmax".
+_LETTER_SP = re.compile(r"(?<=[A-Za-z]) (?=[A-Za-z])")
+_INLINE_MATH = re.compile(r"\$[^$\n]{1,200}\$")
+
+
+def _clean_latex(s: str) -> str:
+    prev = None
+    while prev != s:           # repeat so "A t t" fully collapses
+        prev = s
+        s = _LETTER_SP.sub("", s)
+    return s
 
 # PP-StructureV3 block_label -> our BlockType.
 _LABEL = {
@@ -84,7 +99,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 if tbl:
                     out.blocks.append(Block(
                         id=f"p{pno}-r{r.order}", type=BlockType.TABLE, page=pno,
-                        reading_order=r.order, bbox=bbox, table=tbl,
+                        reading_order=len(out.blocks), bbox=bbox, table=tbl,
                         confidence=Confidence(source="digital")))
                     continue
                 # parse failed -> fall through to a verbatim crop
@@ -95,7 +110,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 cidx += 1
                 out.blocks.append(Block(
                     id=f"p{pno}-r{r.order}", type=BlockType.FIGURE, page=pno,
-                    reading_order=r.order, bbox=bbox, crop_region=True, image_path=str(fn),
+                    reading_order=len(out.blocks), bbox=bbox, crop_region=True, image_path=str(fn),
                     confidence=Confidence(source="digital")))
                 continue
             if r.label == "formula":
@@ -111,7 +126,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                     fpath = None
                 out.blocks.append(Block(
                     id=f"p{pno}-r{r.order}", type=BlockType.FORMULA, page=pno,
-                    reading_order=r.order, bbox=bbox, text=r.content.strip(),
+                    reading_order=len(out.blocks), bbox=bbox, text=_clean_latex(r.content.strip()),
                     image_path=fpath, confidence=Confidence(source="digital")))  # never translated
                 continue
             # text-like: prefer the digital text layer (perfect); fall back to OCR content
@@ -120,12 +135,16 @@ def extract_structured(path: str, cfg: Config) -> Document:
             # Prefer the OCR content when it carries inline math LaTeX ($d_k$ etc.) — the
             # digital text layer flattens it ("dk"). protect.py masks $...$ during translation
             # so the MT engine leaves it intact. Plain prose uses the clean digital layer.
-            text = content if "$" in content else (digital or content)
+            if "$" in content:
+                # clean letter-spacing only inside the inline-math spans; leave prose untouched
+                text = _INLINE_MATH.sub(lambda m: _clean_latex(m.group()), content)
+            else:
+                text = digital or content
             if not text:
                 continue
             out.blocks.append(Block(
                 id=f"p{pno}-r{r.order}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
-                page=pno, reading_order=r.order, bbox=bbox, text=text,
+                page=pno, reading_order=len(out.blocks), bbox=bbox, text=text,
                 style=Style(), confidence=Confidence(source="digital" if digital else "ocr")))
     doc.close()
     out.blocks = _dedup(out.blocks)

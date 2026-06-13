@@ -116,6 +116,30 @@ def test_dedup_keeps_longer_overlapping(monkeypatch, tmp_path):
     assert "full sentence about scaled dot product attention indeed" in paras[0].text
 
 
+def test_clean_latex_collapses_letter_spacing():
+    from transdoc.extract.structured import _clean_latex
+    assert _clean_latex(r"\operatorname{A t t e n t i o n}") == r"\operatorname{Attention}"
+    assert _clean_latex(r"\frac{Q K^{T}}{\sqrt{d_{k}}}") == r"\frac{QK^{T}}{\sqrt{d_{k}}}"
+
+
+class _SpacedFormulaExtractor:
+    def extract_pages(self, fdoc, pnos):
+        return {0: [
+            StructRegion("formula", 40, 140, 300, 170, r"\operatorname{s o f t m a x}(x)", 0),
+            StructRegion("text", 40, 400, 500, 440, r"with $d_{k}$ kept and prose left alone", 1),
+        ]}
+
+
+def test_formula_and_inline_latex_cleaned(monkeypatch, tmp_path):
+    monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
+                        lambda: _SpacedFormulaExtractor())
+    doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
+    f = next(b for b in doc.blocks if b.type == BlockType.FORMULA)
+    assert f.text == r"\operatorname{softmax}(x)"
+    p = next(b for b in doc.blocks if b.type == BlockType.PARAGRAPH)
+    assert "$d_{k}$" in p.text and "prose left alone" in p.text   # prose words untouched
+
+
 def test_markdown_renders_formula_as_display_math():
     from transdoc.ir import BBox, Block, Confidence, Document
     from transdoc.regenerate.markdown import render
