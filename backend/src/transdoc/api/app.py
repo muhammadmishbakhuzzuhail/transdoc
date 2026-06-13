@@ -47,7 +47,7 @@ def health() -> dict:
             "fidelity": [f.value for f in Fidelity],
             "ocr": [o.value for o in OCREngine],
             "register": [r.value for r in Register],
-            "layout": ["off", "paddle"]}
+            "layout": ["auto", "off", "paddle"]}
 
 
 @app.post("/api/translate")
@@ -60,7 +60,7 @@ async def translate(
     fidelity: str = Form("auto"),
     domain: str = Form("auto"),
     register: str = Form("auto"),
-    layout: str = Form("off"),
+    layout: str = Form("auto"),
     ocr_engine: str = Form("auto"),
     bilingual: bool = Form(False),
     quality: bool = Form(False),

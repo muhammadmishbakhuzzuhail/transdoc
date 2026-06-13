@@ -38,8 +38,11 @@ def _layout_python() -> str | None:
 def get_detector(name: str = "paddle"):
     """Return a layout detector. Prefers in-process paddle; if paddle is not installed here
     (the main env keeps torch, which collides with paddle's nccl), delegates to an isolated
-    paddle interpreter via subprocess. Raises a clear error if neither is available."""
-    if name != "paddle":
+    paddle interpreter via subprocess. Raises a clear error if neither is available.
+
+    ``"auto"`` behaves like ``"paddle"`` — the caller (extract) wraps this in try/except so
+    that when no paddle is reachable it silently degrades to the per-block heuristics."""
+    if name not in ("paddle", "auto"):
         raise ValueError(f"unknown layout detector: {name}")
     if importlib.util.find_spec("paddle") is not None:
         from .paddle_layout import PaddleLayoutDetector

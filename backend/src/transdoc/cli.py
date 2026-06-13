@@ -60,8 +60,9 @@ def translate(
     glossary: str = typer.Option(None, "--glossary", "-g",
                                  help='JSON file of {source term: target term} to enforce'),
     layout: str = typer.Option("off", "--layout",
-                               help="off|paddle — PP-DocLayout region detection: crop figures/"
-                                    "math/charts verbatim ([paddleocr] extra, GPU)"),
+                               help="auto|off|paddle — PP-DocLayout region detection: crop "
+                                    "figures/math/charts verbatim. auto = use it when paddle "
+                                    "is reachable, else fall back to heuristics ([paddleocr])"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""

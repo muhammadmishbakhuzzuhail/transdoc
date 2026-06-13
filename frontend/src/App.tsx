@@ -58,6 +58,19 @@ export default function App() {
         </div>
       </header>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          ["Free, no limits", "No page, size or watermark caps."],
+          ["Handles hard docs", "Scans (OCR), math, diagrams & tables kept verbatim."],
+          ["Transparent", "Flags uncertain parts; preview source vs result."],
+        ].map(([t, d]) => (
+          <div key={t} className="rounded-lg border bg-card p-3">
+            <div className="text-sm font-semibold">{t}</div>
+            <div className="text-xs text-muted-foreground">{d}</div>
+          </div>
+        ))}
+      </div>
+
       <TranslateForm health={health} busy={busy} onSubmit={submit} />
 
       {error && (
