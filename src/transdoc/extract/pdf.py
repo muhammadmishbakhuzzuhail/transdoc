@@ -294,7 +294,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             # come from the dominant (largest) span.
             bold_chars = ital_chars = total_chars = 0
             dom_size = -1.0
-            font: str | None = None
+            dom_flags = 0
             color: str | None = None
             for line in lines:
                 for span in line.get("spans", []):
@@ -311,13 +311,18 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                         ital_chars += nchar
                     if sz > dom_size and txt.strip():
                         dom_size = sz
-                        font = span.get("font") or font
+                        dom_flags = flags
                         c = span.get("color")
                         if isinstance(c, int):
                             color = f"#{c & 0xFFFFFF:06x}"
                 text_parts.append(" ")
             bold = total_chars > 0 and bold_chars > total_chars * 0.5
             italic = total_chars > 0 and ital_chars > total_chars * 0.5
+            # Map the source font to a CSS generic family so a thin serif (e.g. Computer
+            # Modern) renders serif, not a heavier sans default — the actual face isn't
+            # embeddable here. flags: bit2 = serif, bit3 = monospace.
+            font = ("monospace" if dom_flags & 2 ** 3 else
+                    "serif" if dom_flags & 2 ** 2 else "sans-serif")
             text = _dehyphenate("".join(text_parts).strip())
             if not text:
                 continue
