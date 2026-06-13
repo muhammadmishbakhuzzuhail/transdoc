@@ -26,3 +26,17 @@ def test_short_left_block_is_left():
 
 def test_zero_width_safe():
     assert _alignment(0, 100, 0) is None
+
+
+def test_long_body_paragraph_never_aligned():
+    # a long body paragraph in an indented column must stay left, not inherit center/right
+    from transdoc.ir import BlockType
+    long_text = "x" * 80
+    assert _alignment(220, 380, W, text=long_text, btype=BlockType.PARAGRAPH) is None
+    assert _alignment(450, 580, W, text=long_text, btype=BlockType.PARAGRAPH) is None
+
+
+def test_heading_aligned_even_if_longish():
+    from transdoc.ir import BlockType
+    # a heading still gets centered regardless of length
+    assert _alignment(220, 380, W, text="x" * 80, btype=BlockType.HEADING) == "center"

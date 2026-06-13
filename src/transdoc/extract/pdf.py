@@ -100,11 +100,20 @@ _NUMBERED_HEADING = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
 _LIST_MARKER = re.compile(r"^\s*(?:[•◦▪‣·*\-–—]|\d{1,2}[.)])\s+")
 
 
-def _alignment(x0: float, x1: float, page_width: float) -> str | None:
+def _alignment(x0: float, x1: float, page_width: float,
+               text: str = "", btype: "BlockType | None" = None) -> str | None:
     """Infer paragraph alignment from where the block sits across the page. Full-width body
     text -> None (left); a narrow block with big equal margins -> center; flush-right -> right.
-    Returned in Style.align and applied by the reflow renderer."""
+    Returned in Style.align and applied by the reflow renderer.
+
+    Only headings/titles/captions and short runs are eligible: a long body paragraph that
+    merely happens to sit in an indented column (e.g. a form field) must not be centred or
+    right-aligned just because of its position — that mangled reflowed forms."""
     if page_width <= 0:
+        return None
+    eligible = btype in (BlockType.TITLE, BlockType.HEADING, BlockType.CAPTION) \
+        or len(text) <= 60
+    if not eligible:
         return None
     left, right = x0, page_width - x1
     if (x1 - x0) > page_width * 0.8:          # spans most of the width -> ordinary left/justify
@@ -333,7 +342,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                 text = _LIST_MARKER.sub("", text, count=1)
             else:
                 btype = _guess_type(max_size, body, bold, text)
-            align = _alignment(x0, x1, page.rect.width)
+            align = _alignment(x0, x1, page.rect.width, text=text, btype=btype)
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
