@@ -467,6 +467,16 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
         by_page.setdefault(b.page, []).append(b)
     npages = doc.page_count or ((max(by_page) + 1) if by_page else 1)
 
+    # Keep the source open to crop formula regions as images (math notation — fractions,
+    # super/subscripts — is flattened by get_text, so it can't be re-typeset; crop it verbatim
+    # like BabelDOC/DeepL do).
+    src = None
+    if doc.source_path and doc.source_path.lower().endswith(".pdf"):
+        try:
+            src = fitz.open(doc.source_path)
+        except Exception:
+            src = None
+
     out = fitz.open()
     try:
         for pno in range(npages):
@@ -485,6 +495,15 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                         except Exception:
                             pass
                     continue
+                if b.type == BlockType.FORMULA and src is not None and b.page < src.page_count:
+                    # crop the equation region from the source (pixel-perfect math) instead of
+                    # placing flattened text that lost the fraction/super/subscript layout.
+                    try:
+                        pix = src[b.page].get_pixmap(clip=r, dpi=200)
+                        page.insert_image(r, pixmap=pix)
+                        continue
+                    except Exception:
+                        pass   # fall through to text placement if the crop fails
                 if b.type == BlockType.TABLE and b.table:
                     cell = "border:1px solid #000;padding:2px;font-size:8pt"
                     rows = "".join(
@@ -517,4 +536,6 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
         out.save(out_path, garbage=4, deflate=True)
     finally:
         out.close()
+        if src is not None:
+            src.close()
     return out_path
