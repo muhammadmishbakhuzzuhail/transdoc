@@ -163,3 +163,27 @@ Original gating plan (superseded by the measured result above):
 _Sources: PaddlePaddle/PaddleOCR (GitHub), HF PaddlePaddle/PaddleOCR-VL, ERNIE blog
 (ernie.baidu.com/blog/posts/paddleocr-vl), PaddleOCR-VL deployment FAQ (issue #16823),
 dev.to PaddleOCR-VL-0.9B guide._
+
+## Layout-detection model (2026-06) — DECISION: PP-DocLayout (Apache, GPU)
+
+To match BabelDOC/DeepL on PDF (crop figures/diagrams/charts/math verbatim, reflow only text),
+transdoc needs a layout-detection model, not per-block heuristics. Evaluated:
+
+| Model | License | CPU/GPU | Verdict |
+|---|---|---|---|
+| DocLayout-YOLO (BabelDOC uses it) | **AGPL-3.0** (model; HF copies disputed) | ONNX, light | Rejected — network-copyleft is a real risk for a hosted service |
+| **PP-DocLayout-L** (PaddleOCR) | **Apache-2.0** | GPU ~80 ms/page; **CPU broken** in paddle 3.3 (oneDNN PIR `ConvertPirAttribute` NotImplementedError) | **Chosen** — commercial-safe, accurate, fits a 6 GB GPU (tiny vs the 0.9B VL) |
+
+Benchmarked on this machine (RTX 3050): PP-DocLayout-L detects text/title/figure/table/formula/
+chart/footnote/header/footer regions at ~80 ms/page, no OOM. On the BERT input-representation
+diagram it returns one `image` region; on the Attention page it returns the figures + 9
+`formula` regions.
+
+Integration (opt-in, `--layout paddle`, needs `[paddleocr]` extra + a **GPU build** of
+paddlepaddle — the CPU backend is broken): `src/transdoc/layout/` detects regions; the extractor
+drops text blocks inside a non-text region and adds a `crop_region` block; `render_reconstruct`
+crops that region verbatim from the source. Verified: the BERT diagram and the Attention
+equations now render as pixel-perfect crops with the surrounding text reflowed — the
+BabelDOC/DeepL result. Default stays `off` (heuristics) so the no-paddle path is unchanged.
+
+_Sources: PP-DocLayout (arxiv 2503.17213, Apache), DocLayout-YOLO AGPL (GitHub issue #110 / HN)._

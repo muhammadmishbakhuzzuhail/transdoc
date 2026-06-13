@@ -489,7 +489,14 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                     continue
                 r = _norm_rect(b)
                 if b.type == BlockType.FIGURE:
-                    if b.image_path:
+                    if b.crop_region and src is not None and b.page < src.page_count:
+                        # layout-detected non-text region (figure/diagram/chart/math/table):
+                        # crop it verbatim from the source -> pixel-perfect, never re-typeset.
+                        try:
+                            page.insert_image(r, pixmap=src[b.page].get_pixmap(clip=r, dpi=200))
+                        except Exception:
+                            pass
+                    elif b.image_path:
                         try:
                             page.insert_image(r, filename=b.image_path)
                         except Exception:

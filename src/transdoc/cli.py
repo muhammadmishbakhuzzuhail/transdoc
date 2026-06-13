@@ -59,6 +59,9 @@ def translate(
                                      help="OCR text inside large embedded images (scan-in-page)"),
     glossary: str = typer.Option(None, "--glossary", "-g",
                                  help='JSON file of {source term: target term} to enforce'),
+    layout: str = typer.Option("off", "--layout",
+                               help="off|paddle — PP-DocLayout region detection: crop figures/"
+                                    "math/charts verbatim ([paddleocr] extra, GPU)"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
@@ -66,6 +69,7 @@ def translate(
     cfg.bilingual = bilingual
     cfg.quality_check = quality
     cfg.ocr_figures = ocr_figures
+    cfg.layout = layout
     if glossary:
         from .translate.protect import load_glossary
         cfg.glossary = load_glossary(glossary)
