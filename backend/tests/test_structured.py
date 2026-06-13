@@ -82,6 +82,40 @@ def test_table_html_parsed_to_cells(monkeypatch, tmp_path):
     assert [c.text for c in rows[1]] == ["a", "1", "2"]
 
 
+class _InlineMathExtractor:
+    def extract_pages(self, fdoc, pnos):
+        # bbox in an empty area (no digital text there) so we test content selection
+        return {0: [
+            StructRegion("text", 40, 400, 500, 440, r"for small values of $d_{k}$ it holds", 0),
+        ]}
+
+
+def test_inline_math_uses_latex_content(monkeypatch, tmp_path):
+    monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
+                        lambda: _InlineMathExtractor())
+    doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
+    paras = [b for b in doc.blocks if b.type == BlockType.PARAGRAPH]
+    assert any("$d_{k}$" in b.text for b in paras)   # inline LaTeX kept, not flattened
+
+
+class _DupExtractor:
+    def extract_pages(self, fdoc, pnos):
+        full = "This is the full sentence about scaled dot product attention indeed"
+        return {0: [
+            StructRegion("text", 40, 300, 500, 330, "the full sentence about scaled dot", 0),
+            StructRegion("text", 41, 301, 501, 331, full, 1),   # overlapping, longer
+        ]}
+
+
+def test_dedup_keeps_longer_overlapping(monkeypatch, tmp_path):
+    monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
+                        lambda: _DupExtractor())
+    doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
+    paras = [b for b in doc.blocks if b.type == BlockType.PARAGRAPH]
+    assert len(paras) == 1
+    assert "full sentence about scaled dot product attention indeed" in paras[0].text
+
+
 def test_markdown_renders_formula_as_display_math():
     from transdoc.ir import BBox, Block, Confidence, Document
     from transdoc.regenerate.markdown import render
