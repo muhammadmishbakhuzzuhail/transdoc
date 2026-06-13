@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 from ..config import Config
-from ..ir import BBox, Block, BlockType, Confidence, Document, Style
+from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Style, Table
 
 # PP-StructureV3 block_label -> our BlockType.
 _LABEL = {
@@ -27,8 +27,30 @@ _LABEL = {
     "table_title": BlockType.CAPTION,
     "formula": BlockType.FORMULA,
 }
-# Regions cropped verbatim from the source (no text reflow).
-_CROP = {"image", "figure", "chart", "table", "seal", "stamp"}
+# Regions cropped verbatim from the source (no text reflow). Tables are handled separately
+# (HTML -> cells); they fall back to a crop only if parsing fails.
+_CROP = {"image", "figure", "chart", "seal", "stamp"}
+
+
+def _parse_table_html(html: str) -> Table | None:
+    """PP-StructureV3 emits each table as HTML; turn it into IR rows of Cells (translatable,
+    grid preserved). Returns None if it can't be parsed (caller then crops the region)."""
+    if not html or "<" not in html:
+        return None
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    rows: list[list[Cell]] = []
+    for tr in soup.find_all("tr"):
+        cells = [Cell(text=td.get_text(" ", strip=True),
+                      rowspan=int(td.get("rowspan", 1) or 1),
+                      colspan=int(td.get("colspan", 1) or 1))
+                 for td in tr.find_all(["td", "th"])]
+        if cells:
+            rows.append(cells)
+    return Table(rows=rows) if rows else None
 # Page furniture we drop from a clean reflow.
 _SKIP = {"header", "footer", "number", "page_number", "formula_number", "header_image",
          "aside_text"}
@@ -57,7 +79,16 @@ def extract_structured(path: str, cfg: Config) -> Document:
             if r.label in _SKIP:
                 continue
             bbox = BBox(x0=r.x0, y0=r.y0, x1=r.x1, y1=r.y1)
-            if r.label in _CROP:
+            if r.label == "table":
+                tbl = _parse_table_html(r.content)
+                if tbl:
+                    out.blocks.append(Block(
+                        id=f"p{pno}-r{r.order}", type=BlockType.TABLE, page=pno,
+                        reading_order=r.order, bbox=bbox, table=tbl,
+                        confidence=Confidence(source="digital")))
+                    continue
+                # parse failed -> fall through to a verbatim crop
+            if r.label in _CROP or r.label == "table":
                 rect = fitz.Rect(r.x0, r.y0, r.x1, r.y1)
                 fn = img_dir / f"p{pno}-crop{cidx}.png"
                 page.get_pixmap(clip=rect, dpi=200).save(str(fn))
