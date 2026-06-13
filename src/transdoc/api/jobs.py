@@ -137,6 +137,13 @@ class JobStore:
             job.meta["blocks"] = len(res.doc.blocks)
             job.meta["flagged"] = len(res.doc.flagged_blocks())
             job.meta["pages"] = res.doc.page_count
+            # full analysis for the UI (profile, flagged, glossary, repairs, regions)
+            try:
+                from .analysis import build_analysis
+                (out_dir / "analysis.json").write_text(
+                    json.dumps(build_analysis(res.doc, cfg)))
+            except Exception:  # analysis is best-effort, never fail the job over it
+                pass
             job.progress = 1.0
             job.status = "done"
             job.message = "completed"
