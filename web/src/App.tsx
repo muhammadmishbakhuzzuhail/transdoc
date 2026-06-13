@@ -1,6 +1,7 @@
 import { AlertCircle, Languages, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
+import { PreviewPanel } from "@/components/PreviewPanel"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -81,6 +82,7 @@ export default function App() {
         </Card>
       )}
 
+      {analysis && job?.status === "done" && <PreviewPanel jid={job.job_id} />}
       {analysis && job && <AnalysisView jid={job.job_id} a={analysis} />}
     </div>
   )

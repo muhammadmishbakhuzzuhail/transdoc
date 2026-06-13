@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from ..config import (Config, Engine, Fidelity, OCREngine, OutputFormat, Register)
 from .jobs import store
@@ -132,6 +132,59 @@ def report(jid: str):
     if not job or not job.report_path:
         raise HTTPException(404, "report not ready")
     return FileResponse(job.report_path, filename=f"report.{job.id}.md")
+
+
+def _job_file(jid: str, which: str) -> str:
+    job = store.get(jid)
+    if not job:
+        raise HTTPException(404, "job not found")
+    path = job.input_path if which == "source" else job.output_path
+    if which not in ("source", "output") or not path:
+        raise HTTPException(404, "not available")
+    return path
+
+
+@app.get("/api/preview/{jid}/info")
+def preview_info(jid: str) -> dict:
+    """Page counts + previewability for source and output, so the UI can render a
+    side-by-side image preview. A file PyMuPDF can't rasterise (e.g. .docx, .txt) is
+    reported ok=False and the UI falls back to a download link."""
+    import fitz
+
+    def probe(which: str) -> dict:
+        try:
+            path = _job_file(jid, which)
+        except HTTPException:
+            return {"ok": False, "pages": 0}
+        try:
+            doc = fitz.open(path)
+            n = doc.page_count
+            doc.close()
+            return {"ok": n > 0, "pages": n}
+        except Exception:
+            return {"ok": False, "pages": 0}
+
+    return {"source": probe("source"), "output": probe("output")}
+
+
+@app.get("/api/preview/{jid}/{which}/{page}.png")
+def preview_page(jid: str, which: str, page: int):
+    """Rasterise one page of the source or output document to PNG (~110 dpi)."""
+    import fitz
+
+    path = _job_file(jid, which)
+    try:
+        doc = fitz.open(path)
+    except Exception:
+        raise HTTPException(415, "not previewable")
+    try:
+        if page < 0 or page >= doc.page_count:
+            raise HTTPException(404, "page out of range")
+        png = doc[page].get_pixmap(dpi=110).tobytes("png")
+    finally:
+        doc.close()
+    return Response(png, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 
 @app.get("/api/analysis/{jid}")
