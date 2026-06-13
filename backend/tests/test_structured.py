@@ -62,6 +62,26 @@ def test_structured_builds_ir(monkeypatch, tmp_path):
     assert [b.reading_order for b in doc.blocks] == sorted(b.reading_order for b in doc.blocks)
 
 
+class _TableExtractor:
+    def extract_pages(self, fdoc, pnos):
+        html = "<table><tr><td>Name</td><td colspan='2'>Value</td></tr>" \
+               "<tr><td>a</td><td>1</td><td>2</td></tr></table>"
+        return {0: [StructRegion("table", 40, 40, 500, 200, html, 0)]}
+
+
+def test_table_html_parsed_to_cells(monkeypatch, tmp_path):
+    pytest.importorskip("bs4")
+    monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
+                        lambda: _TableExtractor())
+    doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
+    tables = [b for b in doc.blocks if b.type == BlockType.TABLE]
+    assert len(tables) == 1
+    rows = tables[0].table.rows
+    assert [c.text for c in rows[0]] == ["Name", "Value"]
+    assert rows[0][1].colspan == 2
+    assert [c.text for c in rows[1]] == ["a", "1", "2"]
+
+
 def test_markdown_renders_formula_as_display_math():
     from transdoc.ir import BBox, Block, Confidence, Document
     from transdoc.regenerate.markdown import render
