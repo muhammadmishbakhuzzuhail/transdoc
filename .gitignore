@@ -33,3 +33,6 @@ corpus/**/*.rtf
 .cache/
 salvage/
 /out/
+
+# isolated paddle venv for --layout (multi-GB, see paddle-torch-venv-conflict memory)
+layout_venv/

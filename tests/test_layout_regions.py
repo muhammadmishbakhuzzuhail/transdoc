@@ -53,3 +53,38 @@ def test_ocr_page_skipped(monkeypatch):
     doc.blocks = [b]
     pdf_extract._apply_layout(d, doc, Config(target_lang="id", layout="paddle"))
     assert [x.id for x in doc.blocks] == ["o"]    # untouched
+
+
+class _FormulaDetector:
+    """A big display equation + a tiny inline formula on the same page."""
+
+    def detect(self, page):
+        return [
+            Region("formula", 218, 464, 393, 490),   # display eq -> crop
+            Region("formula", 380, 392, 391, 402),    # inline $d_k$ (11x10 pt) -> keep as text
+        ]
+
+
+def test_inline_formula_kept_display_cropped_and_tail_dropped(monkeypatch):
+    monkeypatch.setattr("transdoc.layout.get_detector", lambda name: _FormulaDetector())
+    d = fitz.open()
+    d.new_page(width=595, height=842)
+    doc = Document(source_path="x.pdf", mime="application/pdf", page_count=1)
+    doc.page_sizes = {0: (595.0, 842.0)}
+    # prose carrying the inline formula (long -> protected even though it overlaps the tiny box)
+    prose = Block(id="prose", type=BlockType.PARAGRAPH, page=0,
+                  text="of dimension dk, and values of dimension dv, we compute the products",
+                  bbox=BBox(x0=300, y0=388, x1=520, y1=405), confidence=Confidence(source="digital"))
+    eq = Block(id="eq", type=BlockType.PARAGRAPH, page=0, text="Attention(Q,K,V)=softmax(QKT",
+               bbox=BBox(x0=220, y0=465, x1=377, y1=483), confidence=Confidence(source="digital"))
+    tail = Block(id="tail", type=BlockType.PARAGRAPH, page=0, text="√dk )V (1)",
+                 bbox=BBox(x0=358, y0=473, x1=505, y1=491), confidence=Confidence(source="digital"))
+    doc.blocks = [prose, eq, tail]
+
+    pdf_extract._apply_layout(d, doc, Config(target_lang="id", layout="paddle"))
+    ids = [b.id for b in doc.blocks]
+    assert "prose" in ids                 # long prose with inline math kept (not overwritten)
+    assert "eq" not in ids                # equation body inside the display crop dropped
+    assert "tail" not in ids              # short ragged tail straddling the crop edge dropped
+    crops = [b for b in doc.blocks if b.crop_region]
+    assert len(crops) == 1                # only the DISPLAY formula cropped, inline one skipped
