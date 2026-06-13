@@ -9,6 +9,10 @@ available (the CPU oneDNN path is broken in paddlepaddle 3.3); see paddle_layout
 
 from __future__ import annotations
 
+import importlib.util
+import os
+from pathlib import Path
+
 # Labels PP-DocLayout emits that are NON-TEXT regions we crop from the source verbatim
 # instead of re-typesetting (their internal layout — fractions, glyphs, vectors — can't be
 # rebuilt from flattened text).
@@ -18,8 +22,33 @@ NON_TEXT_LABELS = frozenset({
 })
 
 
+def _layout_python() -> str | None:
+    """The interpreter to run PP-DocLayout in when paddle is not importable in-process.
+    ``TRANSDOC_LAYOUT_PYTHON`` overrides; otherwise look for an isolated ``layout_venv``."""
+    env = os.environ.get("TRANSDOC_LAYOUT_PYTHON")
+    if env and Path(env).exists():
+        return env
+    for base in (Path.cwd(), Path(__file__).resolve().parents[3]):
+        cand = base / "layout_venv" / "bin" / "python"
+        if cand.exists():
+            return str(cand)
+    return None
+
+
 def get_detector(name: str = "paddle"):
-    if name == "paddle":
+    """Return a layout detector. Prefers in-process paddle; if paddle is not installed here
+    (the main env keeps torch, which collides with paddle's nccl), delegates to an isolated
+    paddle interpreter via subprocess. Raises a clear error if neither is available."""
+    if name != "paddle":
+        raise ValueError(f"unknown layout detector: {name}")
+    if importlib.util.find_spec("paddle") is not None:
         from .paddle_layout import PaddleLayoutDetector
         return PaddleLayoutDetector()
-    raise ValueError(f"unknown layout detector: {name}")
+    py = _layout_python()
+    if py:
+        from .paddle_layout import SubprocessLayoutDetector
+        return SubprocessLayoutDetector(py)
+    raise RuntimeError(
+        "layout detection needs paddle: install the [paddleocr] extra in this env, or create "
+        "an isolated paddle venv and point TRANSDOC_LAYOUT_PYTHON at its python "
+        "(see the paddle-torch-venv-conflict note).")

@@ -386,15 +386,23 @@ def _apply_layout(fdoc, out: Document, cfg: Config) -> None:
     for b in out.blocks:
         by_page.setdefault(b.page, []).append(b)
 
+    # Pages we extracted that aren't OCR (OCR bboxes are 300-dpi pixels, not points). Detect
+    # them all in one shot — the subprocess detector imports paddle once for the whole batch.
+    detect_pnos = [pno for pno in sorted(by_page)
+                   if not any(b.confidence.source == "ocr" for b in by_page[pno])]
+    if hasattr(det, "detect_pages"):
+        regions_by_page = det.detect_pages(fdoc, detect_pnos)
+    else:
+        regions_by_page = {pno: det.detect(fdoc[pno]) for pno in detect_pnos}
+
     kept: list[Block] = []
     ridx = 0
     for pno in sorted(by_page):          # only pages we actually extracted (respects --pages)
         page_blocks = by_page[pno]
-        # skip OCR pages (their bboxes are 300-dpi pixels, not points)
-        if any(b.confidence.source == "ocr" for b in page_blocks):
+        if pno not in regions_by_page:   # OCR page -> untouched
             kept.extend(page_blocks)
             continue
-        nontext = [r for r in det.detect(fdoc[pno]) if r.label in NON_TEXT_LABELS]
+        nontext = [r for r in regions_by_page[pno] if r.label in NON_TEXT_LABELS]
         # Only DISPLAY (block-level) formulas are cropped. Inline math ($d_k$, $\sqrt{d_k}$
         # inside a prose line) is left as flowing text: its crop is tiny and would be painted
         # ON TOP of the reflowed translation, covering the surrounding words. Subscripts are
