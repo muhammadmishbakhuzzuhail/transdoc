@@ -300,6 +300,8 @@ def _flow_style(b) -> str:
     # the HTML element defaults (<p>=12, <h1>=18).
     if b.style.size and b.style.size > 0:
         s.append(f"font-size:{b.style.size:.1f}pt")
+    if b.style.font:
+        s.append(f"font-family:{b.style.font}")
     if b.style.bold:
         s.append("font-weight:bold")
     if b.style.italic:
@@ -439,6 +441,8 @@ def _block_html(b):
     else:
         align = "right" if rtl else "left"
     css = [f"font-size:{size:.1f}pt", f"text-align:{align}", "line-height:1.05"]
+    if b.style.font:
+        css.append(f"font-family:{b.style.font}")
     if rtl:
         css.append("direction:rtl")
     if b.style.bold:
