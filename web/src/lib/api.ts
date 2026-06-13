@@ -75,5 +75,18 @@ export async function getAnalysis(jid: string): Promise<Analysis> {
   return r.json()
 }
 
+export interface PreviewInfo {
+  source: { ok: boolean; pages: number }
+  output: { ok: boolean; pages: number }
+}
+
+export async function getPreviewInfo(jid: string): Promise<PreviewInfo> {
+  const r = await fetch(`${BASE}/api/preview/${jid}/info`)
+  if (!r.ok) throw new Error("preview info failed")
+  return r.json()
+}
+
+export const previewUrl = (jid: string, which: "source" | "output", page: number) =>
+  `${BASE}/api/preview/${jid}/${which}/${page}.png`
 export const downloadUrl = (jid: string) => `${BASE}/api/download/${jid}`
 export const reportUrl = (jid: string) => `${BASE}/api/report/${jid}`

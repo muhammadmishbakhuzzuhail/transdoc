@@ -53,3 +53,28 @@ def test_translate_accepts_new_options_and_serves_analysis():
 
 def test_analysis_404_for_unknown_job():
     assert client.get("/api/analysis/deadbeef").status_code == 404
+
+
+def test_preview_info_and_page_png():
+    import io
+    import time
+    from pathlib import Path
+
+    pdf = Path("corpus/real/forms/irs_w9_form.pdf")
+    if not pdf.exists():
+        pytest.skip("corpus pdf not present")
+    files = {"file": ("w9.pdf", io.BytesIO(pdf.read_bytes()), "application/pdf")}
+    r = client.post("/api/translate",
+                    files=files, data={"target_lang": "id", "engine": "echo",
+                                       "output_format": "pdf"})
+    jid = r.json()["job_id"]
+    for _ in range(300):
+        if client.get(f"/api/jobs/{jid}").json()["status"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    info = client.get(f"/api/preview/{jid}/info").json()
+    assert info["source"]["ok"] and info["source"]["pages"] >= 1
+    assert info["output"]["ok"]
+    png = client.get(f"/api/preview/{jid}/source/0.png")
+    assert png.status_code == 200 and png.headers["content-type"] == "image/png"
+    assert client.get(f"/api/preview/{jid}/source/999.png").status_code == 404
