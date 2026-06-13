@@ -2,17 +2,33 @@
 
 from __future__ import annotations
 
+import json
+import os
 import shutil
 import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
-from ..config import (Config, Engine, Fidelity, OutputFormat, Register)
+from ..config import (Config, Engine, Fidelity, OCREngine, OutputFormat, Register)
 from .jobs import store
 
 app = FastAPI(title="transdoc", description="Document Intelligence & Translation")
+
+# The React dev server (Vite, :5173) and any deployed origin call this API cross-origin.
+# Override with TRANSDOC_CORS_ORIGINS="https://app.example.com,https://..." in production.
+_origins = os.environ.get(
+    "TRANSDOC_CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173",
+).split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _origins if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _WEB = Path(__file__).parent / "web"
 
@@ -25,8 +41,13 @@ def index() -> str:
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "engines": [e.value for e in Engine],
-            "formats": [f.value for f in OutputFormat]}
+    return {"status": "ok",
+            "engines": [e.value for e in Engine],
+            "formats": [f.value for f in OutputFormat],
+            "fidelity": [f.value for f in Fidelity],
+            "ocr": [o.value for o in OCREngine],
+            "register": [r.value for r in Register],
+            "layout": ["off", "paddle"]}
 
 
 @app.post("/api/translate")
@@ -39,6 +60,12 @@ async def translate(
     fidelity: str = Form("auto"),
     domain: str = Form("auto"),
     register: str = Form("auto"),
+    layout: str = Form("off"),
+    ocr_engine: str = Form("auto"),
+    bilingual: bool = Form(False),
+    quality: bool = Form(False),
+    localize: bool = Form(False),
+    pages: str = Form(""),
 ) -> dict:
     # save upload to a temp file
     suffix = Path(file.filename or "doc").suffix or ".bin"
@@ -63,6 +90,12 @@ async def translate(
             fidelity=Fidelity(fidelity),
             domain=domain,
             register=Register(register),
+            ocr_engine=OCREngine(ocr_engine),
+            layout=layout,
+            bilingual=bilingual,
+            quality_check=quality,
+            localize=localize,
+            pages=pages or None,
         )
     except ValueError as e:
         raise HTTPException(400, f"bad config: {e}")
@@ -99,3 +132,15 @@ def report(jid: str):
     if not job or not job.report_path:
         raise HTTPException(404, "report not ready")
     return FileResponse(job.report_path, filename=f"report.{job.id}.md")
+
+
+@app.get("/api/analysis/{jid}")
+def analysis(jid: str):
+    """Full analysis JSON for the UI: profile, flagged items, glossary, repairs, regions."""
+    job = store.get(jid)
+    if not job:
+        raise HTTPException(404, "job not found")
+    path = Path(store.work_dir) / jid / "analysis.json"
+    if not path.exists():
+        raise HTTPException(404, "analysis not ready")
+    return JSONResponse(json.loads(path.read_text()))
