@@ -57,3 +57,51 @@ class PaddleLayoutDetector:
             x0, y0, x1, y1 = (c * scale for c in b["coordinate"])
             regions.append(Region(b["label"], x0, y0, x1, y1))
         return regions
+
+    def detect_pages(self, fdoc, pnos) -> dict[int, list[Region]]:
+        return {pno: self.detect(fdoc[pno]) for pno in pnos}
+
+
+class SubprocessLayoutDetector:
+    """Run PP-DocLayout in an isolated paddle interpreter (keeps paddle out of the torch venv).
+
+    All requested pages are detected in ONE subprocess call so paddle is imported once.
+    """
+
+    name = "paddle"
+
+    def __init__(self, python_exe: str):
+        self.python_exe = python_exe
+
+    def detect(self, page) -> list[Region]:
+        return self.detect_pages(page.parent, [page.number]).get(page.number, [])
+
+    def detect_pages(self, fdoc, pnos) -> dict[int, list[Region]]:
+        import json
+        import os
+        import subprocess
+        import tempfile
+
+        pnos = list(pnos)
+        if not pnos:
+            return {}
+        pdf_path = fdoc.name
+        if not pdf_path:
+            raise RuntimeError("subprocess layout needs a file-backed PDF (fdoc.name is empty)")
+        fd, out_path = tempfile.mkstemp(suffix=".json", prefix="transdoc-layout-")
+        os.close(fd)
+        try:
+            cmd = [self.python_exe, "-m", "transdoc.layout.subprocess_detect",
+                   pdf_path, out_path, *[str(p) for p in pnos]]
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"layout subprocess failed (exit {proc.returncode}): {proc.stderr[-500:]}")
+            with open(out_path) as fh:
+                raw = json.load(fh)
+        finally:
+            try:
+                os.unlink(out_path)
+            except OSError:
+                pass
+        return {int(p): [Region(*r) for r in regs] for p, regs in raw.items()}

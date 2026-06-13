@@ -88,3 +88,38 @@ def test_inline_formula_kept_display_cropped_and_tail_dropped(monkeypatch):
     assert "tail" not in ids              # short ragged tail straddling the crop edge dropped
     crops = [b for b in doc.blocks if b.crop_region]
     assert len(crops) == 1                # only the DISPLAY formula cropped, inline one skipped
+
+
+def test_subprocess_detector_parses_regions(monkeypatch):
+    """SubprocessLayoutDetector shells out to an isolated paddle interpreter and reads the
+    regions back from the JSON file (out_path is argv index 4)."""
+    import json
+    import subprocess
+    import types
+
+    from transdoc.layout.paddle_layout import Region, SubprocessLayoutDetector
+
+    def fake_run(cmd, capture_output, text):
+        with open(cmd[4], "w") as fh:
+            json.dump({"0": [["table", 1, 2, 3, 4]], "3": [["formula", 5, 6, 7, 8]]}, fh)
+        return types.SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    det = SubprocessLayoutDetector("/fake/python")
+    res = det.detect_pages(types.SimpleNamespace(name="x.pdf"), [0, 3])
+    assert res[0] == [Region("table", 1, 2, 3, 4)]
+    assert res[3][0].label == "formula"
+
+
+def test_get_detector_falls_back_to_subprocess(monkeypatch, tmp_path):
+    """With no in-process paddle but TRANSDOC_LAYOUT_PYTHON set, get_detector delegates."""
+    import transdoc.layout as layout_mod
+    from transdoc.layout.paddle_layout import SubprocessLayoutDetector
+
+    py = tmp_path / "python"
+    py.write_text("")
+    monkeypatch.setenv("TRANSDOC_LAYOUT_PYTHON", str(py))
+    monkeypatch.setattr(layout_mod.importlib.util, "find_spec", lambda name: None)
+    det = layout_mod.get_detector("paddle")
+    assert isinstance(det, SubprocessLayoutDetector)
+    assert det.python_exe == str(py)

@@ -89,8 +89,11 @@ class Config(BaseModel):
     ocr_figures: bool = False                   # OCR text inside large embedded images
                                                 # (a scanned image sitting on a digital page)
     layout: str = "off"                          # "paddle" -> PP-DocLayout region detection
-                                                # (crop figures/math/charts verbatim); needs
-                                                # [paddleocr] extra + GPU. "off" = heuristics.
+                                                # (crop figures/math/charts verbatim). Uses
+                                                # in-process paddle if installed, else delegates
+                                                # to an isolated paddle venv via subprocess
+                                                # (TRANSDOC_LAYOUT_PYTHON / ./layout_venv).
+                                                # "off" = heuristics.
 
     engine: Engine = Engine.FALLBACK           # free resilient chain: google->mymemory->libretranslate
     ocr_engine: OCREngine = OCREngine.AUTO
