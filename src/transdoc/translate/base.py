@@ -95,8 +95,22 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         protected.append(p)
         maps.append(m)
 
-    # 2) translate the protected misses, restore tokens, then fold cache hits back in
-    fresh = tr.translate_batch(protected, cfg, src=doc.source_lang) if protected else []
+    # 2) translate the protected misses, restore tokens, then fold cache hits back in.
+    #    If the batch fails (one segment that every engine rejects/throttles would otherwise
+    #    sink the whole document), degrade to per-segment: keep the source for the segments
+    #    that still fail so they're flagged untranslated, not lost — the rest translate.
+    if not protected:
+        fresh = []
+    else:
+        try:
+            fresh = tr.translate_batch(protected, cfg, src=doc.source_lang)
+        except Exception:
+            fresh = []
+            for p in protected:
+                try:
+                    fresh.append(tr.translate_batch([p], cfg, src=doc.source_lang)[0])
+                except Exception:
+                    fresh.append(p)        # keep source -> flagged 'untranslated' downstream
     if cfg.localize:
         # Reformat numbers to the target locale while protected tokens are still [PH] tags,
         # so verbatim currency/dates/codes are not touched.
