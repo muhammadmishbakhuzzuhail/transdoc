@@ -88,6 +88,9 @@ class Config(BaseModel):
     quality_check: bool = False                 # run reference-free QE, flag weak segments
     ocr_figures: bool = False                   # OCR text inside large embedded images
                                                 # (a scanned image sitting on a digital page)
+    layout: str = "off"                          # "paddle" -> PP-DocLayout region detection
+                                                # (crop figures/math/charts verbatim); needs
+                                                # [paddleocr] extra + GPU. "off" = heuristics.
 
     engine: Engine = Engine.FALLBACK           # free resilient chain: google->mymemory->libretranslate
     ocr_engine: OCREngine = OCREngine.AUTO

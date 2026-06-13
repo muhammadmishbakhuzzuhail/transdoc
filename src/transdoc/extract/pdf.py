@@ -363,6 +363,58 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             )
             idx += 1
 
+    if getattr(cfg, "layout", "off") != "off":
+        try:
+            _apply_layout(doc, out, cfg)
+        except Exception:
+            pass   # layout model unavailable -> keep the heuristic blocks
+
     doc.close()
     reflow_order(out)
     return out
+
+
+def _apply_layout(fdoc, out: Document, cfg: Config) -> None:
+    """Use a layout-detection model to replace per-block heuristics: text inside a non-text
+    region (figure/formula/chart/table) is dropped and the whole region is added as a
+    crop_region block so the renderer crops it verbatim from the source (pixel-perfect math/
+    diagrams). Text regions keep their reflowable blocks. Only digital (point-bbox) pages."""
+    from ..layout import NON_TEXT_LABELS, get_detector
+
+    det = get_detector(cfg.layout)
+    by_page: dict[int, list] = {}
+    for b in out.blocks:
+        by_page.setdefault(b.page, []).append(b)
+
+    kept: list[Block] = []
+    ridx = 0
+    for pno in sorted(by_page):          # only pages we actually extracted (respects --pages)
+        page_blocks = by_page[pno]
+        # skip OCR pages (their bboxes are 300-dpi pixels, not points)
+        if any(b.confidence.source == "ocr" for b in page_blocks):
+            kept.extend(page_blocks)
+            continue
+        nontext = [r for r in det.detect(fdoc[pno]) if r.label in NON_TEXT_LABELS]
+        if not nontext:
+            kept.extend(page_blocks)
+            continue
+
+        def _inside(b, regions=nontext):
+            if not b.bbox:
+                return False
+            cx, cy = (b.bbox.x0 + b.bbox.x1) / 2, (b.bbox.y0 + b.bbox.y1) / 2
+            return any(r.x0 <= cx <= r.x1 and r.y0 <= cy <= r.y1 for r in regions)
+
+        for b in page_blocks:
+            if b.type == BlockType.FIGURE:
+                continue                       # heuristic figures replaced by region crops
+            if _inside(b):
+                continue                       # part of a figure/formula/table -> cropped
+            kept.append(b)
+        for r in nontext:
+            kept.append(Block(
+                id=f"p{pno}-crop{ridx}", type=BlockType.FIGURE, page=pno, crop_region=True,
+                bbox=BBox(x0=r.x0, y0=r.y0, x1=r.x1, y1=r.y1),
+                confidence=Confidence(source="digital")))
+            ridx += 1
+    out.blocks = kept

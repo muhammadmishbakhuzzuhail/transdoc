@@ -126,6 +126,8 @@ class Block(BaseModel):
 
     table: Optional[Table] = None        # only for BlockType.TABLE
     image_path: Optional[str] = None     # only for BlockType.FIGURE — extracted image file
+    crop_region: bool = False            # layout-detected non-text region: render by cropping
+                                         # the source page at bbox (verbatim figure/math/chart)
 
     # Free-form flags surfaced in the report. e.g. {"unclear": "best-guess?"}
     flags: dict[str, str] = Field(default_factory=dict)
