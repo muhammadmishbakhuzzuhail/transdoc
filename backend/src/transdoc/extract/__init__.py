@@ -15,6 +15,16 @@ def extract(det: Detection, cfg: Config) -> Document:
     p = str(det.path)
 
     if k == Kind.PDF_DIGITAL:
+        # PP-StructureV3 structured path (formula->LaTeX, real structure) for PDF->Markdown
+        # when layout is requested. Falls back to the standard extractor if paddle is absent.
+        from ..config import OutputFormat
+        if (getattr(cfg, "layout", "off") in ("paddle", "auto")
+                and cfg.output_format == OutputFormat.MARKDOWN):
+            try:
+                from .structured import extract_structured
+                return extract_structured(p, cfg)
+            except Exception:
+                pass
         from .pdf import extract as ex
         return ex(p, cfg)
     if k == Kind.PDF_SCAN:
