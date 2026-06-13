@@ -87,19 +87,23 @@ per block. This is the part where **scanned text and typed text are treated diff
 Images (`extract/image.py`) are deskewed; the OCR copy and a display copy are split so the
 overlay places translations over a clean image (`Document.render_path`).
 
-## 5. Fidelity — when the layout is preserved vs reflowed
+## 5. Fidelity strategy — three approaches, one per format class
 
-`config.py:resolve_fidelity`. Cross-format conversion *must* reflow — a DOCX/MD target is
-not a pixel canvas, so you cannot keep PDF page geometry there. That is format physics, not
-a defect.
+There is no single right way to put a translation (which expands +20–30% and breaks
+word-to-word alignment) back into a document. transdoc uses the same strategy split DeepL
+does — chosen by what the format can do, not a global toggle:
 
-| Source → target | Fidelity | Result |
-|---|---|---|
-| PDF → PDF, image → PDF | `LAYOUT` | pixel-faithful overlay: redact source bbox, place translation at the same bbox (`insert_htmlbox`) |
-| PDF → DOCX/MD/TXT | `FLOW` | reflow: headings/paragraphs/lists/tables rebuilt, clean + editable |
-| same-format office (docx/odt/pptx/xlsx/epub/srt/vtt) | round-trip in place | markup/styles/timing/coordinates preserved, only strings swapped |
+| Format class | Strategy | How | Fidelity |
+|---|---|---|---|
+| Office with a layout engine — **docx · odt · pptx · xlsx · epub · srt · vtt** | **in-place** | re-open the source file, swap only the run/cell text, leave structure untouched; the app's own engine reflows the longer text | **perfect** — every style/image/table/section preserved |
+| **PDF · image · text/html** (no layout engine) | **reconstruct (FLOW)** | detect structure (title/heading/paragraph/list/table/figure + bold/italic/colour/alignment), rebuild a clean flowing document | readable; structure preserved, exact pixel position **not** (inherent — text reflows) |
+| opt-in **`-f layout`** | **overlay** | redact the source text bbox, place the translation at the same bbox (`insert_htmlbox`), keep background/images/lines | pixel-faithful **but** shrinks dense pages to illegibility and loses word-level emphasis — niche |
 
-`-f layout` / `-f flow` force the choice.
+`config.py:resolve_fidelity` returns **FLOW for AUTO** (the readable default). The LAYOUT
+overlay is opt-in (`-f layout`) — it was the wrong default: translation expansion in fixed
+boxes mangles forms and tables (see `docs/RISKS.md`). The fundamental trade-off: **exact
+position (overlay, breaks) vs readability (reflow, repositions) — you cannot have both when
+the text length changes.** DeepL makes the same call (reconstruct PDF, in-place Office).
 
 ## 5.1 Text fit & cross-script rendering — the expansion problem
 
@@ -108,13 +112,12 @@ Translation changes length. EN→DE/ES/FR/RU/AR typically **expands +15–30%**;
 dictionary). A fixed source bbox cannot hold an arbitrarily longer translation, and the page
 size must not change in `LAYOUT` mode.
 
-**How DeepL avoids this:** DeepL document translation edits the *native* structure (OOXML
-runs for DOCX/PPTX) and lets the **Word/PowerPoint layout engine reflow and repaginate
-automatically** — it does **not** promise pixel-identical PDF. It sidesteps the fixed-box
-problem by giving up pixel fidelity. Our **`FLOW` mode is the same bet** (reflow in our
-renderer, repaginate freely). Our **`LAYOUT` mode is the differentiator** that DeepL does not
-attempt — and it is exactly where the expansion problem bites, so `LAYOUT` carries an
-explicit fit system.
+**How DeepL avoids this:** DeepL edits the *native* structure (OOXML runs) and lets the
+Word/PowerPoint layout engine reflow automatically — and reconstructs (not overlays) PDF. It
+sidesteps the fixed-box problem by giving up pixel fidelity. transdoc's **default FLOW is the
+same bet** (in-place for Office, reconstruct for PDF). The opt-in **`LAYOUT` overlay** is the
+one place the fixed-box expansion problem bites, so it carries the explicit fit system below —
+but it is niche, not the default (overlay mangled dense forms; see `docs/RISKS.md`).
 
 **The fit ladder (`LAYOUT` mode) — escalate cheapest-first, keep the page size fixed:**
 

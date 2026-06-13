@@ -85,8 +85,17 @@ Engines (`-e`): `fallback` (default — google→mymemory→libretranslate) · `
 
 ## Status
 Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
-OCR (Tesseract/Surya) + translate (free Google-chain/libretranslate/offline NMT/LLM, persistent
-SQLite TM) + regenerate (round-trip pptx/xlsx/epub/srt · md/docx/pdf overlay) + report are in place.
+OCR (Tesseract default, auto-escalating to PaddleOCR on low-confidence pages; Surya optional) +
+translate (free Google-chain/libretranslate/offline NMT/LLM, persistent SQLite TM, brand/math/
+token protection) + regenerate (**in-place** Office: docx/odt/pptx/xlsx/epub/srt/vtt ·
+**reconstruct** PDF/image · `-f layout` overlay) + report. See `docs/ARCHITECTURE.md` for the
+fidelity strategy and `docs/RISKS.md` for known limits.
+
+**Quality tooling** (verify the *rendered* output, not block counts): `scripts/verify_output.py`
+(OCR a generated PDF, flag wrong-language pages), `scripts/compare_features.py` (bold/italic/
+colour preservation original vs translated), `scripts/bench_quality.py` (round-trip chrF —
+avg **88.2** across 9 languages).
+
 Test corpus under `corpus/` — `corpus/real/` (real downloads) + `corpus/synthetic/` (generated
 ground-truth); see `corpus/README.md`.
 
