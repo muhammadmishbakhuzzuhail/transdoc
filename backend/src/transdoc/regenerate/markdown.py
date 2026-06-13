@@ -38,7 +38,11 @@ def render(doc: Document, cfg: Config) -> str:
             lines.append(f"{'#' * lvl} {text}")
         elif b.type == BlockType.LIST_ITEM:
             lines.append(f"- {text}")
-        elif b.type in (BlockType.CODE, BlockType.FORMULA):
+        elif b.type == BlockType.FORMULA:
+            # LaTeX (from PP-StructureV3) -> a display-math block; bare text -> code fence.
+            looks_latex = any(s in text for s in ("\\", "_{", "^", "frac", "operatorname"))
+            lines.append(f"$$\n{text}\n$$" if looks_latex else f"```\n{text}\n```")
+        elif b.type == BlockType.CODE:
             lines.append(f"```\n{text}\n```")
         elif b.type == BlockType.CAPTION:
             lines.append(f"*{text}*")
