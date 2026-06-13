@@ -8,6 +8,16 @@ Open-source alternative combining **DeepL-style translation + iLovePDF-style doc
 tooling + OCR-to-editable-document**, built on a format-agnostic Intermediate
 Representation (IR) so any input maps to any output.
 
+## Repository layout
+```
+backend/    Python package (transdoc): pipeline, CLI, FastAPI API, tests, scripts
+frontend/   React UI (Vite + TypeScript + Tailwind + shadcn-style)
+docs/        design notes (RESEARCH, RISKS)
+```
+Run the backend from `backend/` (`pip install -e ".[dev,formats]"`, then `transdoc serve`)
+and the frontend from `frontend/` (`npm install && npm run dev`). See `backend/README.md`
+and `frontend/README.md`.
+
 ## Why it's different
 - **Layout-preserving PDF reconstruction by default** (the DeepL approach). PDF→PDF rebuilds a
   fresh page at the **source page size** for every source page and places each block's
