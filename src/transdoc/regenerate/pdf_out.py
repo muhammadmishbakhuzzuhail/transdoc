@@ -295,6 +295,11 @@ def render_searchable(doc: Document, cfg: Config, out_path: str) -> str:
 def _flow_style(b) -> str:
     """Inline CSS carrying the block's captured styling into the reflow."""
     s: list[str] = []
+    # Carry the real source font size (in points) so the reflow keeps the document's size
+    # hierarchy — title 20pt / heading 14pt / body 11pt — instead of collapsing everything to
+    # the HTML element defaults (<p>=12, <h1>=18).
+    if b.style.size and b.style.size > 0:
+        s.append(f"font-size:{b.style.size:.1f}pt")
     if b.style.bold:
         s.append("font-weight:bold")
     if b.style.italic:
