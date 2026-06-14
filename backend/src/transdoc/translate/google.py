@@ -15,6 +15,7 @@ Env:
 
 from __future__ import annotations
 
+import concurrent.futures
 import os
 import random
 import threading
@@ -24,6 +25,12 @@ from ..config import Config
 
 # Google web endpoint rejects requests over ~5000 chars; stay safely under.
 _MAX_CHARS = int(os.environ.get("GOOGLE_TRANSLATE_MAX_CHARS", "4500"))
+
+# Translate a batch's segments concurrently — the slow part is N sequential HTTP round-trips,
+# one per segment, so a thread pool cuts first-run time ~N×. Bounded to stay under the free
+# endpoint's ban threshold; set 1 to force sequential. The per-call retry/backoff + optional
+# throttle still apply inside each worker.
+_CONCURRENCY = max(1, int(os.environ.get("GOOGLE_CONCURRENCY", "8")))
 
 # Anti-ban throttle: the free Google web endpoint IP-bans at scale, so optionally hold a
 # minimum gap between outbound requests (seconds; default 0 = off). The TM cache already
@@ -136,4 +143,12 @@ class GoogleTranslator:
             return []
         source = self._code(src or cfg.source_lang)
         target = self._code(cfg.target_lang)
-        return [self._translate_one(t, source, target) if t.strip() else t for t in texts]
+
+        def one(t: str) -> str:
+            return self._translate_one(t, source, target) if t.strip() else t
+
+        if _CONCURRENCY <= 1 or len(texts) <= 1:
+            return [one(t) for t in texts]
+        # ThreadPoolExecutor.map preserves input order; HTTP waits run in parallel.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=_CONCURRENCY) as ex:
+            return list(ex.map(one, texts))
