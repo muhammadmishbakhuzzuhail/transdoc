@@ -38,19 +38,25 @@ Universal any→any coverage rules out per-pair Opus-MT as the *primary* engine 
 1000s of pair models is impractical) and rules out translation LLMs (Tower/ALMA cover only
 ~10–22 high-resource languages). A single broad multilingual NMT is the right core.
 
-**DECISION (this is a personal, non-commercial, local project → use the single best engine):**
+**DECISION (settled by an actual benchmark, 2026-06-15):** keep the **`fallback`** chain
+(Google web endpoint primary → MyMemory → self-hosted LibreTranslate) as the default. A
+round-trip-chrF benchmark (`scripts/bench_engines.py`, 5 sentences × id/ar/zh/de) measured:
 
-1. **THE engine: NLLB-200-distilled** (600M or 1.3B) via CTranslate2 int8. **200+ languages**,
-   one model, CPU-viable. Engine: `nllb`. License **CC-BY-NC** is a non-issue for personal use.
-   This is the committed single translation engine — no license-driven fallback chain.
+| lang | Google | NLLB-200-600M |
+|---|---|---|
+| id | 87.9 | 85.8 |
+| ar | 84.0 | 86.6 |
+| zh | 82.7 | 78.1 |
+| de | 85.9 | 84.8 |
+| **avg** | **85.1** | 83.8 |
 
-The rest below are only relevant if this were ever forked for **commercial** distribution:
-- **MADLAD-400-3B** (Apache-2.0, 450+ langs) — broad commercial-safe replacement. Engine: `madlad`.
-- **Opus-MT/Marian (MIT)** — tiny, CPU-fast accelerator for the most common pairs. Engine: `opusmt`.
-- **Tower+ 9B / ALMA-R** (GPU) — quality upgrade for high-resource pairs only.
-
-Other engines (`google`/`mymemory`/`libretranslate`/`echo`) stay selectable with `-e` for
-quick no-install passes or testing, but NLLB is the default.
+Google wins on quality at CPU-viable model sizes, so it stays primary (with MyMemory +
+LibreTranslate backstops for when it's blocked). NLLB-600M ≈ Google but offline/private — use
+`-e nllb` when privacy matters. The options below only matter for **offline-better-than-Google**
+or a **commercial fork** (re-run the benchmark before committing):
+- **NLLB-200-1.3B / 3.3B** — bigger model may beat Google, but much slower on CPU. `-e nllb` + `NLLB_MODEL=`.
+- **MADLAD-400-3B** (Apache-2.0, 450+ langs) — broad commercial-safe. Engine: `madlad`.
+- **Opus-MT/Marian (MIT)** — tiny, CPU-fast for common pairs. Engine: `opusmt`.
 
 ### Local run (no hosting — runs on your machine)
 - Engine runs on **CPU** via NLLB int8 (CTranslate2). No GPU, no server, no public demo —

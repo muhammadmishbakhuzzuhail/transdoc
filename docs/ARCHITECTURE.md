@@ -170,11 +170,11 @@ depends on mode:
 
 ## 6. Translate — what runs, and the protections
 
-This is a personal, non-commercial, local project, so translation uses a **single committed
-engine**, not a license-driven fallback chain: **NLLB-200** (offline NMT, CPU via CTranslate2
-int8 — best broad-coverage quality; CC-BY-NC is irrelevant for personal use). Other engines
-(`google`/`mymemory`/`libretranslate`/`madlad`/`opusmt`/`anthropic`/`openrouter`/`echo`) stay
-selectable with `-e` for quick passes or testing. Detail in `docs/TRANSLATION.md`.
+Default engine = **`fallback`** chain `google → mymemory → libretranslate`, kept after an
+actual round-trip-chrF benchmark (`scripts/bench_engines.py`): Google won (avg 85.1) over
+offline NLLB-200-600M (83.8) at CPU-viable sizes. Google is primary; MyMemory + self-hosted
+LibreTranslate are backstops for when it's blocked. For offline/private runs use `-e nllb`
+(≈Google quality, larger models heavier). Detail + the benchmark table in `docs/TRANSLATION.md`.
 
 > **Extraction is multi-library by design** (the hard part is rebuilding the document, so use
 > the best tool per sub-task): PyMuPDF for digital text + vector graphics + images, an AcroForm
