@@ -50,8 +50,8 @@ without rendering it is ◐, not ✓.
 ## Tables
 | Variable | Status | Notes |
 |---|---|---|
-| merged cells (rowspan/colspan) | ◐ | captured + **rendered in DOCX** (PR #82, grid+merge); markdown/pdf-flow still ◐ |
-| cell alignment (h+v) / padding / borders / shading | ✗ | |
+| merged cells (rowspan/colspan) | ✓ | rendered DOCX (#82 grid+merge) + PDF flow/reconstruct (HTML colspan/rowspan, #88) |
+| cell font-size / bold / alignment | ◐ | size+bold+align captured (docx) + rendered (pdf/docx) #88; borders ✓; padding/shading ✗ |
 | column widths / row heights | ✗ | |
 | nested tables | ✗ | |
 

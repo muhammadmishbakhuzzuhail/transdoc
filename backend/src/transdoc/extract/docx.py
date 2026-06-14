@@ -130,7 +130,15 @@ def extract(path: str, cfg: Config) -> Document:
                 cells: list[Cell] = []
                 for c in row.cells:
                     tc = id(c._tc)
-                    cells.append(Cell(text="" if tc in seen_tc else c.text.strip()))
+                    size = bold = None
+                    for para in c.paragraphs:
+                        for r in para.runs:
+                            if r.text.strip():
+                                if size is None and r.font.size is not None:
+                                    size = float(r.font.size.pt)
+                                bold = bold or bool(r.font.bold)
+                    cells.append(Cell(text="" if tc in seen_tc else c.text.strip(),
+                                      size=size, bold=bool(bold)))
                     seen_tc.add(tc)
                 rows.append(cells)
             out.blocks.append(

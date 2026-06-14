@@ -98,6 +98,13 @@ def _render_table(d, rows) -> None:
                 except Exception:
                     pass
             anchor.text = cell.output_text
+            if (cell.size or cell.bold) and anchor.paragraphs and anchor.paragraphs[0].runs:
+                from docx.shared import Pt
+                run = anchor.paragraphs[0].runs[0]
+                if cell.size and cell.size > 0:
+                    run.font.size = Pt(cell.size)
+                if cell.bold:
+                    run.font.bold = True
             for rr in range(ri, r2 + 1):
                 for cc in range(ci, c2 + 1):
                     occupied.add((rr, cc))
