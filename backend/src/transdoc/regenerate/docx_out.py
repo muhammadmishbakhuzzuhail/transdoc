@@ -48,6 +48,36 @@ def _style_runs(para, style: Style) -> None:
             f.color.rgb = rgb
 
 
+def _render_table(d, rows) -> None:
+    """Build a DOCX table honoring merged cells. The IR stores a spanning cell once with
+    colspan/rowspan (HTML semantics), so rows can have fewer cells than the grid is wide; place
+    each cell at the next free grid slot and merge across its span (was: spans ignored, columns
+    misaligned)."""
+    ncols = max((sum(max(1, c.colspan) for c in r) for r in rows), default=1)
+    nrows = len(rows)
+    t = d.add_table(rows=nrows, cols=ncols)
+    t.style = "Table Grid"
+    occupied: set[tuple[int, int]] = set()
+    for ri, row in enumerate(rows):
+        ci = 0
+        for cell in row:
+            while (ri, ci) in occupied and ci < ncols - 1:
+                ci += 1
+            r2 = min(ri + max(1, cell.rowspan) - 1, nrows - 1)
+            c2 = min(ci + max(1, cell.colspan) - 1, ncols - 1)
+            anchor = t.cell(ri, ci)
+            if r2 > ri or c2 > ci:
+                try:
+                    anchor = anchor.merge(t.cell(r2, c2))
+                except Exception:
+                    pass
+            anchor.text = cell.output_text
+            for rr in range(ri, r2 + 1):
+                for cc in range(ci, c2 + 1):
+                    occupied.add((rr, cc))
+            ci = c2 + 1
+
+
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from docx import Document as Docx
     from docx.shared import Inches
@@ -71,14 +101,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             continue
 
         if b.type == BlockType.TABLE and b.table and b.table.rows:
-            rows = b.table.rows
-            ncols = max(len(r) for r in rows)
-            t = d.add_table(rows=len(rows), cols=ncols)
-            t.style = "Table Grid"
-            for ri, row in enumerate(rows):
-                for ci in range(ncols):
-                    cell_text = row[ci].output_text if ci < len(row) else ""
-                    t.rows[ri].cells[ci].text = cell_text
+            _render_table(d, b.table.rows)
             d.add_paragraph("")
             continue
 
