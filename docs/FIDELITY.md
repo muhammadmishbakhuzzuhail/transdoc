@@ -50,7 +50,7 @@ without rendering it is ◐, not ✓.
 ## Tables
 | Variable | Status | Notes |
 |---|---|---|
-| merged cells (rowspan/colspan) | ◐ | captured (#74 dedup, structured HTML spans); NOT rendered as spans |
+| merged cells (rowspan/colspan) | ◐ | captured + **rendered in DOCX** (PR #82, grid+merge); markdown/pdf-flow still ◐ |
 | cell alignment (h+v) / padding / borders / shading | ✗ | |
 | column widths / row heights | ✗ | |
 | nested tables | ✗ | |
