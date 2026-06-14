@@ -193,7 +193,10 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     from pathlib import Path
 
     ocr_pages = ocr_pages or set()
-    doc = fitz.open(path)
+    try:
+        doc = fitz.open(path)
+    except Exception as e:
+        raise ValueError(f"unreadable or corrupt PDF: {e}") from e
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
     out.metadata = {k: v for k, v in (doc.metadata or {}).items() if v}
 

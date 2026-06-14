@@ -95,7 +95,10 @@ def extract(path: str, cfg: Config) -> Document:
     from docx import Document as Docx
     from docx.text.paragraph import Paragraph
 
-    d = Docx(path)
+    try:
+        d = Docx(path)
+    except Exception as e:
+        raise ValueError(f"unreadable or corrupt DOCX: {e}") from e
     out = Document(source_path=path, mime="docx")
     idx = 0
 

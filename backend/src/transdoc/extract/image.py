@@ -58,7 +58,7 @@ def _preprocess(img_bytes: bytes) -> tuple[bytes, bytes | None]:
 
 def extract(path: str, cfg: Config) -> Document:
     raw = Path(path).read_bytes()
-    ocr_bytes, display_bytes = _preprocess(raw)
+    ocr_bytes, display_bytes = _preprocess(raw)   # resilient: falls back to raw on bad image
     ocr = get_ocr(cfg)
     out = Document(source_path=path, mime="image", page_count=1)
     out.blocks = ocr.recognize_image_bytes(ocr_bytes, cfg, page=0)
