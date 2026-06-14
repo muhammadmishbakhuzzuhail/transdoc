@@ -15,11 +15,15 @@ def extract(det: Detection, cfg: Config) -> Document:
     p = str(det.path)
 
     if k == Kind.PDF_DIGITAL:
-        # PP-StructureV3 structured path (formula->LaTeX, real structure) for PDF->Markdown
-        # when layout is requested. Falls back to the standard extractor if paddle is absent.
+        # PP-StructureV3 structured path (formula->LaTeX, real table grids, precise formula/
+        # figure regions, dedup, reading order) for PDF->Markdown/DOCX AND PDF->PDF. For PDF
+        # output the reconstruct renderer crops formulas/figures verbatim and rebuilds tables
+        # as translatable grids from the structured IR. Falls back to the standard extractor
+        # if paddle is absent. SAME resolves to PDF here (this branch is PDF source).
         from ..config import OutputFormat
         if (getattr(cfg, "layout", "off") in ("paddle", "auto")
-                and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX)):
+                and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX,
+                                          OutputFormat.PDF, OutputFormat.SAME, OutputFormat.PLAIN)):
             try:
                 from .structured import extract_structured
                 return extract_structured(p, cfg)

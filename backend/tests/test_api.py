@@ -64,9 +64,12 @@ def test_preview_info_and_page_png():
     if not pdf.exists():
         pytest.skip("corpus pdf not present")
     files = {"file": ("w9.pdf", io.BytesIO(pdf.read_bytes()), "application/pdf")}
+    # layout=off keeps this fast + deterministic: the preview path is what's under test, not
+    # the (slow, paddle-backed) structured extractor. With layout=auto a PDF now routes through
+    # PP-StructureV3 (~10s/page), which would time out this poll loop.
     r = client.post("/api/translate",
                     files=files, data={"target_lang": "id", "engine": "echo",
-                                       "output_format": "pdf"})
+                                       "output_format": "pdf", "layout": "off"})
     jid = r.json()["job_id"]
     for _ in range(300):
         if client.get(f"/api/jobs/{jid}").json()["status"] in ("done", "error"):

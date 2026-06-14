@@ -140,6 +140,41 @@ def test_formula_and_inline_latex_cleaned(monkeypatch, tmp_path):
     assert "$d_{k}$" in p.text and "prose left alone" in p.text   # prose words untouched
 
 
+class _PdfMixExtractor:
+    def extract_pages(self, fdoc, pnos):
+        html = "<table><tr><td>Name</td><td>Value</td></tr><tr><td>a</td><td>1</td></tr></table>"
+        return {0: [
+            StructRegion("paragraph_title", 40, 40, 300, 60, "", 0),
+            StructRegion("text", 40, 80, 500, 120, "", 1),       # uses digital layer
+            StructRegion("formula", 40, 140, 300, 170, r"\frac{a}{b}", 2),
+            StructRegion("table", 40, 200, 500, 320, html, 3),
+            StructRegion("image", 40, 360, 300, 500, "", 4),
+        ]}
+
+
+def test_structured_ir_renders_to_pdf_reconstruct(monkeypatch, tmp_path):
+    """PDF->PDF: structured IR (formula crop + real table grid + figure crop + text) flows
+    through render_reconstruct into a valid PDF that keeps the source page geometry."""
+    from transdoc.config import OutputFormat
+    from transdoc.regenerate.pdf_out import render_reconstruct
+
+    monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
+                        lambda: _PdfMixExtractor())
+    src = _pdf(tmp_path)
+    doc = extract_structured(src, Config(target_lang="id", layout="paddle"))
+    # echo "translation": leave output_text == source (no translator in this test)
+    out = tmp_path / "out.pdf"
+    render_reconstruct(doc, Config(target_lang="id", layout="paddle",
+                                   output_format=OutputFormat.PDF), str(out))
+
+    rendered = fitz.open(str(out))
+    assert rendered.page_count == 1
+    assert (round(rendered[0].rect.width), round(rendered[0].rect.height)) == (595, 842)
+    txt = rendered[0].get_text()
+    assert "Name" in txt and "Value" in txt          # table grid rebuilt as real cells
+    assert sum(len(p.get_images()) for p in rendered) >= 1   # formula/figure crop placed
+
+
 def test_markdown_renders_formula_as_display_math():
     from transdoc.ir import BBox, Block, Confidence, Document
     from transdoc.regenerate.markdown import render
