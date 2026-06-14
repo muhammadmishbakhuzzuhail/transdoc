@@ -57,6 +57,16 @@ def test_baseline_diff_clean_when_stable():
     assert diff_baseline(base, cur) == []
 
 
+def test_sidecar_files_are_not_scored_as_documents(tmp_path):
+    """gold/ref/out sidecars share the .txt extension but must not be scored as documents."""
+    corpus = _corpus(tmp_path)
+    (corpus / "doc.gold.txt").write_text("ground truth", encoding="utf-8")
+    (corpus / "doc.ref.id.txt").write_text("terjemahan acuan", encoding="utf-8")
+    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.PDF)
+    card = run_corpus(corpus, cfg)
+    assert set(card["docs"]) == {"doc.pdf"}   # only the real document, no sidecars
+
+
 def test_baseline_diff_flags_missing_and_new_error():
     base = {"docs": {"gone.pdf": {"blocks": 3}, "ok.pdf": {"blocks": 3}}}
     cur = {"docs": {"ok.pdf": {"error": "ValueError: boom", "blocks": 3}}}

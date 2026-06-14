@@ -70,10 +70,16 @@ def score_doc(path: Path, cfg: Config, workdir: Path) -> dict:
     return row
 
 
+def _is_sidecar(name: str) -> bool:
+    # gold (.gold.txt) and reference-translation (.ref.<lang>.txt) sidecars are inputs to the
+    # metrics, not documents to score — they'd otherwise be picked up by the .txt extension.
+    return name.endswith(".gold.txt") or ".ref." in name or ".out." in name
+
+
 def run_corpus(corpus: Path, cfg: Config) -> dict:
     files = sorted(p for p in corpus.rglob("*")
                    if p.is_file() and p.suffix.lower() in _DOC_EXTS
-                   and ".out." not in p.name and not p.name.endswith(".gold.txt"))
+                   and not _is_sidecar(p.name))
     rows: list[dict] = []
     with tempfile.TemporaryDirectory(prefix="transdoc_eval_") as td:
         wd = Path(td)
@@ -103,7 +109,7 @@ def diff_baseline(baseline: dict, current: dict, chrf_tol: float = 1.0) -> list[
         for k in _NO_GROW:
             if k in base and k in cur and cur[k] > base[k]:
                 regress.append(f"{name}: {k} {base[k]} -> {cur[k]} (grew)")
-        if base.get("reading_order_monotonic") and not cur.get("reading_order_monotonic", True):
+        if base.get("reading_order_monotonic") and cur.get("reading_order_monotonic") is False:
             regress.append(f"{name}: reading order is no longer monotonic")
         if "chrf" in base and "chrf" in cur and cur["chrf"] < base["chrf"] - chrf_tol:
             regress.append(f"{name}: chrf {base['chrf']} -> {cur['chrf']} (dropped)")
