@@ -1,0 +1,72 @@
+# transdoc — clone & run. Replaces the manual venv juggling.
+#
+#   make setup        backend .venv + frontend deps (the everyday path; CPU, no paddle)
+#   make setup-layout isolated paddle venv for --layout (heavy: ~1.9 GB models, opt-in)
+#   make test / lint / eval        backend checks
+#   make serve        REST API on :8000      make dev   frontend dev server
+#   make clean        remove venvs + caches
+#
+# Override the python or the paddle wheel:
+#   make setup PYTHON=python3.12
+#   make setup-layout PADDLE_PKG="paddlepaddle==3.3.1"   # pure-CPU wheel (no CUDA)
+
+PYTHON     ?= python3.11
+VENV       := backend/.venv
+PY         := $(VENV)/bin/python
+PIP        := $(VENV)/bin/pip
+LAYOUT_VENV := backend/layout_venv
+# The dev machine runs the GPU wheel (works on CPU too); CPU-only users override PADDLE_PKG.
+PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
+
+.PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
+        serve dev clean
+
+setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
+
+setup-backend:
+	$(PYTHON) -m venv $(VENV)
+	$(PIP) install --upgrade pip
+	cd backend && .venv/bin/pip install -e ".[dev,formats,api]"
+	@echo "backend ready -> $(PY)"
+
+setup-frontend:
+	cd frontend && npm ci
+	@echo "frontend ready"
+
+# Isolated paddle env for the structured/--layout path. paddlepaddle and torch can't share a
+# venv (nccl symbol clash), so this lives apart and the backend bridges to it out-of-process
+# (default search ./backend/layout_venv/bin/python, or set TRANSDOC_LAYOUT_PYTHON).
+setup-layout:
+	$(PYTHON) -m venv $(LAYOUT_VENV)
+	$(LAYOUT_VENV)/bin/pip install --upgrade pip
+	$(LAYOUT_VENV)/bin/pip install "$(PADDLE_PKG)"
+	$(LAYOUT_VENV)/bin/pip install paddleocr==3.7.0 paddlex==3.7.1
+	cd backend && layout_venv/bin/pip install -e .
+	@echo "layout venv ready -> $(LAYOUT_VENV)/bin/python  (use --layout paddle / layout=auto)"
+
+test:
+	cd backend && .venv/bin/pytest
+
+lint:
+	cd backend && .venv/bin/ruff check src tests
+
+# Regression gate over the committed digital fixtures (what CI runs).
+eval:
+	cd backend && .venv/bin/python -m transdoc.eval.harness src/transdoc/eval/samples \
+		--engine echo --baseline src/transdoc/eval/baseline.json
+
+# Rebuild the fixtures + baseline (only when the fixtures or metrics change).
+eval-baseline:
+	cd backend && .venv/bin/python -m transdoc.eval.fixtures src/transdoc/eval/samples
+	cd backend && .venv/bin/python -m transdoc.eval.harness src/transdoc/eval/samples \
+		--engine echo --out src/transdoc/eval/baseline.json
+
+serve:
+	cd backend && .venv/bin/transdoc serve
+
+dev:
+	cd frontend && npm run dev
+
+clean:
+	rm -rf $(VENV) $(LAYOUT_VENV) frontend/node_modules
+	find backend -name __pycache__ -type d -prune -exec rm -rf {} +

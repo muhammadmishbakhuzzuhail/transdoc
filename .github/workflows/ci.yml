@@ -45,6 +45,11 @@ jobs:
         # offline only: the suite uses the echo engine, never hits a translation API
         run: pytest
 
+      - name: Eval regression gate
+        # deterministic structure/fidelity metrics over committed digital fixtures vs the
+        # saved baseline (echo engine, no OCR/paddle/network). Fails on a metric regression.
+        run: python -m transdoc.eval.harness src/transdoc/eval/samples --engine echo --baseline src/transdoc/eval/baseline.json
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
