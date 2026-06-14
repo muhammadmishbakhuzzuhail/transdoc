@@ -67,21 +67,23 @@ def test_sidecar_files_are_not_scored_as_documents(tmp_path):
     assert set(card["docs"]) == {"doc.pdf"}   # only the real document, no sidecars
 
 
-def test_committed_baseline_matches_committed_samples():
-    """The CI gate fixtures must stay green: regenerate the samples and confirm no regression
-    vs the committed baseline. Guards against the baseline drifting from the metrics code."""
+def test_committed_baseline_matches_freshly_built_fixtures(tmp_path):
+    """The CI gate fixtures must stay green: rebuild the fixtures from scratch and confirm no
+    regression vs the committed baseline. Guards against the baseline drifting from the metrics
+    code. Builds into tmp (NOT the committed eval/samples) so running the test never mutates the
+    tracked fixtures — PDF/DOCX bytes differ per build, which would dirty the working tree."""
     import json
     from pathlib import Path
 
     import transdoc.eval
     from transdoc.eval.fixtures import build
 
-    pkg = Path(transdoc.eval.__file__).parent
-    baseline = json.loads((pkg / "baseline.json").read_text(encoding="utf-8"))
-    build(pkg / "samples")   # idempotent regenerate (deterministic content)
+    baseline_path = Path(transdoc.eval.__file__).parent / "baseline.json"
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    build(tmp_path)   # fresh deterministic fixtures, off in a temp dir
     cfg = Config(target_lang=baseline["target_lang"],
                  engine=Engine(baseline["engine"]), output_format=OutputFormat.PDF)
-    card = run_corpus(pkg / "samples", cfg)
+    card = run_corpus(tmp_path, cfg)
     assert diff_baseline(baseline, card) == []
 
 
