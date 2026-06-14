@@ -170,7 +170,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
             blk = Block(
                 id=f"p{pno}-r{r.order}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
                 page=pno, reading_order=len(out.blocks), bbox=bbox, text=text,
-                style=Style(), confidence=Confidence(source="digital"))
+                style=_region_style(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)),
+                confidence=Confidence(source="digital"))
             if not digital:
                 blk.flags["ocr_text"] = "text from PP-OCR (no digital layer in this region)"
             out.blocks.append(blk)
@@ -181,6 +182,40 @@ def extract_structured(path: str, cfg: Config) -> Document:
         b.reading_order = i
     out.blocks.sort(key=lambda b: b.reading_order)
     return out
+
+
+def _region_style(page, rect) -> Style:
+    """Dominant character style (font/size/colour/weight) of the digital spans inside a region,
+    by char-count majority — so the structured path carries the same detail the heuristic PDF
+    extractor does, instead of an empty Style. PyMuPDF span flags: bit 1 = italic, bit 4 = bold."""
+    sizes: dict = {}
+    fonts: dict = {}
+    colors: dict = {}
+    nchars = bold_chars = ital_chars = 0
+    try:
+        for b in page.get_text("dict", clip=rect)["blocks"]:
+            for line in b.get("lines", []):
+                for s in line.get("spans", []):
+                    n = len(s.get("text", "").strip())
+                    if not n:
+                        continue
+                    nchars += n
+                    sizes[round(s["size"], 1)] = sizes.get(round(s["size"], 1), 0) + n
+                    fonts[s["font"]] = fonts.get(s["font"], 0) + n
+                    colors[s["color"]] = colors.get(s["color"], 0) + n
+                    fl = s.get("flags", 0)
+                    if fl & 16:
+                        bold_chars += n
+                    if fl & 2:
+                        ital_chars += n
+    except Exception:
+        return Style()
+    if not nchars:
+        return Style()
+    color = max(colors, key=colors.get)
+    return Style(font=max(fonts, key=fonts.get), size=max(sizes, key=sizes.get),
+                 color=f"#{color:06x}", bold=bold_chars > nchars / 2,
+                 italic=ital_chars > nchars / 2)
 
 
 def _norm(s: str) -> str:

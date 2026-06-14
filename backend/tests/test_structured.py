@@ -116,6 +116,26 @@ def test_dedup_keeps_longer_overlapping(monkeypatch, tmp_path):
     assert "full sentence about scaled dot product attention indeed" in paras[0].text
 
 
+def test_region_style_reads_dominant_font_size_weight(tmp_path):
+    """The structured path enriches each text block with the dominant font/size/weight of the
+    digital spans in its region, instead of an empty Style."""
+    from transdoc.extract.structured import _region_style
+
+    d = fitz.open()
+    p = d.new_page(width=595, height=842)
+    p.insert_text((50, 100), "Big Bold Heading", fontsize=20, fontname="hebo")  # Helvetica-Bold
+    p.insert_text((50, 300), "small body text here", fontsize=9, fontname="helv")
+    path = tmp_path / "styled.pdf"
+    d.save(str(path))
+    d.close()
+
+    pg = fitz.open(str(path))[0]
+    head = _region_style(pg, fitz.Rect(40, 85, 400, 115))
+    body = _region_style(pg, fitz.Rect(40, 288, 400, 312))
+    assert round(head.size) == 20 and head.bold is True
+    assert round(body.size) == 9 and body.bold is False
+
+
 def test_reading_order_sinks_footnote_with_order_zero():
     """PP-StructureV3 hands footnotes block_order=0 (a floating element it can't place), which
     naively sorts them to the top. _ordered_regions must keep the body in order and push the
