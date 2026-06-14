@@ -110,6 +110,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
     from .vectors import capture as _capture_vectors
 
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_struct_"))
+    out.tmp_dirs.append(str(img_dir))
     cidx = 0
     for pno in pnos:
         page = doc[pno]

@@ -205,6 +205,9 @@ class Document(BaseModel):
     # Source document metadata (title/author/language/...) from the PDF info dict or office
     # core properties. `language` seeds source-language detection when the caller left it auto.
     metadata: dict[str, str] = Field(default_factory=dict)
+    # Temp directories of intermediate crop images, cleaned by the pipeline after rendering
+    # (they were leaking one dir per run under /tmp).
+    tmp_dirs: list[str] = Field(default_factory=list)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

@@ -206,6 +206,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
     ocr = get_ocr(cfg) if ocr_pages else None
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_img_"))
+    out.tmp_dirs.append(str(img_dir))
 
     def _ensure_ocr():
         nonlocal ocr
