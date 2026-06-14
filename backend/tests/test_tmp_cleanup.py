@@ -1,0 +1,24 @@
+"""Pipeline cleans intermediate crop temp dirs after rendering (audit: per-run /tmp leak)."""
+
+from __future__ import annotations
+
+import pytest
+
+fitz = pytest.importorskip("fitz")
+
+from transdoc.config import Config, Engine, OutputFormat  # noqa: E402
+from transdoc.pipeline import run  # noqa: E402
+
+
+def test_tmp_dirs_removed_after_run(tmp_path):
+    d = fitz.open()
+    p = d.new_page(width=400, height=400)
+    p.insert_text((40, 60), "hello world to translate")
+    src = tmp_path / "s.pdf"
+    d.save(str(src))
+    d.close()
+    out = tmp_path / "o.pdf"
+    res = run(str(src), Config(target_lang="id", engine=Engine.ECHO,
+                               output_format=OutputFormat.PDF), out_path=str(out))
+    # any registered temp dirs must be gone + the list cleared
+    assert res.doc.tmp_dirs == []

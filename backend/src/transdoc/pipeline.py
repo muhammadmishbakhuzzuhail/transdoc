@@ -76,6 +76,7 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     if cfg.mode == Mode.DIAGNOSE:
         report = build_report(doc, cfg)
+        _cleanup_tmp(doc)
         return Result(doc, None, None, report)
 
     # --- Phase 2: Reconstruct (OCR repair) — applied inline in extractors today;
@@ -88,6 +89,7 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
             b.translated = None  # ensure source text is rendered
         regenerate(doc, cfg, outp)
         report = build_report(doc, cfg)
+        _cleanup_tmp(doc)
         return Result(doc, outp, None, report)
 
     # --- Phases 3-5: Terminology + Translate + Self-review ---
@@ -120,7 +122,16 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     report = build_report(doc, cfg)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
     Path(report_path).write_text(report, encoding="utf-8")
+    _cleanup_tmp(doc)
     return Result(doc, outp, report_path, report)
+
+
+def _cleanup_tmp(doc) -> None:
+    """Remove intermediate crop-image temp dirs after rendering (they leaked one per run)."""
+    import shutil
+    for d in getattr(doc, "tmp_dirs", []):
+        shutil.rmtree(d, ignore_errors=True)
+    doc.tmp_dirs = []
 
 
 _EXT = {"markdown": ".md", "plain-text": ".txt", "docx": ".docx", "pdf": ".pdf",
