@@ -105,3 +105,15 @@ def test_throttle_off_by_default(monkeypatch):
     for _ in range(5):
         g._throttle()
     assert time.monotonic() - t0 < 0.02               # no-op when unset
+
+
+def test_batch_concurrency_preserves_order_and_blanks(monkeypatch):
+    """Concurrent batch translation keeps 1:1 input order and passes blank segments through."""
+    from transdoc.config import Config
+    g = GoogleTranslator()
+    # avoid network: translate = uppercase marker, no HTTP
+    monkeypatch.setattr(g, "_translate_one", lambda t, s, tg: f"X:{t}")
+    texts = [f"seg{i}" for i in range(20)] + ["", "  "]
+    out = g.translate_batch(texts, Config(target_lang="id"), src="en")
+    assert out[:20] == [f"X:seg{i}" for i in range(20)]   # order preserved
+    assert out[20] == "" and out[21] == "  "              # blanks untouched (not sent)
