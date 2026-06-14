@@ -59,12 +59,15 @@ def _parse_pages(spec: str | None, total: int) -> set[int] | None:
         part = part.strip()
         if not part:
             continue
-        if "-" in part:
-            a, _, b = part.partition("-")
-            start = int(a) if a.strip() else 1
-            end = int(b) if b.strip() else total
-        else:
-            start = end = int(part)
+        try:
+            if "-" in part:
+                a, _, b = part.partition("-")
+                start = int(a) if a.strip() else 1
+                end = int(b) if b.strip() else total
+            else:
+                start = end = int(part)
+        except ValueError:
+            continue   # malformed part (e.g. "a-5") -> skip it, don't crash the pipeline
         for p in range(start, end + 1):
             if 1 <= p <= total:
                 sel.add(p - 1)
@@ -442,10 +445,12 @@ def _apply_layout(fdoc, out: Document, cfg: Config) -> None:
             continue
 
         for b in page_blocks:
-            if b.type == BlockType.FIGURE:
-                continue                       # heuristic figures replaced by region crops
+            # Drop a block only if it actually sits under a cropped region — including figures
+            # (a heuristic/OCR figure covered by a layout crop is superseded). A figure NOT
+            # covered by any crop (a standalone embedded image the layout model missed) is kept,
+            # not silently lost.
             if b.bbox and any(_covers(b.bbox, r, b.text) for r in crop):
-                continue                       # block sits in / under a cropped region -> drop
+                continue
             kept.append(b)
         for r in crop:
             kept.append(Block(

@@ -34,3 +34,11 @@ def test_extraction_limited_to_selected_pages(tmp_path):
     assert sorted(set(b.page for b in allb.blocks)) == [0, 1, 2, 3, 4]
     sel = extract(src, Config(target_lang="id", pages="2-3"))
     assert sorted(set(b.page for b in sel.blocks)) == [1, 2]
+
+
+def test_parse_pages_skips_malformed_no_crash():
+    from transdoc.extract.pdf import _parse_pages
+    # malformed parts must be skipped, not crash (audit P1: ValueError on "a-5")
+    assert _parse_pages("a-5", 10) is None              # only bad part -> nothing selected
+    assert _parse_pages("2,x,4-6", 10) == {1, 3, 4, 5}  # good parts kept, bad skipped
+    assert _parse_pages("3-7,10", 10) == {2, 3, 4, 5, 6, 9}   # still works
