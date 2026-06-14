@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Download } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getPreviewInfo, type PreviewInfo, previewUrl } from "@/lib/api"
+import { downloadUrl, getPreviewInfo, type PreviewInfo, previewUrl } from "@/lib/api"
 
 function Pane({ title, jid, which, page, ok, pages }: {
   title: string; jid: string; which: "source" | "output"; page: number
@@ -42,25 +42,32 @@ export function PreviewPanel({ jid }: { jid: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle>Preview — source vs result</CardTitle>
+        <CardTitle>Before & after</CardTitle>
         <div className="flex items-center gap-2">
-          <Button size="icon" variant="outline" disabled={page <= 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-16 text-center text-sm tabular-nums">
-            {page + 1} / {maxPages}
-          </span>
-          <Button size="icon" variant="outline" disabled={page >= maxPages - 1}
-            onClick={() => setPage((p) => Math.min(maxPages - 1, p + 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          {maxPages > 1 && (
+            <>
+              <Button size="icon" variant="outline" disabled={page <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-16 text-center text-sm tabular-nums">
+                {page + 1} / {maxPages}
+              </span>
+              <Button size="icon" variant="outline" disabled={page >= maxPages - 1}
+                onClick={() => setPage((p) => Math.min(maxPages - 1, p + 1))}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          <a href={downloadUrl(jid)}>
+            <Button size="sm"><Download className="h-4 w-4" /> Download</Button>
+          </a>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 md:flex-row">
-        <Pane title="Source" jid={jid} which="source" page={page}
+        <Pane title="Original" jid={jid} which="source" page={page}
           ok={info.source.ok} pages={info.source.pages} />
-        <Pane title="Result" jid={jid} which="output" page={page}
+        <Pane title="Translated" jid={jid} which="output" page={page}
           ok={info.output.ok} pages={info.output.pages} />
       </CardContent>
     </Card>
