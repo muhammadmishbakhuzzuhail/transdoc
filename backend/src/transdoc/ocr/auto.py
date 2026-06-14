@@ -39,16 +39,34 @@ class EscalatingOCR:
         return self._strong
 
     def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
-        blocks = self._tess.recognize_image_bytes(img, cfg, page)
-        if _avg_conf(blocks) >= ESCALATE_BELOW:
-            return blocks
+        best = self._tess.recognize_image_bytes(img, cfg, page)
+        best_c = _avg_conf(best)
+        if best_c >= ESCALATE_BELOW:
+            return best
+
+        # 1) cheap retry on a cleaned image (grayscale/denoise/binarize, geometry-preserving):
+        #    recovers noisy/low-contrast scans and dense form cells without a second engine.
+        from .preprocess import enhance
+        try:
+            pre = enhance(img)
+            if pre is not img:
+                pblocks = self._tess.recognize_image_bytes(pre, cfg, page)
+                if _avg_conf(pblocks) > best_c:
+                    best, best_c = pblocks, _avg_conf(pblocks)
+        except Exception:
+            pass
+        if best_c >= ESCALATE_BELOW:
+            return best
+
+        # 2) escalate to the stronger engine (PaddleOCR has its own preprocessing, so feed it
+        #    the raw image). Keep whichever pass is most confident.
         strong = self._get_strong()
         if strong is None:
-            return blocks            # nothing stronger available -> keep Tesseract's result
+            return best
         try:
             better = strong.recognize_image_bytes(img, cfg, page)
+            if _avg_conf(better) > best_c:
+                best = better
         except Exception:
-            return blocks
-        # keep whichever pass is more confident (the stronger engine usually wins on the
-        # hard pages, but not always — e.g. a blank/near-empty region)
-        return better if _avg_conf(better) > _avg_conf(blocks) else blocks
+            pass
+        return best
