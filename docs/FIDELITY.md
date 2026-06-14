@@ -21,7 +21,7 @@ without rendering it is ◐, not ✓.
 | superscript / subscript | ◐ | IR `Style.superscript` exists, NOT captured/rendered |
 | small-caps / all-caps | ✗ | |
 | letter-spacing / word-spacing / kerning / baseline-shift | ✗ | rawdict has per-glyph positions |
-| hyperlink (URI) / internal anchor | ◐ | IR `Style.link` exists, NOT captured/rendered |
+| hyperlink (URI) | ✓ | captured (PDF get_links + DOCX rels) + rendered (md/docx/pdf) PR #83 |
 | character rotation / vertical text | ◐ | detected + skipped in overlay, not preserved |
 | per-run language tag | ✗ | |
 | ligatures | ✓ | folded (PR #75) |
