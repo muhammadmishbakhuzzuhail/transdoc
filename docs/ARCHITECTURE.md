@@ -170,10 +170,16 @@ depends on mode:
 
 ## 6. Translate — what runs, and the protections
 
-Default engine = **`fallback`** chain `google → mymemory → libretranslate` (free, CPU-only,
-$0). These are dedicated **NMT** services, **not LLMs**. LLM engines (`anthropic`,
-`openrouter`) are an opt-in tier and the only ones that honor register/tone. Detail in
-`docs/TRANSLATION.md`; stack rationale in `docs/RESEARCH.md`.
+This is a personal, non-commercial, local project, so translation uses a **single committed
+engine**, not a license-driven fallback chain: **NLLB-200** (offline NMT, CPU via CTranslate2
+int8 — best broad-coverage quality; CC-BY-NC is irrelevant for personal use). Other engines
+(`google`/`mymemory`/`libretranslate`/`madlad`/`opusmt`/`anthropic`/`openrouter`/`echo`) stay
+selectable with `-e` for quick passes or testing. Detail in `docs/TRANSLATION.md`.
+
+> **Extraction is multi-library by design** (the hard part is rebuilding the document, so use
+> the best tool per sub-task): PyMuPDF for digital text + vector graphics + images, an AcroForm
+> parser for interactive form fields, PP-StructureV3 for layout/tables/formula-LaTeX/OCR —
+> fused into one IR. Not locked to a single parser.
 
 On top of the same free engine (`translate/base.py:translate_document`):
 * **Token protection** — URLs/emails/numbers/dates/codes masked as `[PH0]`, survive

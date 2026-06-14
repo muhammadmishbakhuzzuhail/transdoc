@@ -1,9 +1,9 @@
 # Translation Engine — No-API / Offline Research
 
-Verified deep-research synthesis (2025–2026), adversarially checked. Goal: accurate
-translation **without any API key**, self-hosted, fitting a 6GB GPU with CPU fallback.
-**Coverage is universal — any language to any language, like DeepL — not country-specific.**
-That requirement is decisive: it favors a single broad-coverage NMT model over per-pair models.
+Verified deep-research synthesis (2025–2026), adversarially checked. Goal: the **highest-quality
+translation on a local CPU-only machine** for **personal, non-commercial** use — no API key, no
+GPU, no commercial/license constraints. **Coverage is universal — any language to any language,
+like DeepL.** That favors a single broad-coverage NMT model (NLLB-200) over per-pair models.
 
 ## What DeepL actually uses (and why you can't fully match it offline)
 - Custom-topology transformer; since **July 2024**, a proprietary **in-house LLM tuned for
@@ -38,23 +38,25 @@ Universal any→any coverage rules out per-pair Opus-MT as the *primary* engine 
 1000s of pair models is impractical) and rules out translation LLMs (Tower/ALMA cover only
 ~10–22 high-resource languages). A single broad multilingual NMT is the right core.
 
-1. **Default (broadest coverage + best quality): NLLB-200-distilled** (600M or 1.3B) via
-   CTranslate2 int8. **200+ languages**, one model, fits 6GB / CPU → free-deploy friendly.
-   Engine: `nllb`. ⚠️ License **CC-BY-NC** → personal / research / non-commercial self-host only.
-2. **Commercial / open-source ship (broad, Apache-2.0): MADLAD-400-3B.** 450+ languages, one
-   model, int8 via CTranslate2. Heavier (3B) but commercial-safe. Engine: `madlad` — to add.
-3. **Fast path for top pairs: Opus-MT/Marian (MIT).** Tiny, CPU-fast; use as an optional
-   accelerator for the most common pairs, with NLLB/MADLAD as the universal fallback. Engine: `opusmt`.
-4. **Optional quality upgrade (high-resource pairs only, has GPU): Tower+ 9B / ALMA-R** quantized.
-5. **License fork:** the only real decision is commercial vs not. Non-commercial → NLLB (best).
-   Commercial → MADLAD-400 (broad) + Opus-MT (fast common pairs). Both API-free.
+**DECISION (this is a personal, non-commercial, local project → use the single best engine):**
 
-### Free deployment
-- Engine must run on **CPU** to be free → use NMT int8 (NLLB/Opus-MT/MADLAD), **not local LLM**.
-- Hosting: **Oracle Cloud Always Free** (4 ARM + 24GB RAM, always-on) for self-host; or
-  **HuggingFace Spaces** (free CPU) for a public demo. GPU is rarely free.
-- Tradeoff: OCR (Surya) wants GPU → on free CPU you fall back to Tesseract (weaker on
-  scans/non-Latin). Layout/table/image regeneration is pure CPU → unaffected.
+1. **THE engine: NLLB-200-distilled** (600M or 1.3B) via CTranslate2 int8. **200+ languages**,
+   one model, CPU-viable. Engine: `nllb`. License **CC-BY-NC** is a non-issue for personal use.
+   This is the committed single translation engine — no license-driven fallback chain.
+
+The rest below are only relevant if this were ever forked for **commercial** distribution:
+- **MADLAD-400-3B** (Apache-2.0, 450+ langs) — broad commercial-safe replacement. Engine: `madlad`.
+- **Opus-MT/Marian (MIT)** — tiny, CPU-fast accelerator for the most common pairs. Engine: `opusmt`.
+- **Tower+ 9B / ALMA-R** (GPU) — quality upgrade for high-resource pairs only.
+
+Other engines (`google`/`mymemory`/`libretranslate`/`echo`) stay selectable with `-e` for
+quick no-install passes or testing, but NLLB is the default.
+
+### Local run (no hosting — runs on your machine)
+- Engine runs on **CPU** via NLLB int8 (CTranslate2). No GPU, no server, no public demo —
+  this is a local personal tool.
+- OCR: PP-StructureV3 + Tesseract are CPU-viable (Surya optional). Layout/table/image
+  regeneration is pure CPU.
 
 ## Text expansion → layout (the skeptic's concern, confirmed real)
 Translation changes length: **EN→ID +20–30%**, EN→DE up to +35%, short UI strings +100–200%;

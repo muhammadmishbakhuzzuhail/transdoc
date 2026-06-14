@@ -4,9 +4,26 @@ Translate documents of **any** form to **any** language while **preserving layou
 Not just translation — it diagnoses, reconstructs (OCR repair), translates, verifies, and
 regenerates a clean, faithful document plus a full report.
 
-Open-source alternative combining **DeepL-style translation + iLovePDF-style document
-tooling + OCR-to-editable-document**, built on a format-agnostic Intermediate
-Representation (IR) so any input maps to any output.
+Combines **DeepL-style translation + iLovePDF-style document tooling +
+OCR-to-editable-document**, built on a format-agnostic Intermediate Representation (IR) so any
+input maps to any output.
+
+## Scope: personal & local — not commercial
+
+This is a **personal, local-use** project. It is **not distributed or commercialized**, so
+**software/model licenses are not a constraint**: AGPL (PyMuPDF), CC-BY-NC weights (NLLB-200,
+Surya), and other non-commercial assets are all fair game. The only goals that matter here are
+**maximum fidelity and quality**, on a **CPU-only** machine.
+
+Two design rules follow from that:
+
+- **Extraction is the hard part** (the output is rebuilt from scratch), so it is **NOT locked
+  to one library** — it fuses the best tool for each sub-task: PyMuPDF for digital text +
+  vector graphics + images, an AcroForm parser for form fields, PP-StructureV3 for
+  layout/tables/formula-LaTeX/OCR. Best extractor per region, merged into the IR.
+- **Translation uses a single engine** — pick the best-quality one and commit to it (default:
+  **NLLB-200**, best broad-coverage quality; CC-BY-NC is fine for personal use). No
+  license-driven fallback juggling.
 
 ## Repository layout
 ```
@@ -19,12 +36,12 @@ and the frontend from `frontend/` (`npm install && npm run dev`). See `backend/R
 and `frontend/README.md`.
 
 ## Why it's different
-- **Layout-preserving PDF reconstruction by default** (the DeepL approach). PDF→PDF rebuilds a
-  fresh page at the **source page size** for every source page and places each block's
-  translation at its **original position**, reflowed in place — so page count, page size,
-  multi-column layout and images are preserved, only the text is translated. `-f flow` gives a
-  clean single-column reflow (best for →DOCX/MD); `-f layout` is the pixel overlay (niche; see
-  `docs/RISKS.md`).
+- **Form-aware PDF rendering.** PDF→PDF auto-detects **forms** (grids of vector field-lines/
+  boxes — IRS W-9/1040) and renders them with the **overlay** path (redact source text in place
+  on the original page, keeping every line/box/checkbox), while reflowable documents use
+  **reconstruct** (rebuild a fresh page at the source page size, blocks at their original
+  positions). `-f flow` forces a clean single-column reflow (best for →DOCX/MD); `-f layout`
+  forces overlay.
 - **Any input.** Digital PDF, scanned PDF, photos, DOCX, ODT, legacy DOC, images.
 - **Any script.** Latin, Arabic (RTL), CJK, Cyrillic, Devanagari, Thai — full Noto coverage.
 - **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.
@@ -41,26 +58,23 @@ output format without touching the rest.
 ## Stack (see `docs/RESEARCH.md` for the verified rationale)
 | Layer | Default | Fallback |
 |-------|---------|----------|
-| OCR + layout | Tesseract (CPU, 100+ langs); auto-OCR fallback when a page's digital text is CID-font garbage; low-confidence OCR is left un-overlaid (never covers the original with garbage). Install `tesseract-data-<lang>` and pass `--source` for non-English scans. | Surya OCR 2 (GPU, non-commercial model) |
+| OCR + layout | PP-StructureV3 (PaddleOCR) for layout/tables/formula-LaTeX + Tesseract (CPU, 100+ langs) with geometry-preserving cleanup + auto-escalation on low-confidence pages. Install `tesseract-data-<lang>` and pass `--source` for non-English scans. | Surya OCR 2 (CC-BY-NC model — fine for personal use) |
 | Language detect | langdetect (core, tiny) | lingua low-accuracy mode (`[detect]` extra — 100% vs 91% acc, deterministic, ~1.2GB RAM) |
 | PDF parse | PyMuPDF | — |
 | Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
-| Translate (free, CPU) | **`fallback`** — Google web endpoint → MyMemory → self-hosted LibreTranslate (no API key, runs CPU-only) | Offline NMT: MADLAD-400/Opus-MT/Argos (commercial-safe) · NLLB (non-commercial) · OpenRouter/Anthropic (API) |
+| Translate (single engine) | **NLLB-200** distilled (offline, CPU via CTranslate2 int8; 200+ langs; best broad-coverage quality; CC-BY-NC — fine for personal use) | other engines stay selectable with `-e` (google/mymemory/libretranslate/madlad/opusmt/argos/nllb/openrouter/anthropic/echo) but NLLB is the committed default |
 | Translation memory | persistent SQLite cache (cross-run, cuts engine calls) | in-memory dedupe |
 | Regenerate | **in-place** text swap for Office (docx/pptx/xlsx/epub/srt/vtt) — keeps all formatting, the DeepL strategy · PDF/image reflow (reconstruct) · `-f layout` overlay opt-in | Markdown |
 
-> **Free public service (DocTranslator-style):** the default `fallback` engine proxies the
-> free Google Translate web endpoint, so the server hosts no model and runs CPU-only. When
-> Google rate-limits, it falls through to MyMemory and a self-hosted LibreTranslate backstop.
-> The persistent SQLite TM means any segment is sent to Google at most once, ever.
+> **Personal/offline by default:** the committed engine is **NLLB-200** (offline NMT, CPU via
+> CTranslate2 int8) — highest broad-coverage quality and fully on-device, no network, no ToS
+> concerns. CC-BY-NC is irrelevant for personal use. A persistent SQLite TM caches every
+> segment so repeated runs are instant.
 >
-> ⚠️ The Google web endpoint is unofficial/ToS-grey and can be blocked at scale — the
-> fallback chain + self-hosted LibreTranslate is what keeps the service alive. The
-> legally-clean free fallbacks are **MyMemory** (50k chars/day with email) and a
-> **self-hosted LibreTranslate** (unlimited; AGPL stays at arm's length — separate process,
-> called only over HTTP, never modified). **DeepL Free is deliberately excluded** from the
-> public chain: its ToS forbids repackaging/reselling access or building a competing service.
-> NLLB-200 is **CC-BY-NC**; for commercial offline use pick MADLAD/Opus-MT/Argos/LibreTranslate.
+> Other engines remain available with `-e` if you want them (e.g. `google` web endpoint for a
+> quick no-install pass, `libretranslate` for a self-hosted server), but they are not the
+> default and carry their own caveats (network, rate limits). For a personal local tool, one
+> strong offline engine beats a license-driven fallback chain.
 
 ## Install
 ```bash
@@ -96,10 +110,12 @@ Engines (`-e`): `fallback` (default — google→mymemory→libretranslate) · `
 ## Status
 Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
 OCR (Tesseract default, auto-escalating to PaddleOCR on low-confidence pages; Surya optional) +
-translate (free Google-chain/libretranslate/offline NMT/LLM, persistent SQLite TM, brand/math/
-token protection) + regenerate (**in-place** Office: docx/odt/pptx/xlsx/epub/srt/vtt ·
-**reconstruct** PDF/image · `-f layout` overlay) + report. See `docs/ARCHITECTURE.md` for the
-fidelity strategy and `docs/RISKS.md` for known limits.
+translate (single engine — NLLB-200 default; offline NMT/LLM/network engines selectable;
+persistent SQLite TM, brand/math/token protection) + regenerate (**in-place** Office:
+docx/odt/pptx/xlsx/epub/srt/vtt · **form-aware** PDF: overlay for forms, reconstruct otherwise ·
+image overlay) + report. See `docs/ARCHITECTURE.md` for the fidelity strategy and
+`docs/RISKS.md` for known limits. Quality is measured by the eval harness
+(`python -m transdoc.eval.harness`, structure/fidelity/CER/WER/chrF + baseline regression gate).
 
 **Quality tooling** (verify the *rendered* output, not block counts): `scripts/verify_output.py`
 (OCR a generated PDF, flag wrong-language pages), `scripts/compare_features.py` (bold/italic/
@@ -110,11 +126,10 @@ Test corpus under `corpus/` — `corpus/real/` (real downloads) + `corpus/synthe
 ground-truth); see `corpus/README.md`.
 
 ## Privacy
-The default `fallback`/`google` engine sends document text to Google's public translation
-endpoint, and `mymemory` to MyMemory — translation happens **off-device**. Do not use them for
-confidential documents. For fully local/offline translation use a **self-hosted LibreTranslate**
-(`-e libretranslate`) or an **offline NMT** engine (`-e madlad|opusmt|argos`); these never leave
-your machine. A persistent SQLite TM means any segment is sent to an external engine at most once.
+The default **NLLB-200** engine runs **fully on-device** — document text never leaves your
+machine. (If you opt into a network engine like `-e google` or `-e mymemory`, text is sent
+off-device to that service; don't use those for confidential documents.) A persistent SQLite
+TM caches every translated segment locally.
 
 ## Limits
 Uploads are bounded against malicious/pathological input (env-overridable in `limits.py`):
@@ -122,4 +137,8 @@ Uploads are bounded against malicious/pathological input (env-overridable in `li
 `TRANSDOC_MAX_ZIP_MB` (1000) + a decompression-ratio cap (zip-bomb guard for office/EPUB).
 
 ## License
-Apache-2.0 (code). Bundled model weights carry their own licenses — see above.
+Code is Apache-2.0, but this is a **personal, non-commercial, local-use** project, so bundled
+dependencies and model weights are used **without license restriction** — including AGPL
+(PyMuPDF) and CC-BY-NC weights (NLLB-200, Surya). If you ever fork this for **commercial**
+distribution, those constraints come back: swap PyMuPDF→pypdfium2 (Apache) and
+NLLB→MADLAD/Opus-MT (commercial-safe). See `docs/TRANSLATION.md`.
