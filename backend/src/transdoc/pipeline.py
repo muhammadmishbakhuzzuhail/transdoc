@@ -9,10 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import Config, Mode
+from .config import Config, Fidelity, Mode, OutputFormat
 from .diagnose import diagnose
 from .extract import extract as extract_ir
-from .ingest.detect import detect
+from .ingest.detect import detect, is_form_pdf
 from .ir import Document
 from .regenerate import regenerate
 from .report import build_report
@@ -45,6 +45,18 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     elif det.kind.value in _ZIP_KINDS:
         check_zip_bomb(input_path)
 
+    # Forms -> PDF: a form is a grid of vector field-lines/boxes. The reconstruct renderer
+    # rebuilds a fresh page from text + image crops and would discard that grid (the form
+    # collapses into reflowed prose). Route forms to the OVERLAY renderer instead — redact the
+    # source text in place and keep the original page (lines, boxes, checkboxes) intact — and
+    # to the standard digital extractor, whose bboxes line up with the original text spans the
+    # overlay redacts. Only when the user left layout/fidelity on AUTO (explicit choices win).
+    if (cfg.fidelity == Fidelity.AUTO and cfg.output_format in (OutputFormat.PDF, OutputFormat.SAME)
+            and det.mime == "application/pdf" and is_form_pdf(input_path)):
+        cfg.fidelity = Fidelity.LAYOUT          # overlay: keep the form, swap text in place
+        if cfg.layout == "auto":
+            cfg.layout = "off"                  # standard extract -> bboxes match for redaction
+
     # --- Extract -> IR ---
     doc = extract_ir(det, cfg)
 
@@ -72,7 +84,6 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     # FLOW output reflows the text, so running headers/footers just clutter it (and waste
     # translation calls). Strip them before translating. LAYOUT keeps them in place.
-    from .config import Fidelity
     source_is_pdf = (doc.mime == "application/pdf")
     if cfg.resolve_fidelity(source_is_pdf) == Fidelity.FLOW:
         from .extract.base import reorder_vertical_last
