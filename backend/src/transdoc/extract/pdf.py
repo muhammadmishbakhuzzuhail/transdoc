@@ -25,8 +25,29 @@ def _looks_garbage(text: str) -> bool:
     s = text.strip()
     if len(s) < 20:
         return False
-    ctrl = sum(1 for c in s if c not in "\t\n\r" and unicodedata.category(c) in _BAD_CATS)
-    return ctrl / len(s) > _GARBAGE_CTRL
+    # Subsetted/CID fonts without a ToUnicode CMap make extraction emit "GLYPH<c=...>"
+    # placeholders or the U+FFFD replacement char — a strong "needs OCR" signal. (research)
+    if "GLYPH<" in s:
+        return True
+    bad = sum(1 for c in s
+              if (c not in "\t\n\r" and unicodedata.category(c) in _BAD_CATS) or c == "�")
+    return bad / len(s) > _GARBAGE_CTRL
+
+
+# A page with thousands of vector paths but almost no extractable text is text-rendered-as-
+# outlines (glyphs drawn as geometry, no font) -> OCR. Forms have hundreds of rules but plenty
+# of text, so the high path count + near-empty text together avoid false positives. (research)
+_GEOMETRY_PATHS = 2000
+_GEOMETRY_MAX_TEXT = 100
+
+
+def _text_as_geometry(page) -> bool:
+    try:
+        if len(page.get_text("text").strip()) >= _GEOMETRY_MAX_TEXT:
+            return False
+        return len(page.get_drawings()) >= _GEOMETRY_PATHS
+    except Exception:
+        return False
 
 
 def _parse_pages(spec: str | None, total: int) -> set[int] | None:
@@ -228,8 +249,9 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             _ocr_page(page, pno)
             continue
 
-        # Trust digital text only if it isn't CID-font garbage; otherwise OCR the page.
-        if _looks_garbage(page.get_text()):
+        # Trust digital text only if it isn't CID-font garbage or text-rendered-as-outlines;
+        # otherwise OCR the page.
+        if _looks_garbage(page.get_text()) or _text_as_geometry(page):
             try:
                 _ocr_page(page, pno)
                 continue
