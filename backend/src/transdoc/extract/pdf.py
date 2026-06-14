@@ -249,7 +249,10 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             continue  # page not in the requested selection — skip extraction/translation
 
         if pno in ocr_pages:
-            _ocr_page(page, pno)
+            try:
+                _ocr_page(page, pno)
+            except Exception:
+                pass  # one page's OCR failing must not sink the whole document
             continue
 
         # Trust digital text only if it isn't CID-font garbage or text-rendered-as-outlines;
