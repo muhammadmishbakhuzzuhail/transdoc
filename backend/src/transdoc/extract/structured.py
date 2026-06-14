@@ -69,6 +69,27 @@ def _parse_table_html(html: str) -> Table | None:
 # Page furniture we drop from a clean reflow.
 _SKIP = {"header", "footer", "number", "page_number", "formula_number", "header_image",
          "aside_text"}
+# Regions that belong AFTER the body no matter what reading-order index the model gave them.
+# PP-StructureV3 hands footnotes/references block_order=0 (it can't place a floating element),
+# which would otherwise sort them to the very top of the page.
+_LATE = {"footnote", "reference", "footnote_number"}
+
+
+def _ordered_regions(regs: list) -> list:
+    """Sort regions into reading order, robust to PP-StructureV3 giving floating elements
+    (footnotes) block_order=0. If the model assigned real positive orders, any 0/None is
+    treated as 'unplaced' and sinks below the ordered flow (by y-position); footnotes and
+    references always sort after the body. If no region has a positive order, fall back to
+    pure top-to-bottom position."""
+    has_pos = any((r.order or 0) > 0 for r in regs)
+
+    def key(r):
+        o = r.order or 0
+        if has_pos and o <= 0:
+            o = 10_000          # model left it unplaced -> after the ordered flow
+        return (1 if r.label in _LATE else 0, o, r.y0)
+
+    return sorted(regs, key=key)
 
 
 def extract_structured(path: str, cfg: Config) -> Document:
@@ -90,7 +111,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
     cidx = 0
     for pno in pnos:
         page = doc[pno]
-        for r in sorted(regions_by_page.get(pno, []), key=lambda r: ((r.order or 0), r.y0)):
+        for r in _ordered_regions(regions_by_page.get(pno, [])):
             if r.label in _SKIP:
                 continue
             bbox = BBox(x0=r.x0, y0=r.y0, x1=r.x1, y1=r.y1)

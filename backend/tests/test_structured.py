@@ -116,6 +116,33 @@ def test_dedup_keeps_longer_overlapping(monkeypatch, tmp_path):
     assert "full sentence about scaled dot product attention indeed" in paras[0].text
 
 
+def test_reading_order_sinks_footnote_with_order_zero():
+    """PP-StructureV3 hands footnotes block_order=0 (a floating element it can't place), which
+    naively sorts them to the top. _ordered_regions must keep the body in order and push the
+    footnote to the end."""
+    from transdoc.extract.structured import _ordered_regions
+
+    regs = [
+        StructRegion("footnote", 40, 620, 500, 640, "* equal contribution", 0),  # order 0
+        StructRegion("doc_title", 40, 47, 500, 70, "Title", 1),
+        StructRegion("text", 40, 145, 500, 200, "body", 2),
+        StructRegion("abstract", 40, 230, 500, 400, "abstract", 3),
+    ]
+    order = [r.label for r in _ordered_regions(regs)]
+    assert order == ["doc_title", "text", "abstract", "footnote"]   # footnote last, not first
+
+
+def test_reading_order_falls_back_to_position_without_orders():
+    from transdoc.extract.structured import _ordered_regions
+
+    regs = [
+        StructRegion("text", 40, 300, 500, 340, "lower", 0),
+        StructRegion("text", 40, 100, 500, 140, "upper", 0),
+    ]
+    # no positive orders anywhere -> pure top-to-bottom by y0
+    assert [r.y0 for r in _ordered_regions(regs)] == [100, 300]
+
+
 def test_clean_latex_collapses_letter_spacing():
     from transdoc.extract.structured import _clean_latex
     assert _clean_latex(r"\operatorname{A t t e n t i o n}") == r"\operatorname{Attention}"
