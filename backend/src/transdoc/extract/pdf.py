@@ -11,7 +11,7 @@ import unicodedata
 
 from ..config import Config, Fidelity
 from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Style, Table
-from .base import block_id, reflow_order
+from .base import block_id, column_reading_order
 
 # Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
 # ids — control chars / mojibake, not real text. Valid pages (any script) have ~0% control
@@ -399,7 +399,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             pass   # layout model unavailable -> keep the heuristic blocks
 
     doc.close()
-    reflow_order(out)
+    column_reading_order(out)   # multi-column-aware reading order (research)
     return out
 
 
