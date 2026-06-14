@@ -80,6 +80,7 @@ class Style(BaseModel):
     align: Optional[str] = None          # left|center|right|justify
     rtl: bool = False                    # right-to-left script
     list_level: int = 0
+    list_ordered: bool = False           # numbered list vs bullet
     heading_level: int = 0               # 1..6 for HEADING
     superscript: bool = False            # footnote refs / inline exponents
     link: Optional[str] = None           # hyperlink target URI, if the block is a link

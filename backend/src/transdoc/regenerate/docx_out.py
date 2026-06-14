@@ -151,7 +151,8 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         elif b.type == BlockType.HEADING:
             p = d.add_heading(text, level=max(1, min(9, b.style.heading_level or 1)))
         elif b.type == BlockType.LIST_ITEM:
-            p = d.add_paragraph(text, style="List Bullet")
+            p = d.add_paragraph(text, style="List Number" if b.style.list_ordered
+                                else "List Bullet")
         else:
             p = d.add_paragraph(text)
         # carry the source character styling + alignment into the output (was dropped)
