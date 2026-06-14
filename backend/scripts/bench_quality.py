@@ -36,27 +36,8 @@ SENTENCES = [
 LANGS = ["id", "fr", "de", "es", "ru", "ar", "zh", "ja", "hi"]
 
 
-def _char_ngrams(s: str, n: int) -> list[str]:
-    s = s.lower()
-    return [s[i:i + n] for i in range(len(s) - n + 1)] if len(s) >= n else []
-
-
-def chrf(ref: str, hyp: str, max_n: int = 6, beta: float = 2.0) -> float:
-    """chrF: average char n-gram (1..max_n) F-score, recall-weighted (beta=2)."""
-    from collections import Counter
-    fs = []
-    for n in range(1, max_n + 1):
-        r, h = Counter(_char_ngrams(ref, n)), Counter(_char_ngrams(hyp, n))
-        if not r or not h:
-            continue
-        match = sum((r & h).values())
-        prec = match / sum(h.values())
-        rec = match / sum(r.values())
-        if prec + rec == 0:
-            fs.append(0.0)
-            continue
-        fs.append((1 + beta ** 2) * prec * rec / (beta ** 2 * prec + rec))
-    return 100 * sum(fs) / len(fs) if fs else 0.0
+# chrF lives in the eval package now (one source of truth); re-export for back-compat.
+from transdoc.eval.metrics import chrf  # noqa: E402
 
 
 def main() -> None:
