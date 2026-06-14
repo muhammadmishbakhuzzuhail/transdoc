@@ -171,6 +171,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     ocr_pages = ocr_pages or set()
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
+    out.metadata = {k: v for k, v in (doc.metadata or {}).items() if v}
 
     # Real cell-level table recovery (PyMuPDF find_tables) is only used for FLOW output
     # (->DOCX/MD/flow-PDF), where the renderer builds a grid from Table/Cell IR. The LAYOUT
@@ -216,6 +217,9 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
         out.page_drawings[pno] = _capture_vectors(page)
+        rot = int(getattr(page, "rotation", 0) or 0)
+        if rot:
+            out.page_rotation[pno] = rot
 
         if selected is not None and pno not in selected:
             continue  # page not in the requested selection — skip extraction/translation
