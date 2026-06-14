@@ -358,16 +358,8 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
         # Tables carry their text in cells, not output_text — handle before the empty-text
         # skip below, or the whole table gets dropped.
         if b.type == BlockType.TABLE and b.table:
-            # fitz.Story ignores the HTML `border` attribute; draw the grid with CSS instead.
-            cell = "border:1px solid #000;padding:3px"
-            rows = "".join(
-                "<tr>" + "".join(
-                    f'<td style="{cell}">{_esc(c.output_text)}</td>' for c in row) + "</tr>"
-                for row in b.table.rows
-            )
-            parts.append(
-                f'<table style="border-collapse:collapse;border:1px solid #000">'
-                f'{rows}</table>')
+            # per-cell size/weight/align + row/col span; CSS grid (fitz.Story ignores `border`).
+            parts.append(_table_html(b.table.rows))
             continue
         text = _esc(b.output_text.strip())
         if not text:
@@ -413,6 +405,28 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
     finally:
         writer.close()      # always close so the output isn't left truncated on error
     return out_path
+
+
+def _cell_td(c) -> str:
+    """One <td> honoring the cell's font size, weight, alignment and row/col span (was a fixed
+    8pt with spans ignored)."""
+    style = ["border:1px solid #000", "padding:2px",
+             f"font-size:{c.size:.0f}pt" if c.size and c.size > 0 else "font-size:8pt"]
+    if c.bold:
+        style.append("font-weight:bold")
+    if c.align in ("center", "right"):
+        style.append(f"text-align:{c.align}")
+    span = ""
+    if c.colspan > 1:
+        span += f' colspan="{c.colspan}"'
+    if c.rowspan > 1:
+        span += f' rowspan="{c.rowspan}"'
+    return f'<td style="{";".join(style)}"{span}>{_esc(c.output_text)}</td>'
+
+
+def _table_html(rows) -> str:
+    body = "".join("<tr>" + "".join(_cell_td(c) for c in row) + "</tr>" for row in rows)
+    return f'<table style="border-collapse:collapse;border:1px solid #000">{body}</table>'
 
 
 def _norm_rect(b):
@@ -554,14 +568,8 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                     except Exception:
                         pass   # fall through to text placement if the crop fails
                 if b.type == BlockType.TABLE and b.table:
-                    cell = "border:1px solid #000;padding:2px;font-size:8pt"
-                    rows = "".join(
-                        "<tr>" + "".join(f'<td style="{cell}">{_esc(c.output_text)}</td>'
-                                         for c in row) + "</tr>" for row in b.table.rows)
                     try:
-                        page.insert_htmlbox(
-                            r, f'<table style="border-collapse:collapse">{rows}</table>',
-                            scale_low=0)
+                        page.insert_htmlbox(r, _table_html(b.table.rows), scale_low=0)
                     except Exception:
                         pass
                     continue

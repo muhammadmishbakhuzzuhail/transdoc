@@ -99,6 +99,9 @@ class Cell(BaseModel):
     translated: Optional[str] = None
     rowspan: int = 1
     colspan: int = 1
+    size: Optional[float] = None         # font size (pt) of the cell text, if known
+    bold: bool = False
+    align: Optional[str] = None          # left|center|right
     confidence: Confidence = Field(default_factory=Confidence)
 
     @property
