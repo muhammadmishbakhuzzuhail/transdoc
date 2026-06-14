@@ -15,7 +15,7 @@ without rendering it is ◐, not ✓.
 | Variable | Status | Notes |
 |---|---|---|
 | font family / size / bold / italic / colour | ✓ | style capture (PR #70) |
-| underline | ◐ | docx captured; pdf not; render path varies |
+| underline | ✓ | DOCX capture + rendered md/docx/pdf (PR #86); PDF-extract n/a (no font flag, drawn as vector) |
 | strikethrough | ✗ | drawn as vector near text — needs detection |
 | highlight / background colour | ✗ | |
 | superscript / subscript | ◐ | IR `Style.superscript` exists, NOT captured/rendered |

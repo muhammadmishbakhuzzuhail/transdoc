@@ -22,6 +22,9 @@ def render(doc: Document, cfg: Config) -> str:
         text = b.output_text.strip()
         if not text:
             continue
+        if b.style.underline and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION,
+                                            BlockType.LIST_ITEM):
+            text = f"<u>{text}</u>"            # markdown has no underline; HTML passthrough
         # carry an inline hyperlink so links survive translation (audit P1)
         if b.style.link and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION, BlockType.LIST_ITEM):
             text = f"[{text}]({b.style.link})"
