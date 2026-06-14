@@ -179,7 +179,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 blk.flags["ocr_text"] = "text from PP-OCR (no digital layer in this region)"
             out.blocks.append(blk)
     doc.close()
-    out.blocks = _dedup(out.blocks)
+    from .fuse import reconcile
+    out.blocks = reconcile(out.blocks)
     # global reading order across pages
     for i, b in enumerate(sorted(out.blocks, key=lambda b: (b.page, b.reading_order))):
         b.reading_order = i
@@ -221,34 +222,3 @@ def _region_style(page, rect) -> Style:
                  italic=ital_chars > nchars / 2)
 
 
-def _norm(s: str) -> str:
-    return " ".join((s or "").lower().split())
-
-
-def _dedup(blocks: list[Block]) -> list[Block]:
-    """PP-StructureV3 sometimes returns overlapping text regions -> duplicated prose. Drop a
-    text block whose normalized text duplicates (or is contained in) another's; keep the longer.
-    Non-text blocks (figures/formulas/tables) are never deduped."""
-    text_types = {BlockType.PARAGRAPH, BlockType.HEADING, BlockType.TITLE, BlockType.CAPTION}
-    kept: list[Block] = []
-    norms: list[str] = []
-    for b in blocks:
-        if b.type not in text_types or len(_norm(b.text)) < 15:
-            kept.append(b)
-            norms.append("")
-            continue
-        n = _norm(b.text)
-        dup_at = -1
-        for i, kn in enumerate(norms):
-            if not kn:
-                continue
-            if n == kn or (len(n) > 20 and n in kn) or (len(kn) > 20 and kn in n):
-                dup_at = i
-                break
-        if dup_at == -1:
-            kept.append(b)
-            norms.append(n)
-        elif len(n) > len(norms[dup_at]):     # keep the longer/more complete version
-            kept[dup_at] = b
-            norms[dup_at] = n
-    return kept
