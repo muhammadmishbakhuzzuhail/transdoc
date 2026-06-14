@@ -22,6 +22,9 @@ def render(doc: Document, cfg: Config) -> str:
         text = b.output_text.strip()
         if not text:
             continue
+        # carry an inline hyperlink so links survive translation (audit P1)
+        if b.style.link and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION, BlockType.LIST_ITEM):
+            text = f"[{text}]({b.style.link})"
 
         # bilingual: show source then translation
         if cfg.bilingual and b.translated is not None and b.text.strip():

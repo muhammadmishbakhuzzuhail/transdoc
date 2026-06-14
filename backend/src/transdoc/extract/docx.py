@@ -91,12 +91,15 @@ def extract(path: str, cfg: Config) -> Document:
             if not text:
                 continue
             btype, level = _para_type(item.style.name if item.style else "")
+            from .links import paragraph_link
+            st = _para_style(item, level)
+            st.link = paragraph_link(item)
             out.blocks.append(
                 Block(
                     id=block_id(0, idx),
                     type=btype,
                     text=text,
-                    style=_para_style(item, level),
+                    style=st,
                     confidence=Confidence(source="digital"),
                 )
             )

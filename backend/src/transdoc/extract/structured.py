@@ -178,6 +178,10 @@ def extract_structured(path: str, cfg: Config) -> Document:
             if not digital:
                 blk.flags["ocr_text"] = "text from PP-OCR (no digital layer in this region)"
             out.blocks.append(blk)
+    from .links import attach_pdf_links
+    for pno in pnos:
+        attach_pdf_links(doc[pno], [b for b in out.blocks if b.page == pno])
+
     doc.close()
     from .fuse import reconcile
     out.blocks = reconcile(out.blocks)

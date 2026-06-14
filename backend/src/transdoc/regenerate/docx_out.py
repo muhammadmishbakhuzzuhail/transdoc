@@ -48,6 +48,32 @@ def _style_runs(para, style: Style) -> None:
             f.color.rgb = rgb
 
 
+def _add_hyperlink(paragraph, url: str, text: str) -> None:
+    """Append an external hyperlink run (python-docx has no public API). Blue + underlined so
+    it reads as a link."""
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    r_id = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
+    link = OxmlElement("w:hyperlink")
+    link.set(qn("r:id"), r_id)
+    run = OxmlElement("w:r")
+    rpr = OxmlElement("w:rPr")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    rpr.append(color)
+    u = OxmlElement("w:u")
+    u.set(qn("w:val"), "single")
+    rpr.append(u)
+    run.append(rpr)
+    t = OxmlElement("w:t")
+    t.text = text
+    run.append(t)
+    link.append(run)
+    paragraph._p.append(link)
+
+
 def _render_table(d, rows) -> None:
     """Build a DOCX table honoring merged cells. The IR stores a spanning cell once with
     colspan/rowspan (HTML semantics), so rows can have fewer cells than the grid is wide; place
@@ -116,7 +142,11 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             d.add_paragraph(b.translated.strip())
             continue
 
-        if b.type == BlockType.TITLE:
+        if b.style.link and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION,
+                                       BlockType.LIST_ITEM):
+            p = d.add_paragraph(style="List Bullet" if b.type == BlockType.LIST_ITEM else None)
+            _add_hyperlink(p, b.style.link, text)   # link run, not a plain run
+        elif b.type == BlockType.TITLE:
             p = d.add_heading(text, level=0)
         elif b.type == BlockType.HEADING:
             p = d.add_heading(text, level=max(1, min(9, b.style.heading_level or 1)))
