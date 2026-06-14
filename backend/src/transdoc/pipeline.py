@@ -60,6 +60,12 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # --- Extract -> IR ---
     doc = extract_ir(det, cfg)
 
+    # Normalize extracted text: de-hyphenate line breaks, fold ligatures, NFC. PyMuPDF leaves
+    # words split across line breaks ("inter-\nnational") and most ligatures intact, which
+    # degrade both fidelity and translation. (research 2026-06-15)
+    from .extract.textnorm import normalize_doc
+    normalize_doc(doc)
+
     # --- Phase 1: Diagnose ---
     diagnose(doc, det, cfg)
 
