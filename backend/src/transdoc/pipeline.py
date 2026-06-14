@@ -66,6 +66,11 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     from .extract.textnorm import normalize_doc
     normalize_doc(doc)
 
+    # Drop running headers/footers/page-numbers detected by cross-page repetition in the
+    # margins — noise on a reflow + wasted translation calls. (research 2026-06-15)
+    from .extract.furniture import drop_repeated
+    drop_repeated(doc)
+
     # --- Phase 1: Diagnose ---
     diagnose(doc, det, cfg)
 
