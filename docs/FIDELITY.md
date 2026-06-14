@@ -29,7 +29,7 @@ without rendering it is ◐, not ✓.
 ## Paragraph / block level
 | Variable | Status | Notes |
 |---|---|---|
-| alignment (l/c/r/justify) | ◐ | docx captured; pdf inferred |
+| alignment (l/c/r/justify) | ✓ | captured + rendered (pdf + docx_out PR #80) |
 | line-spacing / space before-after | ✗ | |
 | indentation (first-line / left / hanging) | ✗ | |
 | list type / marker / nesting level / numbering | ◐ | LIST_ITEM type; marker + level not preserved |
