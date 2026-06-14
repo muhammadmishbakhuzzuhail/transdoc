@@ -38,9 +38,9 @@ Universal any→any coverage rules out per-pair Opus-MT as the *primary* engine 
 1000s of pair models is impractical) and rules out translation LLMs (Tower/ALMA cover only
 ~10–22 high-resource languages). A single broad multilingual NMT is the right core.
 
-**DECISION (settled by an actual benchmark, 2026-06-15):** keep the **`fallback`** chain
-(Google web endpoint primary → MyMemory → self-hosted LibreTranslate) as the default. A
-round-trip-chrF benchmark (`scripts/bench_engines.py`, 5 sentences × id/ar/zh/de) measured:
+**DECISION (settled by an actual benchmark, 2026-06-15):** default = plain **`google`**, no
+fallback chain. A round-trip-chrF benchmark (`scripts/bench_engines.py`, 5 sentences ×
+id/ar/zh/de) measured:
 
 | lang | Google | NLLB-200-600M |
 |---|---|---|
@@ -50,8 +50,9 @@ round-trip-chrF benchmark (`scripts/bench_engines.py`, 5 sentences × id/ar/zh/d
 | de | 85.9 | 84.8 |
 | **avg** | **85.1** | 83.8 |
 
-Google wins on quality at CPU-viable model sizes, so it stays primary (with MyMemory +
-LibreTranslate backstops for when it's blocked). NLLB-600M ≈ Google but offline/private — use
+Google wins on quality at CPU-viable model sizes, so it's the plain default — no backstop chain
+(personal/low-volume + TM cache + Google's own retry make one unnecessary; `-e fallback` adds
+MyMemory + LibreTranslate if you want it). NLLB-600M ≈ Google but offline/private — use
 `-e nllb` when privacy matters. The options below only matter for **offline-better-than-Google**
 or a **commercial fork** (re-run the benchmark before committing):
 - **NLLB-200-1.3B / 3.3B** — bigger model may beat Google, but much slower on CPU. `-e nllb` + `NLLB_MODEL=`.
