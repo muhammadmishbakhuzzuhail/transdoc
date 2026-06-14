@@ -211,8 +211,11 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                                x1=ob.bbox.x1 + ox, y1=ob.bbox.y1 + oy)
             out.blocks.append(ob)
 
+    from .vectors import capture as _capture_vectors
+
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
+        out.page_drawings[pno] = _capture_vectors(page)
 
         if selected is not None and pno not in selected:
             continue  # page not in the requested selection — skip extraction/translation

@@ -189,6 +189,10 @@ class Document(BaseModel):
 
     page_count: int = 1
     page_sizes: dict[int, tuple[float, float]] = Field(default_factory=dict)
+    # Per-page vector line-art (lines/rects in PDF points) captured from the source so the
+    # reconstruct renderer can redraw rules/dividers/boxes it would otherwise drop. See
+    # extract/vectors.py.
+    page_drawings: dict[int, list[dict]] = Field(default_factory=dict)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

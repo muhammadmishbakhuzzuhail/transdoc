@@ -107,10 +107,13 @@ def extract_structured(path: str, cfg: Config) -> Document:
     pnos = [p for p in range(doc.page_count) if selected is None or p in selected]
     regions_by_page = get_structure_extractor().extract_pages(doc, pnos)
 
+    from .vectors import capture as _capture_vectors
+
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_struct_"))
     cidx = 0
     for pno in pnos:
         page = doc[pno]
+        out.page_drawings[pno] = _capture_vectors(page)
         for r in _ordered_regions(regions_by_page.get(pno, [])):
             if r.label in _SKIP:
                 continue
