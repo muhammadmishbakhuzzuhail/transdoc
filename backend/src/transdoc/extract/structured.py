@@ -142,10 +142,17 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 text = digital or content
             if not text:
                 continue
-            out.blocks.append(Block(
+            # bbox is always in PDF points here (parse_regions scales the 150-dpi render to
+            # points), so the geometry source must stay "digital" — the renderers rescale a
+            # block by 72/300 only when source=="ocr" (legacy 300-dpi pixel bboxes), which
+            # would misplace this point-bbox. Carry true OCR provenance in a flag instead.
+            blk = Block(
                 id=f"p{pno}-r{r.order}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
                 page=pno, reading_order=len(out.blocks), bbox=bbox, text=text,
-                style=Style(), confidence=Confidence(source="digital" if digital else "ocr")))
+                style=Style(), confidence=Confidence(source="digital"))
+            if not digital:
+                blk.flags["ocr_text"] = "text from PP-OCR (no digital layer in this region)"
+            out.blocks.append(blk)
     doc.close()
     out.blocks = _dedup(out.blocks)
     # global reading order across pages
