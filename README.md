@@ -21,9 +21,12 @@ Two design rules follow from that:
   to one library** — it fuses the best tool for each sub-task: PyMuPDF for digital text +
   vector graphics + images, an AcroForm parser for form fields, PP-StructureV3 for
   layout/tables/formula-LaTeX/OCR. Best extractor per region, merged into the IR.
-- **Translation uses a single engine** — pick the best-quality one and commit to it (default:
-  **NLLB-200**, best broad-coverage quality; CC-BY-NC is fine for personal use). No
-  license-driven fallback juggling.
+- **Translation: one primary engine, chosen by measurement.** A round-trip-chrF benchmark
+  (`scripts/bench_engines.py`) settled it: the **Google web endpoint wins** (avg chrF 85.1 vs
+  NLLB-200-600M 83.8 across id/ar/zh/de), so the default stays the **`fallback`** chain
+  (Google-primary → MyMemory → LibreTranslate backstop for when Google is blocked). NLLB and
+  others remain `-e`-selectable; a larger NLLB (1.3B/3.3B) might overtake Google but costs much
+  more on CPU.
 
 ## Repository layout
 ```
@@ -62,19 +65,19 @@ output format without touching the rest.
 | Language detect | langdetect (core, tiny) | lingua low-accuracy mode (`[detect]` extra — 100% vs 91% acc, deterministic, ~1.2GB RAM) |
 | PDF parse | PyMuPDF | — |
 | Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
-| Translate (single engine) | **NLLB-200** distilled (offline, CPU via CTranslate2 int8; 200+ langs; best broad-coverage quality; CC-BY-NC — fine for personal use) | other engines stay selectable with `-e` (google/mymemory/libretranslate/madlad/opusmt/argos/nllb/openrouter/anthropic/echo) but NLLB is the committed default |
+| Translate (primary) | **`fallback`** — Google web endpoint (best measured quality, chrF 85.1) → MyMemory → LibreTranslate backstop. CPU-only, no model. | offline NMT NLLB/MADLAD/Opus-MT/Argos + LLM (openrouter/anthropic) all `-e`-selectable; NLLB-600M measured ≈ Google (83.8), bigger NLLB heavier on CPU |
 | Translation memory | persistent SQLite cache (cross-run, cuts engine calls) | in-memory dedupe |
 | Regenerate | **in-place** text swap for Office (docx/pptx/xlsx/epub/srt/vtt) — keeps all formatting, the DeepL strategy · PDF/image reflow (reconstruct) · `-f layout` overlay opt-in | Markdown |
 
-> **Personal/offline by default:** the committed engine is **NLLB-200** (offline NMT, CPU via
-> CTranslate2 int8) — highest broad-coverage quality and fully on-device, no network, no ToS
-> concerns. CC-BY-NC is irrelevant for personal use. A persistent SQLite TM caches every
-> segment so repeated runs are instant.
+> **Default = `fallback` (Google-primary), chosen by benchmark.** `scripts/bench_engines.py`
+> (round-trip chrF) found Google best (85.1) vs offline NLLB-200-600M (83.8) on id/ar/zh/de, so
+> Google stays primary with MyMemory + self-hosted LibreTranslate as backstops for when it's
+> rate-limited/blocked. A persistent SQLite TM caches every segment so each is sent at most once.
 >
-> Other engines remain available with `-e` if you want them (e.g. `google` web endpoint for a
-> quick no-install pass, `libretranslate` for a self-hosted server), but they are not the
-> default and carry their own caveats (network, rate limits). For a personal local tool, one
-> strong offline engine beats a license-driven fallback chain.
+> ⚠️ Google's web endpoint is unofficial/network-dependent. For fully **offline/private**
+> translation use `-e nllb` (≈Google quality at 600M, larger models heavier) or
+> `-e libretranslate` (self-host). A bigger NLLB (1.3B/3.3B) may beat Google but is much slower
+> on CPU — re-run the benchmark before committing to it.
 
 ## Install
 ```bash
@@ -110,8 +113,8 @@ Engines (`-e`): `fallback` (default — google→mymemory→libretranslate) · `
 ## Status
 Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
 OCR (Tesseract default, auto-escalating to PaddleOCR on low-confidence pages; Surya optional) +
-translate (single engine — NLLB-200 default; offline NMT/LLM/network engines selectable;
-persistent SQLite TM, brand/math/token protection) + regenerate (**in-place** Office:
+translate (primary `fallback`/Google chain, benchmark-selected; offline NMT/LLM engines
+selectable via `-e`; persistent SQLite TM, brand/math/token protection) + regenerate (**in-place** Office:
 docx/odt/pptx/xlsx/epub/srt/vtt · **form-aware** PDF: overlay for forms, reconstruct otherwise ·
 image overlay) + report. See `docs/ARCHITECTURE.md` for the fidelity strategy and
 `docs/RISKS.md` for known limits. Quality is measured by the eval harness
@@ -126,10 +129,10 @@ Test corpus under `corpus/` — `corpus/real/` (real downloads) + `corpus/synthe
 ground-truth); see `corpus/README.md`.
 
 ## Privacy
-The default **NLLB-200** engine runs **fully on-device** — document text never leaves your
-machine. (If you opt into a network engine like `-e google` or `-e mymemory`, text is sent
-off-device to that service; don't use those for confidential documents.) A persistent SQLite
-TM caches every translated segment locally.
+The default `fallback`/`google` engine sends document text to Google's public endpoint
+(off-device) — don't use it for confidential documents. For **fully on-device** translation use
+`-e nllb` (offline NMT, ≈Google quality) or a self-hosted `-e libretranslate`; text never leaves
+your machine. A persistent SQLite TM caches every segment locally (each sent at most once).
 
 ## Limits
 Uploads are bounded against malicious/pathological input (env-overridable in `limits.py`):
