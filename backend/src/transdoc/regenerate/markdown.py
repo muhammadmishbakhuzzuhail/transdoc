@@ -43,7 +43,9 @@ def render(doc: Document, cfg: Config) -> str:
             lvl = max(2, min(6, b.style.heading_level or 2))
             lines.append(f"{'#' * lvl} {text}")
         elif b.type == BlockType.LIST_ITEM:
-            lines.append(f"- {text}")
+            indent = "  " * max(0, b.style.list_level)
+            marker = "1." if b.style.list_ordered else "-"
+            lines.append(f"{indent}{marker} {text}")
         elif b.type == BlockType.FORMULA:
             # LaTeX (from PP-StructureV3) -> a display-math block; bare text -> code fence.
             looks_latex = any(s in text for s in ("\\", "_{", "^", "frac", "operatorname"))

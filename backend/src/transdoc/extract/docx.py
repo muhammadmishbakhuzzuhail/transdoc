@@ -39,6 +39,20 @@ def _para_type(style_name: str) -> tuple[BlockType, int]:
     return BlockType.PARAGRAPH, 0
 
 
+def _list_info(item) -> tuple[bool, int]:
+    """(ordered, level) for a list paragraph: ordered if the style is a numbered list; level
+    from the numbering indent level (ilvl)."""
+    ordered = "number" in (item.style.name or "").lower() if item.style else False
+    level = 0
+    try:
+        npr = item._p.pPr.numPr
+        if npr is not None and npr.ilvl is not None and npr.ilvl.val is not None:
+            level = int(npr.ilvl.val)
+    except Exception:
+        pass
+    return ordered, level
+
+
 def _para_style(item, level: int) -> Style:
     """Capture the dominant run's character formatting (font name/size/colour/weight) plus
     paragraph alignment — the detail the renderers need to reproduce the original look. Run
@@ -94,6 +108,8 @@ def extract(path: str, cfg: Config) -> Document:
             from .links import paragraph_link
             st = _para_style(item, level)
             st.link = paragraph_link(item)
+            if btype == BlockType.LIST_ITEM:
+                st.list_ordered, st.list_level = _list_info(item)
             out.blocks.append(
                 Block(
                     id=block_id(0, idx),

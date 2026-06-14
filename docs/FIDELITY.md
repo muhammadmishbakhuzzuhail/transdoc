@@ -32,7 +32,7 @@ without rendering it is ◐, not ✓.
 | alignment (l/c/r/justify) | ✓ | captured + rendered (pdf + docx_out PR #80) |
 | line-spacing / space before-after | ✗ | |
 | indentation (first-line / left / hanging) | ✗ | |
-| list type / marker / nesting level / numbering | ◐ | LIST_ITEM type; marker + level not preserved |
+| list type / marker / nesting level | ✓ | ordered-vs-bullet + level captured (docx) + rendered (md/docx) PR #87 |
 | paragraph border / shading / tab-stops / drop-cap | ✗ | |
 | direction / bidi (RTL) | ◐ | rtl flag + HarfBuzz overlay; PyMuPDF already logical-order on extract |
 
