@@ -42,11 +42,11 @@ def translate(
     source: str = typer.Option("auto", "--source", "-s", help="Source language"),
     to: str = typer.Option("markdown", "--to", "-t",
                            help="markdown|docx|pdf|plain-text|pptx|xlsx|epub|srt|vtt|same-as-source"),
-    engine: str = typer.Option("fallback", "--engine", "-e",
-                               help="fallback|google|mymemory|libretranslate|madlad|opusmt|argos|"
+    engine: str = typer.Option("google", "--engine", "-e",
+                               help="google|fallback|mymemory|libretranslate|madlad|opusmt|argos|"
                                     "nllb|openrouter|anthropic|echo "
-                                    "(free default: fallback = google->mymemory->libretranslate; "
-                                    "commercial-safe offline: madlad/opusmt/argos)"),
+                                    "(default: google = benchmark winner; nllb for offline/private; "
+                                    "fallback = google->mymemory->libretranslate if you want backstops)"),
     ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|paddle|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),

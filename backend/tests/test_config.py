@@ -7,8 +7,9 @@ import pytest
 from transdoc.config import Config, Engine, Fidelity, OutputFormat
 
 
-def test_default_engine_is_free_fallback_chain():
-    assert Config(target_lang="id").engine == Engine.FALLBACK
+def test_default_engine_is_google():
+    # benchmark winner (chrF 85.1); personal/local, no fallback chain
+    assert Config(target_lang="id").engine == Engine.GOOGLE
 
 
 def test_require_target_raises_when_unset():

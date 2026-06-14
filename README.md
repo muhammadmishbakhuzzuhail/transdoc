@@ -21,12 +21,13 @@ Two design rules follow from that:
   to one library** — it fuses the best tool for each sub-task: PyMuPDF for digital text +
   vector graphics + images, an AcroForm parser for form fields, PP-StructureV3 for
   layout/tables/formula-LaTeX/OCR. Best extractor per region, merged into the IR.
-- **Translation: one primary engine, chosen by measurement.** A round-trip-chrF benchmark
-  (`scripts/bench_engines.py`) settled it: the **Google web endpoint wins** (avg chrF 85.1 vs
-  NLLB-200-600M 83.8 across id/ar/zh/de), so the default stays the **`fallback`** chain
-  (Google-primary → MyMemory → LibreTranslate backstop for when Google is blocked). NLLB and
-  others remain `-e`-selectable; a larger NLLB (1.3B/3.3B) might overtake Google but costs much
-  more on CPU.
+- **Translation: one engine, chosen by measurement — Google, no fallback chain.** A
+  round-trip-chrF benchmark (`scripts/bench_engines.py`) settled it: the **Google web endpoint
+  wins** (avg chrF 85.1 vs NLLB-200-600M 83.8 across id/ar/zh/de), so the default is plain
+  **`google`**. For a personal, low-volume tool with a persistent TM cache (each segment sent
+  once) and Google's own retry/backoff, a backstop chain isn't worth the complexity — if Google
+  is ever blocked, switch with `-e`. `-e nllb` for offline/private; `-e fallback` if you do want
+  the google→mymemory→libretranslate backstops.
 
 ## Repository layout
 ```
@@ -65,19 +66,19 @@ output format without touching the rest.
 | Language detect | langdetect (core, tiny) | lingua low-accuracy mode (`[detect]` extra — 100% vs 91% acc, deterministic, ~1.2GB RAM) |
 | PDF parse | PyMuPDF | — |
 | Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
-| Translate (primary) | **`fallback`** — Google web endpoint (best measured quality, chrF 85.1) → MyMemory → LibreTranslate backstop. CPU-only, no model. | offline NMT NLLB/MADLAD/Opus-MT/Argos + LLM (openrouter/anthropic) all `-e`-selectable; NLLB-600M measured ≈ Google (83.8), bigger NLLB heavier on CPU |
+| Translate | **`google`** — web endpoint, best measured quality (chrF 85.1), CPU-only, no model, no fallback chain | `-e nllb` offline/private (≈Google, 83.8) · `-e fallback` adds mymemory/libretranslate backstops · madlad/opusmt/argos/openrouter/anthropic also `-e`-selectable |
 | Translation memory | persistent SQLite cache (cross-run, cuts engine calls) | in-memory dedupe |
 | Regenerate | **in-place** text swap for Office (docx/pptx/xlsx/epub/srt/vtt) — keeps all formatting, the DeepL strategy · PDF/image reflow (reconstruct) · `-f layout` overlay opt-in | Markdown |
 
-> **Default = `fallback` (Google-primary), chosen by benchmark.** `scripts/bench_engines.py`
-> (round-trip chrF) found Google best (85.1) vs offline NLLB-200-600M (83.8) on id/ar/zh/de, so
-> Google stays primary with MyMemory + self-hosted LibreTranslate as backstops for when it's
-> rate-limited/blocked. A persistent SQLite TM caches every segment so each is sent at most once.
+> **Default = `google`, chosen by benchmark.** `scripts/bench_engines.py` (round-trip chrF)
+> found Google best (85.1) vs offline NLLB-200-600M (83.8) on id/ar/zh/de. This is a personal,
+> low-volume tool: a persistent SQLite TM sends each segment at most once and Google has its own
+> retry/backoff, so the default is plain Google with **no fallback chain**.
 >
-> ⚠️ Google's web endpoint is unofficial/network-dependent. For fully **offline/private**
-> translation use `-e nllb` (≈Google quality at 600M, larger models heavier) or
-> `-e libretranslate` (self-host). A bigger NLLB (1.3B/3.3B) may beat Google but is much slower
-> on CPU — re-run the benchmark before committing to it.
+> ⚠️ Google's web endpoint is unofficial/network-dependent; if it's ever blocked, translation
+> fails (no backstop). Switch then with `-e fallback` (adds MyMemory + self-hosted LibreTranslate)
+> or go offline/private with `-e nllb`. A bigger NLLB (1.3B/3.3B) may beat Google but is much
+> slower on CPU — re-run the benchmark before committing.
 
 ## Install
 ```bash
@@ -107,13 +108,14 @@ transdoc diagnose input.pdf                                 # profile only
 transdoc serve                                              # web UI + REST API
 ```
 
-Engines (`-e`): `fallback` (default — google→mymemory→libretranslate) · `google` · `mymemory` ·
-`libretranslate` · `madlad` · `opusmt` · `argos` · `nllb` · `openrouter` · `anthropic` · `echo`.
+Engines (`-e`): `google` (default — benchmark winner) · `fallback` (google→mymemory→libretranslate
+backstops) · `mymemory` · `libretranslate` · `madlad` · `opusmt` · `argos` · `nllb` (offline/private) ·
+`openrouter` · `anthropic` · `echo`.
 
 ## Status
 Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
 OCR (Tesseract default, auto-escalating to PaddleOCR on low-confidence pages; Surya optional) +
-translate (primary `fallback`/Google chain, benchmark-selected; offline NMT/LLM engines
+translate (default `google`, benchmark-selected, no fallback chain; offline NMT/LLM engines
 selectable via `-e`; persistent SQLite TM, brand/math/token protection) + regenerate (**in-place** Office:
 docx/odt/pptx/xlsx/epub/srt/vtt · **form-aware** PDF: overlay for forms, reconstruct otherwise ·
 image overlay) + report. See `docs/ARCHITECTURE.md` for the fidelity strategy and

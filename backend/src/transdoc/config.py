@@ -54,8 +54,8 @@ class Fidelity(str, Enum):
 
 
 class Engine(str, Enum):
-    FALLBACK = "fallback"     # resilient chain google->mymemory->libretranslate ★default (free public)
-    GOOGLE = "google"         # free Google web endpoint (DocTranslator economics, CPU-only, ToS-grey)
+    GOOGLE = "google"         # ★default — benchmark winner (chrF 85.1); free web endpoint, CPU-only, ToS-grey
+    FALLBACK = "fallback"     # optional resilient chain google->mymemory->libretranslate (backstops)
     MYMEMORY = "mymemory"     # free fallback, ~50k words/day, no key
     LIBRETRANSLATE = "libretranslate"  # self-host backstop + privacy/offline (AGPL, separate service)
     MADLAD = "madlad"         # offline NMT, 450 langs, any->any — Apache-2.0 (COMMERCIAL-SAFE)
@@ -95,7 +95,7 @@ class Config(BaseModel):
                                                 # (TRANSDOC_LAYOUT_PYTHON / ./layout_venv).
                                                 # "off" = heuristics.
 
-    engine: Engine = Engine.FALLBACK           # free resilient chain: google->mymemory->libretranslate
+    engine: Engine = Engine.GOOGLE             # benchmark winner (chrF 85.1); personal/local, no fallback chain
     ocr_engine: OCREngine = OCREngine.AUTO
 
     # Provided glossary: term -> rendering. Extended automatically.
