@@ -67,6 +67,24 @@ def test_sidecar_files_are_not_scored_as_documents(tmp_path):
     assert set(card["docs"]) == {"doc.pdf"}   # only the real document, no sidecars
 
 
+def test_committed_baseline_matches_committed_samples():
+    """The CI gate fixtures must stay green: regenerate the samples and confirm no regression
+    vs the committed baseline. Guards against the baseline drifting from the metrics code."""
+    import json
+    from pathlib import Path
+
+    import transdoc.eval
+    from transdoc.eval.fixtures import build
+
+    pkg = Path(transdoc.eval.__file__).parent
+    baseline = json.loads((pkg / "baseline.json").read_text(encoding="utf-8"))
+    build(pkg / "samples")   # idempotent regenerate (deterministic content)
+    cfg = Config(target_lang=baseline["target_lang"],
+                 engine=Engine(baseline["engine"]), output_format=OutputFormat.PDF)
+    card = run_corpus(pkg / "samples", cfg)
+    assert diff_baseline(baseline, card) == []
+
+
 def test_baseline_diff_flags_missing_and_new_error():
     base = {"docs": {"gone.pdf": {"blocks": 3}, "ok.pdf": {"blocks": 3}}}
     cur = {"docs": {"ok.pdf": {"error": "ValueError: boom", "blocks": 3}}}

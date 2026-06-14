@@ -1,0 +1,45 @@
+{
+  "engine": "echo",
+  "target_lang": "id",
+  "docs": {
+    "digital_table.docx": {
+      "file": "digital_table.docx",
+      "blocks": 4,
+      "by_type": {
+        "title": 1,
+        "paragraph": 2,
+        "table": 1
+      },
+      "formulas": 0,
+      "tables": 1,
+      "table_cells": 4,
+      "figures": 0,
+      "translatable": 3,
+      "flagged": 0,
+      "pages": 1,
+      "reading_order_monotonic": true,
+      "overwrite": 0,
+      "tiny": 0,
+      "overflow": 0
+    },
+    "digital_two_page.pdf": {
+      "file": "digital_two_page.pdf",
+      "blocks": 6,
+      "by_type": {
+        "heading": 2,
+        "paragraph": 4
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 6,
+      "flagged": 0,
+      "pages": 2,
+      "reading_order_monotonic": true,
+      "overwrite": 0,
+      "tiny": 0,
+      "overflow": 0
+    }
+  }
+}
