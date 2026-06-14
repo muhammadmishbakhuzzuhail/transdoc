@@ -7,12 +7,49 @@ honest trade-off for an *editable* target. For visual fidelity use the PDF overl
 from __future__ import annotations
 
 from ..config import Config
-from ..ir import BlockType, Document
+from ..ir import BlockType, Document, Style
+
+
+def _align(style: Style):
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    if style.rtl:
+        return WD_ALIGN_PARAGRAPH.RIGHT
+    return {"center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT,
+            "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
+            "left": WD_ALIGN_PARAGRAPH.LEFT}.get(style.align)
+
+
+def _style_runs(para, style: Style) -> None:
+    """Apply the IR character style (font/size/weight/colour) to a paragraph's runs — the IR
+    captures these but the renderer used to drop them (plain 12pt black). Heading sizes are left
+    to the Word style unless the source carried an explicit size."""
+    from docx.shared import Pt, RGBColor
+
+    rgb = None
+    if style.color and style.color.startswith("#") and len(style.color) == 7:
+        try:
+            rgb = RGBColor(int(style.color[1:3], 16), int(style.color[3:5], 16),
+                           int(style.color[5:7], 16))
+        except ValueError:
+            rgb = None
+    for run in para.runs:
+        f = run.font
+        if style.bold:
+            f.bold = True
+        if style.italic:
+            f.italic = True
+        if style.underline:
+            f.underline = True
+        if style.font:
+            f.name = style.font
+        if style.size and style.size > 0:
+            f.size = Pt(style.size)
+        if rgb is not None:
+            f.color.rgb = rgb
 
 
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from docx import Document as Docx
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches
 
     d = Docx()
@@ -57,15 +94,18 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             continue
 
         if b.type == BlockType.TITLE:
-            d.add_heading(text, level=0)
+            p = d.add_heading(text, level=0)
         elif b.type == BlockType.HEADING:
-            d.add_heading(text, level=max(1, min(9, b.style.heading_level or 1)))
+            p = d.add_heading(text, level=max(1, min(9, b.style.heading_level or 1)))
         elif b.type == BlockType.LIST_ITEM:
-            d.add_paragraph(text, style="List Bullet")
+            p = d.add_paragraph(text, style="List Bullet")
         else:
             p = d.add_paragraph(text)
-            if b.style.rtl:
-                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        # carry the source character styling + alignment into the output (was dropped)
+        _style_runs(p, b.style)
+        align = _align(b.style)
+        if align is not None:
+            p.alignment = align
 
     d.save(out_path)
     return out_path
