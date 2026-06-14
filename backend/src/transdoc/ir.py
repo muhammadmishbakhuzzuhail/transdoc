@@ -81,6 +81,8 @@ class Style(BaseModel):
     rtl: bool = False                    # right-to-left script
     list_level: int = 0
     heading_level: int = 0               # 1..6 for HEADING
+    superscript: bool = False            # footnote refs / inline exponents
+    link: Optional[str] = None           # hyperlink target URI, if the block is a link
 
 
 class Confidence(BaseModel):
@@ -193,6 +195,12 @@ class Document(BaseModel):
     # reconstruct renderer can redraw rules/dividers/boxes it would otherwise drop. See
     # extract/vectors.py.
     page_drawings: dict[int, list[dict]] = Field(default_factory=dict)
+    # Per-page /Rotate (0/90/180/270). Non-zero pages are flagged for review — placement on a
+    # rotated page is harder and worth surfacing.
+    page_rotation: dict[int, int] = Field(default_factory=dict)
+    # Source document metadata (title/author/language/...) from the PDF info dict or office
+    # core properties. `language` seeds source-language detection when the caller left it auto.
+    metadata: dict[str, str] = Field(default_factory=dict)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

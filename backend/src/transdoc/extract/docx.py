@@ -102,9 +102,18 @@ def extract(path: str, cfg: Config) -> Document:
             )
             idx += 1
         else:  # DocxTable
+            # python-docx repeats a merged cell at every grid position it spans (same <w:tc>),
+            # which duplicated the text across columns/rows. Blank the continuation positions —
+            # the first occurrence keeps the text — so a merged cell's text appears once.
             rows: list[list[Cell]] = []
+            seen_tc: set[int] = set()
             for row in item.rows:
-                rows.append([Cell(text=c.text.strip()) for c in row.cells])
+                cells: list[Cell] = []
+                for c in row.cells:
+                    tc = id(c._tc)
+                    cells.append(Cell(text="" if tc in seen_tc else c.text.strip()))
+                    seen_tc.add(tc)
+                rows.append(cells)
             out.blocks.append(
                 Block(
                     id=block_id(0, idx),
