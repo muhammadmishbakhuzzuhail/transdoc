@@ -110,20 +110,32 @@ def _classify_pdf(path: Path) -> tuple[Kind, list[str]]:
 
 
 def _image_dominates(page) -> bool:
-    """True if a single image covers most of the page and there's little text — i.e. the
-    'text' is just a stray caption/number over a scan, not a real digital text layer."""
+    """True if the page is really a scan whose only digital text is a stray caption/title, not
+    a usable text layer — so it must be OCR'd, not read.
+
+    Two cases, both gated on sparse digital text so a real text page is never misread as a scan:
+      - a big image (>60% of the page) with little text (<200 chars), and
+      - a moderate image (>35%, e.g. a scan inset within page margins) with title-only text
+        (<120 chars). This second case is what a UDHR-style scan trips: a 47-char English
+        title over a 37%-coverage image holding the actual (Thai) body — the body would
+        otherwise be dropped as a figure and never translated.
+    """
     try:
         page_area = abs(page.rect.width * page.rect.height)
         if page_area <= 0:
             return False
+        max_cover = 0.0
         for info in page.get_image_info():
             bb = info.get("bbox")
             if not bb:
                 continue
             w, h = bb[2] - bb[0], bb[3] - bb[1]
-            if (w * h) / page_area > 0.6:        # one image covers >60% of the page
-                # only call it a scan if the text is sparse relative to a real text page
-                return len(page.get_text("text").strip()) < 200
+            max_cover = max(max_cover, (w * h) / page_area)
+        chars = len(page.get_text("text").strip())
+        if max_cover > 0.6 and chars < 200:
+            return True
+        if max_cover > 0.35 and chars < 120:
+            return True
     except Exception:
         return False
     return False
