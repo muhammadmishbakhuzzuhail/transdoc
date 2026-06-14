@@ -79,6 +79,36 @@ def _sniff_mime(path: Path) -> str:
         }.get(ext, "application/octet-stream")
 
 
+# A page with this many vector strokes (field underlines, boxes, rule lines) is a form, not
+# flowing prose. Articles sit near 0 (arxiv≈3, plain text=0); forms are far above (W-9≈71,
+# IRS-1040≈445). The gap is wide, so the exact value isn't delicate.
+_FORM_STROKES = 25
+
+
+def is_form_pdf(path: str | Path, max_pages: int = 3) -> bool:
+    """True if the PDF is form-like — its pages carry many vector lines/boxes (a grid of
+    fields), not reflowable prose. Such pages must be translated by the OVERLAY renderer
+    (redact text in place, keep the vector form) rather than rebuilt from scratch, which would
+    discard every field line and box. Probes the first few pages only."""
+    try:
+        import fitz
+    except Exception:
+        return False
+    try:
+        doc = fitz.open(str(path))
+    except Exception:
+        return False
+    try:
+        for page in list(doc)[:max_pages]:
+            strokes = sum(1 for d in page.get_drawings() for it in d["items"]
+                          if it[0] in ("l", "re", "qu"))
+            if strokes >= _FORM_STROKES:
+                return True
+    finally:
+        doc.close()
+    return False
+
+
 def _classify_pdf(path: Path) -> tuple[Kind, list[str]]:
     """Probe each page for a real text layer to tell digital from scanned PDFs."""
     notes: list[str] = []
