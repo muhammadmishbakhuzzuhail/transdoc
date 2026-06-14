@@ -135,9 +135,12 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
                 weight_css = "font-weight:bold;" if b.style.bold else ""
                 italic_css = "font-style:italic;" if b.style.italic else ""
                 color_css = f"color:{b.style.color};" if b.style.color else ""
+                _inner = _esc(b.output_text)
+                if b.style.link:
+                    _inner = f'<a href="{_esc(b.style.link)}">{_inner}</a>'
                 htmlbox = (f'<div style="{dir_css}{weight_css}{italic_css}{color_css}'
                            f'font-size:{size:.0f}px;text-align:{align};'
-                           f'line-height:1.05">{_esc(b.output_text)}</div>')
+                           f'line-height:1.05">{_inner}</div>')
                 try:
                     # scale_low=0 lets PyMuPDF shrink text down to fit; returns (spare, scale)
                     ret = page.insert_htmlbox(r, htmlbox, scale_low=0)
@@ -451,7 +454,10 @@ def _block_html(b):
         css.append("font-style:italic")
     if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{b.style.color}")
-    return f'<div style="{";".join(css)}">{_esc(b.output_text)}</div>', size
+    inner = _esc(b.output_text)
+    if b.style.link:
+        inner = f'<a href="{_esc(b.style.link)}">{inner}</a>'
+    return f'<div style="{";".join(css)}">{inner}</div>', size
 
 
 def _hex_rgb(h):

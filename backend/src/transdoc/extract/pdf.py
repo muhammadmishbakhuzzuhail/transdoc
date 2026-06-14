@@ -401,6 +401,10 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         except Exception:
             pass   # layout model unavailable -> keep the heuristic blocks
 
+    from .links import attach_pdf_links
+    for pno in range(doc.page_count):
+        attach_pdf_links(doc[pno], [b for b in out.blocks if b.page == pno])
+
     doc.close()
     column_reading_order(out)   # multi-column-aware reading order (research)
     return out
