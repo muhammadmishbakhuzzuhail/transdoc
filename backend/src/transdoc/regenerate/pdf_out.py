@@ -454,6 +454,36 @@ def _block_html(b):
     return f'<div style="{";".join(css)}">{_esc(b.output_text)}</div>', size
 
 
+def _hex_rgb(h):
+    if not h:
+        return None
+    h = h.lstrip("#")
+    try:
+        return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    except Exception:
+        return None
+
+
+def _redraw_vectors(page, drawings) -> None:
+    """Redraw captured line-art (lines/rects, PDF points) on a reconstructed page so rules,
+    dividers, field underlines and boxes survive — the reconstruct renderer would otherwise
+    drop every vector. Best-effort; a bad shape is skipped, never fatal."""
+    import fitz
+
+    for d in drawings or []:
+        try:
+            w = float(d.get("width") or 0.6)
+            if d.get("kind") == "line":
+                page.draw_line(fitz.Point(d["x0"], d["y0"]), fitz.Point(d["x1"], d["y1"]),
+                               color=_hex_rgb(d.get("color")) or (0, 0, 0), width=w)
+            elif d.get("kind") == "rect":
+                page.draw_rect(fitz.Rect(d["x0"], d["y0"], d["x1"], d["y1"]),
+                               color=_hex_rgb(d.get("color")), fill=_hex_rgb(d.get("fill")),
+                               width=w)
+        except Exception:
+            continue
+
+
 def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
     """Positioned per-page reconstruction — the DeepL approach. A fresh page at the SOURCE page
     size for every source page, with each block's translation placed at its ORIGINAL bbox and
@@ -482,6 +512,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
         for pno in range(npages):
             w, h = doc.page_sizes.get(pno, (595.0, 842.0))
             page = out.new_page(width=w, height=h)
+            _redraw_vectors(page, doc.page_drawings.get(pno, []))
             blocks = by_page.get(pno, [])
             obstacles = [_norm_rect(b) for b in blocks if b.bbox]
             for b in blocks:
