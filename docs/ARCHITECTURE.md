@@ -87,6 +87,27 @@ per block. This is the part where **scanned text and typed text are treated diff
 Images (`extract/image.py`) are deskewed; the OCR copy and a display copy are split so the
 overlay places translations over a clean image (`Document.render_path`).
 
+### 4.1 The fusion extractor (multi-library, best tool per sub-task)
+
+Extraction is the hard part (the output is rebuilt from scratch), so it is **not locked to one
+library** — it fuses complementary sources, each light where possible, into one IR:
+
+- **PyMuPDF** — digital text + per-span **style** (font/size/colour/weight, `_region_style`),
+  **vector line-art** (`extract/vectors.py` → `Document.page_drawings`, redrawn by the
+  reconstruct renderer), images. The fidelity backbone.
+- **PP-StructureV3** (isolated `layout_venv`, subprocess) — region labels, **tables**,
+  **formula→LaTeX**, OCR for scans. Reserved for what nothing light does.
+- **python-docx / python-pptx / openpyxl / ebooklib / odfpy** — native office styles, light,
+  no ML.
+- **`extract/fuse.py` `reconcile()`** — overlaps resolved by region type + containment: a text
+  block ≥70% inside a figure/formula/table region is dropped (carried by the crop/grid; avoids
+  the text-on-figure overwrite), then overlapping text is deduped (keep the longer).
+
+**Deliberately not adopted** (evidence): **Docling** (multi-format ML) — a 5 GB CUDA env that
+segfaults CPU-only and exposes **no per-span font/size**, so it can't replace PyMuPDF or
+PP-StructureV3; the native office libs already give richer style, lighter. **AcroForm
+key-value** — actual-tested: blank gov forms have empty fields + machine field names, no value.
+
 ## 5. Fidelity strategy — three approaches, one per format class
 
 There is no single right way to put a translation (which expands +20–30% and breaks
