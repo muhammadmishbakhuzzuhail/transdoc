@@ -47,7 +47,12 @@ def test_langs_from_explicit_source():
 
 def test_registry_exposes_easyocr():
     from transdoc.ocr import router as R
-    assert "easyocr" in R._BUILDERS
-    # easyocr is installed in this env -> builder returns an engine, present in chains
-    assert R._build_easyocr() is not None
+    assert "easyocr" in R._BUILDERS                      # registered in the chains regardless
     assert "easyocr" in R.ROUTING["Devanagari"]
+    # builder returns an engine when installed, None otherwise — never raises
+    built = R._build_easyocr()
+    import importlib.util
+    if importlib.util.find_spec("easyocr") is not None:
+        assert built is not None
+    else:
+        assert built is None
