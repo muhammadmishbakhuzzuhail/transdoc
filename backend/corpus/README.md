@@ -22,6 +22,11 @@ provenance:
 > the extraction against the source image — text fidelity / completeness / structure / reading
 > order, plus the specific content missed or hallucinated. Automates the manual vision-QA audit;
 > needs `ANTHROPIC_API_KEY` + the `[llm]` extra (online, costs tokens).
+>
+> **Translation quality (chrF vs FLORES-200):** `make eval-translate ARGS="--n 100 fr de ja ar"`
+> translates the FLORES-200 English dev set through the engine and scores against the
+> professional reference with chrF, per language (15 langs across 7 scripts by default).
+> Downloads FLORES-200 on first run (set `FLORES_DIR` to reuse); online (the engine is online).
 
 ## `real/` — real-world downloads
 Messy, no ground truth → integration / quality stress testing.
