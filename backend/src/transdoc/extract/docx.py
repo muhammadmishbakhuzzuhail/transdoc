@@ -178,6 +178,13 @@ def extract(path: str, cfg: Config) -> Document:
     except Exception as e:
         raise ValueError(f"unreadable or corrupt DOCX: {e}") from e
     out = Document(source_path=path, mime="docx")
+    try:
+        sec = d.sections[0]
+        out.page_margins = {
+            "left": float(sec.left_margin.pt), "right": float(sec.right_margin.pt),
+            "top": float(sec.top_margin.pt), "bottom": float(sec.bottom_margin.pt)}
+    except Exception:
+        pass
     idx = 0
 
     for item in iter_block_items(d):
