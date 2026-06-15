@@ -5,25 +5,35 @@ table cells, leaving the document structure untouched. Because we only change ru
 style, image, header/footer, table, list and section stays exactly as authored, and Word's
 own layout engine handles the (longer) translated text on open — no overlay, no rebuild.
 
-Limitation: a paragraph's translation is written into its first run (the rest are cleared),
-so word-level run variation inside a paragraph (one bold word) is not preserved — translation
-breaks the word-to-word alignment that would let us keep it. Paragraph-level style, and
-everything else, is preserved.
+When the block carries inline runs (a paragraph whose text is NOT uniformly styled — a bold word,
+a superscript ref, an inline link), the per-run translations are written back as styled runs so
+word-level formatting survives. A uniformly-styled paragraph keeps its run-0 formatting for the
+whole translation (no rebuild). Paragraph-level style and everything else stay untouched.
 """
 
 from __future__ import annotations
 
 from ..config import Config
-from ..ir import Document
 from ..extract.docx import iter_block_items
+from ..ir import Block, Document
 
 
-def _set_paragraph(paragraph, text: str) -> None:
+def _set_paragraph(paragraph, b: Block) -> None:
+    if getattr(b, "runs", None):
+        # mixed-style paragraph: blank the source runs, re-emit the translated runs WITH their
+        # captured character style (bold/italic/super/link/...) — preserves inline formatting a
+        # flatten-to-run-0 would lose.
+        from .docx_out import _add_run
+        for r in list(paragraph.runs):
+            r.text = ""
+        for run in b.runs:
+            _add_run(paragraph, run)
+        return
     runs = paragraph.runs
     if not runs:
-        paragraph.add_run(text)
+        paragraph.add_run(b.output_text)
         return
-    runs[0].text = text                 # keep run-0 formatting for the whole translation
+    runs[0].text = b.output_text        # uniform paragraph: keep run-0 formatting
     for r in runs[1:]:
         r.text = ""
 
@@ -31,7 +41,13 @@ def _set_paragraph(paragraph, text: str) -> None:
 def _set_cell(cell, text: str) -> None:
     paras = cell.paragraphs
     if paras:
-        _set_paragraph(paras[0], text)
+        runs = paras[0].runs
+        if runs:
+            runs[0].text = text
+            for r in runs[1:]:
+                r.text = ""
+        else:
+            paras[0].add_run(text)
         for p in paras[1:]:
             for r in p.runs:
                 r.text = ""
@@ -55,7 +71,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
                 break
             b = blocks[bi]
             bi += 1
-            _set_paragraph(item, b.output_text)
+            _set_paragraph(item, b)
         else:  # table — walk cells in the same row/col order the extractor used
             if bi >= len(blocks):
                 break
