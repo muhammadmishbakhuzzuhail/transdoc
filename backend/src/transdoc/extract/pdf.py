@@ -278,12 +278,16 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                                x1=ob.bbox.x1 + ox, y1=ob.bbox.y1 + oy)
             out.blocks.append(ob)
 
+    from .annots import capture as _capture_annots
     from .vectors import capture as _capture_vectors
     from .vectors import page_background as _page_bg
 
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
         out.page_drawings[pno] = _capture_vectors(page)
+        ann = _capture_annots(page)
+        if ann:
+            out.page_annots[pno] = ann
         bg = _page_bg(page)
         if bg:
             out.page_background[pno] = bg
