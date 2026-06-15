@@ -186,7 +186,34 @@ def _para_style(item, level: int) -> Style:
                  space_before=_pt(pf.space_before), space_after=_pt(pf.space_after),
                  line_spacing=float(ls) if isinstance(ls, (int, float)) else None,
                  indent_left=_pt(pf.left_indent), indent_first=_pt(pf.first_line_indent),
-                 para_shading=shading, para_border=border)
+                 para_shading=shading, para_border=border,
+                 tab_stops=_tab_stops(pf), drop_cap=_drop_cap(item))
+
+
+def _tab_stops(pf) -> list[tuple[float, str]]:
+    """Paragraph tab stops as (position_pt, alignment). Drives dotted-leader TOC lines and
+    aligned columns built with tabs."""
+    out: list[tuple[float, str]] = []
+    try:
+        from docx.enum.text import WD_TAB_ALIGNMENT
+        amap = {WD_TAB_ALIGNMENT.LEFT: "left", WD_TAB_ALIGNMENT.CENTER: "center",
+                WD_TAB_ALIGNMENT.RIGHT: "right", WD_TAB_ALIGNMENT.DECIMAL: "decimal"}
+        for ts in pf.tab_stops:
+            out.append((float(ts.position.pt), amap.get(ts.alignment, "left")))
+    except Exception:
+        return []
+    return out
+
+
+def _drop_cap(item) -> bool:
+    """True if the paragraph carries a drop-cap frame (pPr/framePr w:dropCap)."""
+    try:
+        from docx.oxml.ns import qn
+        ppr = item._p.pPr
+        fp = ppr.find(qn("w:framePr")) if ppr is not None else None
+        return fp is not None and fp.get(qn("w:dropCap")) in ("drop", "margin")
+    except Exception:
+        return False
 
 
 def _para_shading_border(item) -> tuple[str | None, bool]:

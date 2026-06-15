@@ -96,6 +96,8 @@ class Style(BaseModel):
     link: Optional[str] = None           # hyperlink target URI, if the block is a link
     para_shading: Optional[str] = None   # paragraph background fill (hex) — boxed/callout paras
     para_border: bool = False            # paragraph has a box border (pPr/pBdr)
+    tab_stops: list[tuple[float, str]] = Field(default_factory=list)  # (pos_pt, align) tab stops
+    drop_cap: bool = False               # leading drop-cap (pPr/framePr dropCap)
 
 
 class Confidence(BaseModel):
