@@ -267,7 +267,30 @@ def _build_table(item) -> Table:
             col_widths.append(float(col.width.pt) if col.width else 0.0)
     except Exception:
         col_widths = []
-    return Table(rows=rows, has_header_row=True, col_widths=col_widths)
+    row_heights: list[float] = []
+    try:
+        for row in item.rows:
+            row_heights.append(float(row.height.pt) if row.height else 0.0)
+    except Exception:
+        row_heights = []
+    return Table(rows=rows, has_header_row=True, col_widths=col_widths,
+                 row_heights=row_heights, cell_margin=_table_cell_margin(item))
+
+
+def _table_cell_margin(item) -> float | None:
+    """Uniform cell padding from the table's tblPr/tblCellMar (top edge as representative, pt)."""
+    try:
+        from docx.oxml.ns import qn
+        tblpr = item._tbl.tblPr
+        mar = tblpr.find(qn("w:tblCellMar")) if tblpr is not None else None
+        top = mar.find(qn("w:top")) if mar is not None else None
+        if top is not None:
+            twips = top.get(qn("w:w"))
+            if twips:
+                return float(twips) / 20.0          # twips -> pt
+    except Exception:
+        pass
+    return None
 
 
 def extract(path: str, cfg: Config) -> Document:

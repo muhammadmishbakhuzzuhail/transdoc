@@ -438,10 +438,11 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
     return out_path
 
 
-def _cell_td(c) -> str:
+def _cell_td(c, pad=None) -> str:
     """One <td> honoring the cell's font size, weight, alignment and row/col span (was a fixed
     8pt with spans ignored)."""
-    style = ["border:1px solid #000", "padding:2px",
+    style = ["border:1px solid #000",
+             f"padding:{pad:.0f}pt" if pad and pad > 0 else "padding:2px",
              f"font-size:{c.size:.0f}pt" if c.size and c.size > 0 else "font-size:8pt"]
     if c.bold:
         style.append("font-weight:bold")
@@ -459,15 +460,23 @@ def _cell_td(c) -> str:
 
 
 def _table_html(table) -> str:
-    """Accepts an IR Table (uses rows + col_widths) or a bare list of rows."""
+    """Accepts an IR Table (uses rows + col_widths + row_heights + cell_margin) or a bare list
+    of rows."""
     rows = getattr(table, "rows", table)
     widths = getattr(table, "col_widths", None) or []
+    heights = getattr(table, "row_heights", None) or []
+    pad = getattr(table, "cell_margin", None)
     colgroup = ""
     if widths:
         colgroup = "<colgroup>" + "".join(
             f'<col style="width:{w:.0f}pt">' if w and w > 0 else "<col>"
             for w in widths) + "</colgroup>"
-    body = "".join("<tr>" + "".join(_cell_td(c) for c in row) + "</tr>" for row in rows)
+    parts = []
+    for i, row in enumerate(rows):
+        h = heights[i] if i < len(heights) else 0
+        tr_style = f' style="height:{h:.0f}pt"' if h and h > 0 else ""
+        parts.append(f"<tr{tr_style}>" + "".join(_cell_td(c, pad) for c in row) + "</tr>")
+    body = "".join(parts)
     return (f'<table style="border-collapse:collapse;border:1px solid #000">'
             f'{colgroup}{body}</table>')
 
