@@ -61,6 +61,7 @@ def test_coarse_orient_corrects_rotation():
 # ---- #3 render downscale -------------------------------------------------------------------
 
 def test_render_page_array_caps_dimension():
+    pytest.importorskip("numpy")   # render_page_array needs numpy (ships with the OCR extras)
     from transdoc.layout.structure import _MAX_PX, _SCALE, render_page_array
     doc = fitz.open()
     doc.new_page(width=2000, height=3000)        # large page -> >_MAX_PX at 150 dpi
@@ -72,6 +73,7 @@ def test_render_page_array_caps_dimension():
 
 
 def test_render_page_array_small_page_unscaled():
+    pytest.importorskip("numpy")
     from transdoc.layout.structure import _SCALE, render_page_array
     doc = fitz.open()
     doc.new_page(width=300, height=400)           # small -> no downscale
