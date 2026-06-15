@@ -112,6 +112,7 @@ class Cell(BaseModel):
     size: Optional[float] = None         # font size (pt) of the cell text, if known
     bold: bool = False
     align: Optional[str] = None          # left|center|right
+    shading: Optional[str] = None        # cell background fill (hex)
     confidence: Confidence = Field(default_factory=Confidence)
 
     @property

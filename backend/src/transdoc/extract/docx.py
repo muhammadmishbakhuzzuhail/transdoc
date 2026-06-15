@@ -48,6 +48,20 @@ def _run_color(font) -> str | None:
     return None
 
 
+def _cell_shading(cell) -> str | None:
+    """Table cell background fill (hex), from the <w:shd w:fill> element."""
+    try:
+        from docx.oxml.ns import qn
+        tcpr = cell._tc.tcPr
+        shd = tcpr.find(qn("w:shd")) if tcpr is not None else None
+        fill = shd.get(qn("w:fill")) if shd is not None else None
+        if fill and fill.lower() not in ("auto", "ffffff"):
+            return "#" + fill
+    except Exception:
+        pass
+    return None
+
+
 def _run_highlight(font) -> str | None:
     try:
         hl = font.highlight_color
@@ -206,7 +220,7 @@ def extract(path: str, cfg: Config) -> Document:
                                     size = float(r.font.size.pt)
                                 bold = bold or bool(r.font.bold)
                     cells.append(Cell(text="" if tc in seen_tc else c.text.strip(),
-                                      size=size, bold=bool(bold)))
+                                      size=size, bold=bool(bold), shading=_cell_shading(c)))
                     seen_tc.add(tc)
                 rows.append(cells)
             col_widths: list[float] = []

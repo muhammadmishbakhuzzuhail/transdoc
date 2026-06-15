@@ -166,6 +166,16 @@ def _render_table(d, table) -> None:
                 except Exception:
                     pass
             anchor.text = cell.output_text
+            if cell.shading:
+                try:
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    shd = OxmlElement("w:shd")
+                    shd.set(qn("w:val"), "clear")
+                    shd.set(qn("w:fill"), cell.shading.lstrip("#"))
+                    anchor._tc.get_or_add_tcPr().append(shd)
+                except Exception:
+                    pass
             if (cell.size or cell.bold) and anchor.paragraphs and anchor.paragraphs[0].runs:
                 from docx.shared import Pt
                 run = anchor.paragraphs[0].runs[0]

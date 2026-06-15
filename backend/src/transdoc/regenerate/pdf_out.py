@@ -432,6 +432,8 @@ def _cell_td(c) -> str:
         style.append("font-weight:bold")
     if c.align in ("center", "right"):
         style.append(f"text-align:{c.align}")
+    if c.shading:
+        style.append(f"background-color:{c.shading}")
     span = ""
     if c.colspan > 1:
         span += f' colspan="{c.colspan}"'

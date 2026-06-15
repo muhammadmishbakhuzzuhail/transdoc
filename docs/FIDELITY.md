@@ -51,7 +51,7 @@ without rendering it is ◐, not ✓.
 | Variable | Status | Notes |
 |---|---|---|
 | merged cells (rowspan/colspan) | ✓ | rendered DOCX (#82 grid+merge) + PDF flow/reconstruct (HTML colspan/rowspan, #88) |
-| cell font-size / bold / alignment | ◐ | size+bold+align captured (docx) + rendered (pdf/docx) #88; borders ✓; padding/shading ✗ |
+| cell font-size / bold / align / shading | ✓ | captured (docx) + rendered pdf/docx #88/#100; borders ✓; padding ◐ |
 | column widths | ✓ | docx capture + docx widths + pdf colgroup #99 (row-heights ◐) |
 | nested tables | ✗ | |
 
