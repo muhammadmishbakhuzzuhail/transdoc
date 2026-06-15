@@ -24,7 +24,10 @@ _MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 def extract(path: str, cfg: Config) -> Document:
     import openpyxl
 
-    wb = openpyxl.load_workbook(path, data_only=False)
+    try:
+        wb = openpyxl.load_workbook(path, data_only=False)
+    except Exception as e:
+        raise ValueError(f"unreadable or corrupt XLSX: {e}") from e
     out = Document(source_path=path, mime=_MIME)
 
     # Round-trip back to a spreadsheet keeps the per-cell, coordinate-keyed shape so the

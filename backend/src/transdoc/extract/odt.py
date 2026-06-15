@@ -13,7 +13,10 @@ def extract(path: str, cfg: Config) -> Document:
     from odf.table import TableCell, TableRow
     from odf.text import P
 
-    doc = load(path)
+    try:
+        doc = load(path)
+    except Exception as e:
+        raise ValueError(f"unreadable or corrupt ODT: {e}") from e
     out = Document(source_path=path, mime="odt")
     idx = 0
 

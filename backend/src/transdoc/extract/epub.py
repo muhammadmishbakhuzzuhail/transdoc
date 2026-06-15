@@ -41,7 +41,10 @@ def extract(path: str, cfg: Config) -> Document:
     from bs4 import BeautifulSoup
     from ebooklib import ITEM_DOCUMENT, epub
 
-    book = epub.read_epub(path)
+    try:
+        book = epub.read_epub(path)
+    except Exception as e:
+        raise ValueError(f"unreadable or corrupt EPUB: {e}") from e
     out = Document(source_path=path, mime="application/epub+zip")
     page = 0
     for item in book.get_items_of_type(ITEM_DOCUMENT):

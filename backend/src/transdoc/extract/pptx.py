@@ -19,7 +19,10 @@ def _para_text(para) -> str:
 def extract(path: str, cfg: Config) -> Document:
     from pptx import Presentation
 
-    prs = Presentation(path)
+    try:
+        prs = Presentation(path)
+    except Exception as e:
+        raise ValueError(f"unreadable or corrupt PPTX: {e}") from e
     out = Document(source_path=path,
                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation")
     for si, slide in enumerate(prs.slides):
