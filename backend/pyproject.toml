@@ -54,6 +54,10 @@ formats = ["python-pptx>=1.0", "openpyxl>=3.1", "ebooklib>=0.18", "srt>=3.5", "b
 # More accurate, deterministic language detection (lingua low-accuracy mode). Heavier RAM
 # (~1.2GB all-language models); without it the langdetect core path is used. pip install -e ".[detect]"
 detect = ["lingua-language-detector>=2.0"]
+# IndicTrans2 offline NMT for 22 Indic languages (MIT, commercial-safe). Needs the toolkit for
+# the script normalization the models expect. pip install -e ".[indic]"  (pulls torch via nmt)
+indic = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2",
+         "IndicTransToolkit>=1.0"]
 dev = ["pytest>=8.0", "ruff>=0.5", "httpx>=0.25"]   # httpx: FastAPI TestClient
 
 [project.scripts]
