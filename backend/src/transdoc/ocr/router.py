@@ -58,8 +58,18 @@ def _build_paddle():
         return None
 
 
+def _build_easyocr():
+    try:
+        import easyocr  # noqa: F401
+        from .easyocr_engine import EasyOCREngine
+        return EasyOCREngine()
+    except Exception:
+        return None
+
+
 def _build_paddle_vl():
-    # Strong GPU all-script engine (PaddleOCR-VL). Added in a follow-up; absent for now.
+    # Strongest all-script engine (PaddleOCR-VL, GPU). Boxes need the paddlepaddle pipeline, so it
+    # runs in the isolated layout_venv subprocess (like PP-StructureV3) — added in a follow-up.
     try:
         from .paddle_vl import PaddleVLOCR
         return PaddleVLOCR()
@@ -69,6 +79,7 @@ def _build_paddle_vl():
 
 _BUILDERS = {
     "tesseract": _build_tesseract,
+    "easyocr": _build_easyocr,
     "paddle": _build_paddle,
     "paddle_vl": _build_paddle_vl,
 }
@@ -76,24 +87,27 @@ _BUILDERS = {
 # Per-script engine chain (primary first, then escalation targets). paddle_vl is listed ahead of
 # paddle for the scripts Tesseract is weak on; until it's installed the chain collapses to
 # tesseract -> paddle, i.e. today's behavior. Unknown scripts use DEFAULT_CHAIN.
-DEFAULT_CHAIN = ["tesseract", "paddle_vl", "paddle"]
+# Chain order: Tesseract primary (fast, cheap on clean pages) -> EasyOCR (strong multilingual,
+# the real escalation) -> paddle_vl/paddle (max accuracy, when installed). A low-confidence page
+# walks down the chain; a confident page stops early. Tesseract stays primary on every script so
+# clean Latin/Arabic pages stay fast; the weak-script gains come from EasyOCR catching the misses.
+DEFAULT_CHAIN = ["tesseract", "easyocr", "paddle_vl", "paddle"]
 ROUTING: dict[str, list[str]] = {
-    "Latin": ["tesseract", "paddle_vl"],
-    "Cyrillic": ["tesseract", "paddle_vl"],
-    "Greek": ["tesseract", "paddle_vl"],
-    "Arabic": ["tesseract", "paddle_vl"],          # Surya excluded: catastrophic on Arabic
-    "Hebrew": ["tesseract", "paddle_vl"],
-    # Scripts where Tesseract is weak — strong engine leads once installed; tesseract is the
-    # always-available fallback (kept primary today so this PR changes no behavior).
-    "Han": ["tesseract", "paddle_vl", "paddle"],
-    "Hangul": ["tesseract", "paddle_vl", "paddle"],
-    "Japanese": ["tesseract", "paddle_vl", "paddle"],
-    "Devanagari": ["tesseract", "paddle_vl", "paddle"],
-    "Bengali": ["tesseract", "paddle_vl", "paddle"],
-    "Tamil": ["tesseract", "paddle_vl", "paddle"],
-    "Telugu": ["tesseract", "paddle_vl", "paddle"],
-    "Thai": ["tesseract", "paddle_vl", "paddle"],
-    "Kannada": ["tesseract", "paddle_vl", "paddle"],
+    "Latin": ["tesseract", "easyocr", "paddle_vl"],
+    "Cyrillic": ["tesseract", "easyocr", "paddle_vl"],
+    "Greek": ["tesseract", "easyocr", "paddle_vl"],
+    "Arabic": ["tesseract", "easyocr", "paddle_vl"],   # Surya excluded: catastrophic on Arabic
+    "Hebrew": ["tesseract", "easyocr", "paddle_vl"],
+    # Scripts where Tesseract is weak: EasyOCR (then paddle_vl/paddle) recovers the low-conf pages.
+    "Han": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Hangul": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Japanese": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Devanagari": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Bengali": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Tamil": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Telugu": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Thai": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Kannada": ["tesseract", "easyocr", "paddle_vl", "paddle"],
 }
 
 

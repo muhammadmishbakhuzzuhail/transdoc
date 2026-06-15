@@ -37,6 +37,9 @@ quant = ["bitsandbytes>=0.43", "accelerate>=0.30"]
 argos = ["argostranslate>=1.9"]
 # Modern OCR: layout + reading order + strong non-Latin. pip install -e ".[surya]"
 surya = ["surya-ocr>=0.6"]
+# EasyOCR: strong multilingual OCR (80+ langs, box+conf), torch-based (no paddlepaddle clash).
+# The router's escalation engine for non-Latin scans. pip install -e ".[easyocr]"
+easyocr = ["easyocr>=1.7"]
 # PaddleOCR PP-OCRv5/v6 — lightweight det+rec, far stronger than Tesseract on degraded /
 # non-Latin scans, runs CPU-only. pip install -e ".[paddleocr]"  then  --ocr paddle
 # (commercial-safe Apache-2.0). Use a GPU build of paddlepaddle for speed if available.

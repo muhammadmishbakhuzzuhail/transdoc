@@ -21,6 +21,10 @@ def get_ocr(cfg: Config) -> OCREngine:
         from .tesseract import TesseractOCR
 
         return TesseractOCR()
+    if choice == OCRChoice.EASYOCR:
+        from .easyocr_engine import EasyOCREngine
+
+        return EasyOCREngine()
 
     # AUTO: script-routed — detect each page's script, run the engine best for it, escalate the
     # low-confidence pages through the rest of that script's chain (router.py). With only Tesseract
