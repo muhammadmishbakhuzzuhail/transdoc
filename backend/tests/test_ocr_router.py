@@ -60,6 +60,6 @@ def test_unavailable_engines_collapse_to_tesseract(monkeypatch):
 def test_escalates_to_strong_when_primary_weak(monkeypatch):
     o = R.ScriptRoutedOCR()
     monkeypatch.setattr(R, "detect_script", lambda img: "Han")
-    o._cache = {"tesseract": _Fake(0.2, "tess"), "paddle_vl": _Fake(0.95, "vl"), "paddle": None}
+    o._cache = {"tesseract": _Fake(0.2, "tess"), "easyocr": _Fake(0.95, "ez"), "paddle": None}
     out = o.recognize_image_bytes(b"x", CFG)
-    assert out[0].text.startswith("vl")          # weak tesseract -> escalated to strong, won
+    assert out[0].text.startswith("ez")          # weak tesseract -> escalated to strong, won

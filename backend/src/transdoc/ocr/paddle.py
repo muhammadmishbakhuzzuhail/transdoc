@@ -59,11 +59,48 @@ def detect_script_lang(img: bytes) -> str | None:
         return None
 
 
+def _blocks_from_triples(triples, page: int, flag_threshold: float) -> list[Block]:
+    """[(text, score, poly), ...] -> IR Blocks (pixel bbox + ocr conf). Shared by the in-process
+    and subprocess paths so both produce identical output."""
+    blocks: list[Block] = []
+    idx = 0
+    for text, score, poly in triples:
+        text = (text or "").strip()
+        if not text:
+            continue
+        xs = [float(p[0]) for p in poly]
+        ys = [float(p[1]) for p in poly]
+        conf = round(float(score), 3)
+        blk = Block(
+            id=f"p{page}-pocr{idx}", type=BlockType.PARAGRAPH, page=page, text=text,
+            bbox=BBox(x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys)),
+            style=Style(), confidence=Confidence(source="ocr", ocr=conf))
+        if conf < flag_threshold:
+            blk.flags["low_ocr_confidence"] = f"{conf:.0%}"
+        blocks.append(blk)
+        idx += 1
+    return blocks
+
+
 class PaddleOCREngine:
     name = "paddle"
 
     def __init__(self):
+        import importlib.util
         self._cache: dict[str, object] = {}   # lang -> PaddleOCR (heavy init, reuse per lang)
+        # paddle collides with torch in one process; if it isn't importable here, run it in the
+        # isolated layout_venv via subprocess. Construction never raises (so the lang-mapping
+        # helpers + registry probe work without paddle); `available` reports whether a runner
+        # exists, and recognize raises only if actually called with neither.
+        self._inproc = importlib.util.find_spec("paddle") is not None
+        self._py = None
+        if not self._inproc:
+            from ..layout import _layout_python
+            self._py = _layout_python()
+
+    @property
+    def available(self) -> bool:
+        return self._inproc or self._py is not None
 
     def _lang(self, cfg: Config, img: bytes | None = None) -> str:
         src = (cfg.source_lang or "auto").lower()
@@ -87,36 +124,49 @@ class PaddleOCREngine:
         return self._cache[lang]
 
     def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
+        if not self.available:
+            raise RuntimeError(
+                "PaddleOCR needs paddle: install the [paddleocr] extra here, or create an isolated "
+                "layout_venv / set TRANSDOC_LAYOUT_PYTHON (paddle-torch-venv-conflict).")
+        lang = self._lang(cfg, img)            # language detection stays in the main env (OSD)
+        if self._inproc:
+            triples = self._predict_inproc(img, lang)
+        else:
+            triples = self._predict_subprocess(img, lang)
+        return _blocks_from_triples(triples, page, cfg.flag_threshold)
+
+    def _predict_inproc(self, img: bytes, lang: str):
         import numpy as np
         from PIL import Image
 
         arr = np.array(Image.open(io.BytesIO(img)).convert("RGB"))
-        result = self._engine(self._lang(cfg, img)).predict(arr)
+        for r in self._engine(lang).predict(arr):
+            yield from zip(r["rec_texts"], r["rec_scores"], r["rec_polys"])
 
-        blocks: list[Block] = []
-        idx = 0
-        for r in result:
-            texts = r["rec_texts"]
-            scores = r["rec_scores"]
-            polys = r["rec_polys"]            # each = quad of (x, y) in image pixels
-            for text, score, poly in zip(texts, scores, polys):
-                text = (text or "").strip()
-                if not text:
-                    continue
-                xs = [float(p[0]) for p in poly]
-                ys = [float(p[1]) for p in poly]
-                conf = round(float(score), 3)
-                blk = Block(
-                    id=f"p{page}-pocr{idx}",
-                    type=BlockType.PARAGRAPH,
-                    page=page,
-                    text=text,
-                    bbox=BBox(x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys)),
-                    style=Style(),
-                    confidence=Confidence(source="ocr", ocr=conf),
-                )
-                if conf < cfg.flag_threshold:
-                    blk.flags["low_ocr_confidence"] = f"{conf:.0%}"
-                blocks.append(blk)
-                idx += 1
-        return blocks
+    def _predict_subprocess(self, img: bytes, lang: str):
+        import json
+        import os
+        import subprocess
+        import tempfile
+
+        ifd, img_path = tempfile.mkstemp(suffix=".png", prefix="transdoc-pocr-")
+        os.close(ifd)
+        ofd, out_path = tempfile.mkstemp(suffix=".json", prefix="transdoc-pocr-")
+        os.close(ofd)
+        try:
+            with open(img_path, "wb") as fh:
+                fh.write(img)
+            cmd = [self._py, "-m", "transdoc.ocr.paddle_detect", img_path, out_path, lang]
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"paddle OCR subprocess failed (exit {proc.returncode}): {proc.stderr[-400:]}")
+            with open(out_path) as fh:
+                items = json.load(fh)
+        finally:
+            for p in (img_path, out_path):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+        return [(d["text"], d["score"], d["poly"]) for d in items]

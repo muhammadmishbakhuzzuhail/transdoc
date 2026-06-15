@@ -38,6 +38,27 @@ def _png_bytes():
     return buf.getvalue()
 
 
+def test_blocks_from_triples_shared_parser():
+    # the in-process and subprocess paths funnel through this; blanks dropped, conf flagged
+    from transdoc.ocr.paddle import _blocks_from_triples
+    triples = [
+        ("Hello", 0.97, [(10, 20), (110, 20), (110, 45), (10, 45)]),
+        ("  ", 0.5, [(0, 0), (1, 0), (1, 1), (0, 1)]),
+        ("low", 0.3, [(0, 50), (40, 50), (40, 70), (0, 70)]),
+    ]
+    blocks = _blocks_from_triples(triples, page=2, flag_threshold=0.9)
+    assert [b.text for b in blocks] == ["Hello", "low"]
+    assert blocks[0].page == 2 and blocks[0].confidence.ocr == 0.97
+    assert (blocks[0].bbox.x0, blocks[0].bbox.y1) == (10, 45)
+    assert "low_ocr_confidence" in blocks[1].flags and "low_ocr_confidence" not in blocks[0].flags
+
+
+def test_available_is_bool():
+    # construction never raises even without paddle; available reflects whether a runner exists
+    eng = PaddleOCREngine()
+    assert isinstance(eng.available, bool)
+
+
 def test_lang_mapping():
     eng = PaddleOCREngine()
     assert eng._lang(Config(target_lang="id", source_lang="de")) == "german"
@@ -67,6 +88,7 @@ def test_script_to_lang_map():
 
 def test_maps_results_to_blocks():
     eng = PaddleOCREngine()
+    eng._inproc = True                                    # force in-process path for the fake
     eng._cache["en"] = _FakePaddle()                      # bypass the heavy real init
     cfg = Config(target_lang="id", source_lang="en", flag_threshold=0.9)
     blocks = eng.recognize_image_bytes(_png_bytes(), cfg, page=3)
