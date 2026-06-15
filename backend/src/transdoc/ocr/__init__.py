@@ -22,8 +22,9 @@ def get_ocr(cfg: Config) -> OCREngine:
 
         return TesseractOCR()
 
-    # AUTO: Tesseract first, escalating low-confidence pages to PaddleOCR when installed
-    # (fast common case, strong fallback on degraded/non-Latin scans).
-    from .auto import EscalatingOCR
+    # AUTO: script-routed — detect each page's script, run the engine best for it, escalate the
+    # low-confidence pages through the rest of that script's chain (router.py). With only Tesseract
+    # installed every chain is tesseract(->paddle), i.e. the previous behavior.
+    from .router import ScriptRoutedOCR
 
-    return EscalatingOCR()
+    return ScriptRoutedOCR()
