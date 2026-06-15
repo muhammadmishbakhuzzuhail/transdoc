@@ -67,13 +67,16 @@ def _split_long(text: str, limit: int) -> list[str]:
     parts: list[str] = []
     rest = text
     while len(rest) > limit:
-        cut = rest.rfind(". ", 0, limit)
-        if cut < limit // 2:
-            cut = rest.rfind(" ", 0, limit)
-        if cut <= 0:
-            cut = limit
+        window = rest[:limit]
+        # Prefer a sentence boundary: Latin ". ", a newline, or a CJK sentence-final mark
+        # (。！？．) — CJK has no spaces, so the old space-split cut mid-sentence.
+        cut = max(window.rfind(". "), window.rfind("\n"), window.rfind("。"),
+                  window.rfind("！"), window.rfind("？"), window.rfind("．"))
+        if cut >= limit // 2:
+            cut += 1                      # keep the boundary char with the left chunk
         else:
-            cut += 1
+            sp = window.rfind(" ")
+            cut = sp + 1 if sp > 0 else limit
         parts.append(rest[:cut])
         rest = rest[cut:]
     if rest:
