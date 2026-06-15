@@ -17,6 +17,11 @@ provenance:
 > scores against the source text layer — exact, reproducible ground truth, no manual labels.
 > Tesseract baseline mean ≈ 2% CER / 9% WER; `make eval-ocr` then `--layout auto` for the
 > PP-StructureV3 path.
+>
+> **LLM-as-judge (no labels needed):** `make eval-judge ARGS="<files>"` has Claude vision score
+> the extraction against the source image — text fidelity / completeness / structure / reading
+> order, plus the specific content missed or hallucinated. Automates the manual vision-QA audit;
+> needs `ANTHROPIC_API_KEY` + the `[llm]` extra (online, costs tokens).
 
 ## `real/` — real-world downloads
 Messy, no ground truth → integration / quality stress testing.
