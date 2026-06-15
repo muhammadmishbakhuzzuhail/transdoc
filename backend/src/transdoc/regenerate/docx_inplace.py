@@ -69,28 +69,28 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
 
     d = Docx(doc.source_path)
     blocks = doc.ordered_blocks()
-    bi = 0
 
-    for item in iter_block_items(d):
+    # In-place editing pairs each source block-item (non-empty paragraph / table) with the IR
+    # block at the same index. That holds ONLY when extraction emitted exactly one block per item
+    # in order — but furniture/header stripping, fuse reconcile, or caption reordering can drop or
+    # merge blocks, after which index-zipping writes every later translation into the WRONG
+    # paragraph (silent, catastrophic — audit finding). When the counts diverge, fall back to the
+    # IR-rebuild renderer: it loses some in-place formatting but stays correct.
+    items = [it for it in iter_block_items(d)
+             if not (isinstance(it, Paragraph) and not it.text.strip())]
+    if len(items) != len(blocks):
+        from .docx_out import render as render_out
+        return render_out(doc, cfg, out_path)
+
+    for item, b in zip(items, blocks):
         if isinstance(item, Paragraph):
-            if not item.text.strip():
-                continue                # empty paragraphs were skipped at extraction time
-            if bi >= len(blocks):
-                break
-            b = blocks[bi]
-            bi += 1
             _set_paragraph(item, b)
-        else:  # table — walk cells in the same row/col order the extractor used
-            if bi >= len(blocks):
-                break
-            b = blocks[bi]
-            bi += 1
-            if b.table:
-                tcells = [c for row in b.table.rows for c in row]
-                dcells = [c for row in item.rows for c in row.cells]
-                for dc, tc in zip(dcells, tcells):
-                    if tc.text.strip():
-                        _set_cell(dc, tc.output_text)
+        elif b.table:  # table — walk cells in the same row/col order the extractor used
+            tcells = [c for row in b.table.rows for c in row]
+            dcells = [c for row in item.rows for c in row.cells]
+            for dc, tc in zip(dcells, tcells):
+                if tc.text.strip():
+                    _set_cell(dc, tc.output_text)
 
     d.save(out_path)
     return out_path
