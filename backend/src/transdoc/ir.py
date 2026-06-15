@@ -76,6 +76,7 @@ class Style(BaseModel):
     bold: bool = False
     italic: bool = False
     underline: bool = False
+    strike: bool = False                  # strikethrough
     color: Optional[str] = None          # hex, e.g. "#000000"
     align: Optional[str] = None          # left|center|right|justify
     rtl: bool = False                    # right-to-left script

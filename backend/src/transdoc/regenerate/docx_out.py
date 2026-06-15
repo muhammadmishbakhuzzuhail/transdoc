@@ -40,6 +40,8 @@ def _style_runs(para, style: Style) -> None:
             f.italic = True
         if style.underline:
             f.underline = True
+        if style.strike:
+            f.strike = True
         if style.font:
             f.name = style.font
         if style.size and style.size > 0:
@@ -88,6 +90,7 @@ def _add_run(p, run) -> None:
     f.bold = s.bold or None
     f.italic = s.italic or None
     f.underline = s.underline or None
+    f.strike = s.strike or None
     if s.superscript:
         f.superscript = True
     if s.subscript:

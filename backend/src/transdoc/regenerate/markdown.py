@@ -23,6 +23,8 @@ def _md_run(run) -> str:
         core = f"**{core}**"
     if s.italic:
         core = f"*{core}*"
+    if s.strike:
+        core = f"~~{core}~~"
     if s.underline:
         core = f"<u>{core}</u>"
     if s.link:

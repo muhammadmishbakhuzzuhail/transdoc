@@ -457,8 +457,9 @@ def _run_span(run) -> str:
         css.append("font-weight:bold")
     if s.italic:
         css.append("font-style:italic")
-    if s.underline:
-        css.append("text-decoration:underline")
+    deco = (["underline"] if s.underline else []) + (["line-through"] if s.strike else [])
+    if deco:
+        css.append("text-decoration:" + " ".join(deco))
     if s.superscript:
         css.append("vertical-align:super;font-size:smaller")
     elif s.subscript:
@@ -495,8 +496,10 @@ def _block_html(b):
         css.append("font-weight:bold")
     if b.style.italic:
         css.append("font-style:italic")
-    if b.style.underline:
-        css.append("text-decoration:underline")
+    _deco = (["underline"] if b.style.underline else []) + (["line-through"] if b.style.strike
+                                                            else [])
+    if _deco:
+        css.append("text-decoration:" + " ".join(_deco))
     if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{b.style.color}")
     inner = _runs_html(b.runs) if b.runs else _esc(b.output_text)
