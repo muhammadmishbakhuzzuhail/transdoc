@@ -67,13 +67,25 @@ class EasyOCREngine:
         langs = _SCRIPT_LANGS.get(script or "Latin", ["en"])
         return langs if langs == ["en"] else [*langs, "en"]
 
+    def _use_gpu(self) -> bool:
+        # EasyOCR's detector conv peaks past ~5 GB on a full-page scan, so it OOMs (and CUDA
+        # segfaults, uncatchable) on small cards like a 6 GB laptop GPU. Default to CPU (stable,
+        # only ~1s slower per page) and let a roomy GPU opt in with TRANSDOC_EASYOCR_GPU=1.
+        import os
+        if os.environ.get("TRANSDOC_EASYOCR_GPU") != "1":
+            return False
+        try:
+            import torch
+            return torch.cuda.is_available()
+        except Exception:
+            return False
+
     def _reader(self, langs: list[str]):
         import easyocr
-        import torch
         key = tuple(langs)
         if key not in EasyOCREngine._readers:
             EasyOCREngine._readers[key] = easyocr.Reader(
-                langs, gpu=torch.cuda.is_available(), verbose=False)
+                langs, gpu=self._use_gpu(), verbose=False)
         return EasyOCREngine._readers[key]
 
     def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
