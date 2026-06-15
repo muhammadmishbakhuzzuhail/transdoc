@@ -273,6 +273,27 @@ def _set_table_cell_margin(t, pt) -> None:
         pass
 
 
+def _set_doc_language(d, lang) -> None:
+    """Tag the rebuilt document's default language as the TARGET language so Word's spell-check
+    and hyphenation match the translation (the source per-run lang tags no longer apply — every
+    run is now target-language text). Sets w:lang on the Normal style's run properties."""
+    if not lang:
+        return
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        code = str(lang).replace("_", "-")
+        rpr = d.styles["Normal"].element.get_or_add_rPr()
+        for tag in rpr.findall(qn("w:lang")):
+            rpr.remove(tag)
+        el = OxmlElement("w:lang")
+        el.set(qn("w:val"), code)
+        el.set(qn("w:bidi"), code)
+        rpr.append(el)
+    except Exception:
+        pass
+
+
 def _fill_hf(part, blocks) -> None:
     """Write captured header/footer blocks (translated) into a section's header or footer part.
     The default part has one empty paragraph; reuse it for the first block, add the rest."""
@@ -294,6 +315,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
     from docx.shared import Inches
 
     d = Docx()
+    _set_doc_language(d, doc.target_lang or cfg.target_lang)
     for b in doc.ordered_blocks():
         if b.page_break_before:
             d.add_page_break()           # reproduce the source's manual page break
