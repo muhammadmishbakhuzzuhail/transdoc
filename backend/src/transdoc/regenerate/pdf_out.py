@@ -554,7 +554,12 @@ def _redraw_vectors(page, drawings) -> None:
     for d in drawings or []:
         try:
             w = float(d.get("width") or 0.6)
-            if d.get("kind") == "line":
+            if d.get("kind") == "curve":
+                p = [fitz.Point(x, y) for x, y in d.get("points", [])]
+                if len(p) == 4:
+                    page.draw_bezier(p[0], p[1], p[2], p[3],
+                                     color=_hex_rgb(d.get("color")) or (0, 0, 0), width=w)
+            elif d.get("kind") == "line":
                 page.draw_line(fitz.Point(d["x0"], d["y0"]), fitz.Point(d["x1"], d["y1"]),
                                color=_hex_rgb(d.get("color")) or (0, 0, 0), width=w)
             elif d.get("kind") == "rect":

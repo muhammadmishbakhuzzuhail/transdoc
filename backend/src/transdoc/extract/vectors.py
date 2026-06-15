@@ -44,6 +44,13 @@ def capture(page) -> list[dict]:
                     continue
                 out.append({"kind": "line", "x0": p1.x, "y0": p1.y, "x1": p2.x, "y1": p2.y,
                             "color": color or "#000000", "width": width})
+            elif op == "c":                    # cubic bezier curve: (p1, p2, p3, p4)
+                try:
+                    pts = [(p.x, p.y) for p in item[1:5]]
+                except Exception:
+                    continue
+                out.append({"kind": "curve", "points": pts,
+                            "color": color or "#000000", "width": width})
             elif op == "re":                   # rectangle
                 r = item[1]
                 if r.width < _MIN_LEN and r.height < _MIN_LEN:
