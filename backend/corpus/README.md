@@ -1,7 +1,16 @@
 # Test corpus
 
-Input documents for the pipeline. Binaries are git-ignored (only this README is tracked) and
-reproducible with the scripts below. Two trees by provenance:
+Input documents for the pipeline. Binaries are git-ignored (only this README and the small
+structure baseline JSON are tracked) and reproducible with the scripts below. Two trees by
+provenance:
+
+> **Regression gate:** `baseline_real.json` (tracked) freezes parse-derived structure metrics
+> (blocks / tables / cells / figures / reading-order) for the deterministic digital docs under
+> `real/`. After fetching the corpus, run `make eval-real` to gate an extraction change against
+> it; rebuild it with `make eval-real-baseline` after an *intended* change. OCR-only dirs
+> (`full_image/`, `scanned_pdf/`) and font-sensitive render metrics are excluded so the gate is
+> reproducible without network/OCR. It is local/opt-in — CI gates the committed synthetic
+> fixtures only.
 
 ## `real/` — real-world downloads
 Messy, no ground truth → integration / quality stress testing.
