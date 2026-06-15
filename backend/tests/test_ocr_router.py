@@ -29,10 +29,16 @@ def test_unknown_script_uses_default_chain():
     assert R.ROUTING.get("Klingon", R.DEFAULT_CHAIN) == R.DEFAULT_CHAIN
 
 
-def test_chain_tesseract_primary_everywhere_for_now():
-    # no-behavior-change guarantee: tesseract leads every routed chain in this PR
+def test_precision_first_chain_order():
+    # Latin-ish scripts: Tesseract leads (fast, near-equal accuracy), Paddle escalates.
+    for s in ("Latin", "Cyrillic", "Greek", "Arabic", "Hebrew"):
+        assert R.ROUTING[s][0] == "tesseract" and R.ROUTING[s][1] == "paddle"
+    # Scripts Tesseract is weak at: PaddleOCR (precise + GPU-fast) leads.
+    for s in ("Han", "Devanagari", "Thai", "Japanese", "Tamil"):
+        assert R.ROUTING[s][0] == "paddle"
+    # EasyOCR is always the last-resort fallback (CPU only).
     for chain in [R.DEFAULT_CHAIN, *R.ROUTING.values()]:
-        assert chain[0] == "tesseract"
+        assert chain[-1] == "easyocr"
 
 
 def test_routes_by_detected_script(monkeypatch):
