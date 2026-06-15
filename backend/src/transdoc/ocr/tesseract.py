@@ -31,6 +31,18 @@ def _avail_langs() -> frozenset[str]:
     return frozenset(ln.strip() for ln in out.splitlines()[1:]
                      if ln.strip() and " " not in ln.strip())
 
+
+def _resolve(name: str | None, avail: set) -> str | None:
+    """Map a logical pack name to the installed tesseract token. Script models install as
+    'script/Latin' via the apt pack but as bare 'Latin' when dropped straight into tessdata/ —
+    accept either. Language packs (ell/hin/...) only ever match the bare form."""
+    if not name:
+        return None
+    for cand in (f"script/{name}", name):
+        if cand in avail:
+            return cand
+    return None
+
 # Tesseract OSD script name -> tesseract language pack. Used when the source language is auto:
 # without this a non-Latin scan is OCR'd with "eng" and comes back as Latin gibberish.
 _SCRIPT_LANG = {
@@ -62,7 +74,7 @@ class TesseractOCR:
             return None
         m = re.search(r"Script:\s*([\w]+)", osd)
         code = _SCRIPT_LANG.get(m.group(1)) if m else None
-        return code if code in avail else None
+        return code if _resolve(code, avail) else None   # logical name; _langs resolves the token
 
     def _langs(self, cfg: Config, detected: str | None = None) -> str:
         avail = set(_avail_langs())
@@ -77,12 +89,13 @@ class TesseractOCR:
         primary = wanted[0] if wanted else None
         if primary is None or primary == "eng":
             wanted.append("eng")
-        # keep only installed, dedupe
+        # resolve each to its installed token (Latin -> script/Latin where present), dedupe
         seen, out = set(), []
         for w in wanted:
-            if w in avail and w not in seen:
-                seen.add(w)
-                out.append(w)
+            tok = _resolve(w, avail)
+            if tok and tok not in seen:
+                seen.add(tok)
+                out.append(tok)
         return "+".join(out) or "eng"
 
     def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
