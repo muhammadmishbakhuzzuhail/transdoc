@@ -23,7 +23,7 @@ without rendering it is ◐, not ✓.
 | letter-spacing / word-spacing / kerning / baseline-shift | ✗ | rawdict has per-glyph positions |
 | hyperlink (URI) | ✓ | captured (PDF get_links + DOCX rels) + rendered (md/docx/pdf) PR #83 |
 | character rotation / vertical text | ◐ | detected + skipped in overlay, not preserved |
-| per-run language tag | ✗ | |
+| per-run language tag | ✓ | output uniformly target language — rebuilt docx default lang set to target (Normal style w:lang) for correct spell-check/hyphenation; source per-run tags moot |
 | ligatures | ✓ | folded (PR #75) |
 
 ## Paragraph / block level
