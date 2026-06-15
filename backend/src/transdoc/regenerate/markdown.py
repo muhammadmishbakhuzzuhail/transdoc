@@ -6,6 +6,34 @@ from ..config import Config
 from ..ir import BlockType, Document
 
 
+def _md_run(run) -> str:
+    """One inline run -> markdown, wrapping only the non-space content so markers stay valid."""
+    t = run.output_text
+    lead = t[:len(t) - len(t.lstrip())]
+    trail = t[len(t.rstrip()):]
+    core = t.strip()
+    if not core:
+        return t
+    s = run.style
+    if s.superscript:
+        core = f"<sup>{core}</sup>"
+    elif s.subscript:
+        core = f"<sub>{core}</sub>"
+    if s.bold:
+        core = f"**{core}**"
+    if s.italic:
+        core = f"*{core}*"
+    if s.underline:
+        core = f"<u>{core}</u>"
+    if s.link:
+        core = f"[{core}]({s.link})"
+    return f"{lead}{core}{trail}"
+
+
+def _runs_md(runs) -> str:
+    return "".join(_md_run(r) for r in runs)
+
+
 def render(doc: Document, cfg: Config) -> str:
     lines: list[str] = []
     for b in doc.ordered_blocks():
@@ -19,7 +47,8 @@ def render(doc: Document, cfg: Config) -> str:
             lines.append("")
             continue
 
-        text = b.output_text.strip()
+        text = _runs_md(b.runs) if b.runs else b.output_text
+        text = text.strip()
         if not text:
             continue
         if b.style.underline and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION,

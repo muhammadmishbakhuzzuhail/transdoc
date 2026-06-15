@@ -7,7 +7,7 @@ tables as structured Table blocks so the renderer can rebuild them faithfully.
 from __future__ import annotations
 
 from ..config import Config
-from ..ir import Block, BlockType, Cell, Confidence, Document, Style, Table
+from ..ir import Block, BlockType, Cell, Confidence, Document, Run, Style, Table
 from .base import block_id, reflow_order
 
 
@@ -37,6 +37,48 @@ def _para_type(style_name: str) -> tuple[BlockType, int]:
     if "list" in s:
         return BlockType.LIST_ITEM, 0
     return BlockType.PARAGRAPH, 0
+
+
+def _run_color(font) -> str | None:
+    try:
+        if font.color is not None and font.color.rgb is not None:
+            return "#" + str(font.color.rgb)
+    except Exception:
+        pass
+    return None
+
+
+def _same_style(a: Style, b: Style) -> bool:
+    return (a.bold, a.italic, a.underline, a.font, a.size, a.color, a.superscript,
+            a.subscript) == (b.bold, b.italic, b.underline, b.font, b.size, b.color,
+                             b.superscript, b.subscript)
+
+
+def _capture_runs(item) -> list[Run]:
+    """Inline runs for a paragraph whose text is NOT uniformly styled (a bold word, a
+    superscript ref, ...). Adjacent same-style runs are merged. Returns [] for a uniform
+    paragraph so the block-level style path is used unchanged."""
+    from .links import paragraph_link
+    runs: list[Run] = []
+    for r in item.runs:
+        if not r.text:
+            continue
+        f = r.font
+        st = Style(bold=bool(f.bold), italic=bool(f.italic), underline=bool(f.underline),
+                   font=f.name, size=float(f.size.pt) if f.size is not None else None,
+                   color=_run_color(f), superscript=bool(f.superscript),
+                   subscript=bool(f.subscript))
+        if runs and _same_style(runs[-1].style, st):
+            runs[-1].text += r.text
+        else:
+            runs.append(Run(text=r.text, style=st))
+    if len(runs) <= 1:
+        return []                       # uniform -> block-level handles it
+    link = paragraph_link(item)
+    if link:                            # a paragraph-level link applies to every run
+        for run in runs:
+            run.style.link = link
+    return runs
 
 
 def _list_info(item) -> tuple[bool, int]:
@@ -119,6 +161,7 @@ def extract(path: str, cfg: Config) -> Document:
                     type=btype,
                     text=text,
                     style=st,
+                    runs=_capture_runs(item),
                     confidence=Confidence(source="digital"),
                 )
             )
