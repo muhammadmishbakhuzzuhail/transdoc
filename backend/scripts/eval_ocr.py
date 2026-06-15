@@ -74,6 +74,9 @@ def main(argv: list[str]) -> int:
         i = argv.index("--layout")
         layout = argv[i + 1]
         argv = argv[:i] + argv[i + 2:]
+    show = "--show" in argv
+    if show:
+        argv = [a for a in argv if a != "--show"]
     langs = argv or GOLD_LANGS
 
     print(f"OCR eval (layout={layout})  —  CER/WER vs the source text layer\n")
@@ -97,6 +100,9 @@ def main(argv: list[str]) -> int:
             cers.append(c)
             wers.append(w)
             print(f"{lang:12} {len(gold):>7} {c:>7.2f} {w:>7.2f}")
+            if show:
+                print(f"   gold: {gold[:200]}")
+                print(f"   ocr : {got[:200]}")
     if cers:
         print("-" * 36)
         print(f"{'mean':12} {'':>7} {sum(cers) / len(cers):>7.2f} {sum(wers) / len(wers):>7.2f}")

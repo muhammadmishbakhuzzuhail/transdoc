@@ -26,8 +26,11 @@ def test_detected_lang_used_when_source_auto():
     cfg = Config(target_lang="id", source_lang="auto")
     langs = tr._langs(cfg, detected="hin" if "hin" in _AVAIL else None)
     if "hin" in _AVAIL:
-        assert "hin" in langs.split("+")
-    assert "eng" in langs.split("+")          # eng always kept as a backstop
+        # a non-Latin script pack is used ALONE — adding "eng" makes tesseract misread native
+        # glyphs as Latin lookalikes (Greek ΚΑΙ -> "KAI"; eval: greek CER 5.4% -> 2.7%).
+        assert langs.split("+") == ["hin"]
+    else:
+        assert langs == "eng"                 # pack unavailable -> genuine fallback
 
 
 def test_explicit_source_overrides_detection():
