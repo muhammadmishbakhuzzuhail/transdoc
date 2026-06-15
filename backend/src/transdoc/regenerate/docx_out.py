@@ -111,6 +111,8 @@ def _add_run(p, run) -> None:
     f.strike = s.strike or None
     if s.small_caps:
         f.small_caps = True
+    if s.all_caps:
+        f.all_caps = True
     if s.highlight:
         try:
             from docx.enum.text import WD_COLOR_INDEX

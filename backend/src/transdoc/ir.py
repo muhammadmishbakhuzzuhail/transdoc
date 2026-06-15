@@ -78,6 +78,7 @@ class Style(BaseModel):
     underline: bool = False
     strike: bool = False                  # strikethrough
     small_caps: bool = False
+    all_caps: bool = False
     highlight: Optional[str] = None       # highlight colour name (yellow/green/...) or hex
     color: Optional[str] = None          # hex, e.g. "#000000"
     align: Optional[str] = None          # left|center|right|justify
