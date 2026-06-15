@@ -94,6 +94,8 @@ class Style(BaseModel):
     superscript: bool = False            # footnote refs / inline exponents
     subscript: bool = False
     link: Optional[str] = None           # hyperlink target URI, if the block is a link
+    para_shading: Optional[str] = None   # paragraph background fill (hex) — boxed/callout paras
+    para_border: bool = False            # paragraph has a box border (pPr/pBdr)
 
 
 class Confidence(BaseModel):
