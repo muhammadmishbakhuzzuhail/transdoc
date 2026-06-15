@@ -47,6 +47,21 @@ def _esc(s: str) -> str:
     return html.escape(s)
 
 
+def _apply_pdf_metadata(pdf, doc) -> None:
+    """Carry the source document metadata (title/author/subject/keywords/creator) onto the
+    output PDF — captured in extract but previously not written out."""
+    md = getattr(doc, "metadata", None)
+    if not md:
+        return
+    keep = {k: md[k] for k in ("title", "author", "subject", "keywords", "creator")
+            if md.get(k)}
+    if keep:
+        try:
+            pdf.set_metadata(keep)
+        except Exception:
+            pass
+
+
 def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
     import fitz
 
@@ -161,6 +176,7 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         # If only some pages were selected (--pages), the overlay covered just those; the rest
         # are still untranslated original. Drop them so the output isn't a translated/source mix.
         _subset_pages(pdf, cfg)
+        _apply_pdf_metadata(pdf, doc)
         pdf.save(out_path, garbage=4, deflate=True)
     finally:
         pdf.close()
@@ -619,6 +635,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                 except Exception:
                     page.insert_textbox(r, b.output_text, fontsize=size, align=0)
         _subset_pages(out, cfg)
+        _apply_pdf_metadata(out, doc)
         out.save(out_path, garbage=4, deflate=True)
     finally:
         out.close()
