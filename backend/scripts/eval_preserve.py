@@ -39,6 +39,8 @@ _CASES = [
      ["40.7128", "-74.0060", "10.5"]),
     ("Pay $5 and $10 now, or $1,299.99 vs $50 each.",
      ["$5", "$10", "$1,299.99", "$50"]),
+    ("Upgrade to v2.0.1, ratio 10-20, constant 1.5e-10, follow @alice.",
+     ["v2.0.1", "10-20", "1.5e-10", "@alice"]),
 ]
 
 LANGS = ["fr", "de", "es", "ru", "ar", "hi", "zh-CN", "ja", "ko"]

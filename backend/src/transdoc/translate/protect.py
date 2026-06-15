@@ -16,10 +16,15 @@ from pathlib import Path
 _PATTERNS = [
     r'https?://[^\s<>"]+|www\.[^\s<>"]+',                       # URLs
     r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}',       # emails
+    r'\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,}\b',                # IBAN DE89 3704 0044 0532 ...
     r'(?:\+?\d[\d\s\-().]{7,}\d)',                              # phone numbers
     r'\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b',                # numeric dates
+    r'\b\d+(?:\.\d+)?[eE][+\-]?\d+\b',                          # scientific notation 1.5e-10
+    r'\bv?\d+\.\d+(?:\.\d+)+\b',                                # version / dotted ref v2.0.1, 1.2.3
+    r'\b\d+\s?[-–—]\s?\d+\b',                                   # numeric ranges 10-20, 100–200
+    r'@[A-Za-z0-9_]{2,}',                                       # @handles / mentions
     r'\b\d+(?:[.,]\d+)?\s*(?:USD|IDR|MYR|THB|VND|PHP|SGD|EUR|JPY|CNY|kg|km|cm|mm|ml)\b',
-    r'[$€£¥₹]\s?\d[\d,]*(?:\.\d+)?',                            # symbol currency $1,299.99 / €50
+    r'[$€£¥₹₩₺₴]\s?\d[\d,]*(?:\.\d+)?',                         # symbol currency $1,299.99 / €50 / ₩500
     r'\b\d+(?:[.,]\d+)?\s?%',                                   # percentages 7.5%, 50 %
     r'\b\d{1,2}:\d{2}(?::\d{2})?\b',                            # clock times 14:05, 08:30:00
     r'#[A-Za-z0-9]+\b',                                         # hash codes / tags #A1B2C3

@@ -84,6 +84,27 @@ def test_money_percent_time_hashcode_protected():
     assert Protector.restore(protected, mapping) == text
 
 
+def test_extended_entity_patterns_protected():
+    """Audit additions: versions, numeric ranges, scientific notation, @handles, IBANs, and more
+    currency symbols must round-trip verbatim; plain prose must not be touched."""
+    p = Protector()
+    cases = {
+        "Use v2.0.1 here": ["v2.0.1"],
+        "range 10-20 today": ["10-20"],
+        "value 1.5e-10 ok": ["1.5e-10"],
+        "ping @alice now": ["@alice"],
+        "pay ₩500 and ₺75": ["₩500", "₺75"],
+    }
+    for text, toks in cases.items():
+        protected, mapping = p.protect(text)
+        for tok in toks:
+            assert tok not in protected, f"{tok} not protected in {text!r}"
+        assert Protector.restore(protected, mapping) == text
+    # prose with bare decimals/words must NOT be over-protected
+    out, m = p.protect("the rate fell by half over the year")
+    assert m == {}
+
+
 def test_two_currency_amounts_not_swallowed_by_latex():
     """Audit data-loss bug: the inline-LaTeX $...$ pattern used to span from the first $ to the
     second, masking the text between two prices. Both amounts must protect independently and the

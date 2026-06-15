@@ -20,8 +20,9 @@ _COMMA_DECIMAL = {
 
 # US-grouped number: 1,234 or 1,234.56  (needs at least one thousands group)
 _US_GROUPED = re.compile(r"(?<![\d.,])\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d.,])")
-# Plain decimal: 1234.56  (not part of a longer dotted run like a version number)
-_PLAIN_DECIMAL = re.compile(r"(?<![\d.,])\d+\.\d+(?![\d.,])")
+# Plain decimal: 1234.56  (not a version run, and not the mantissa of scientific notation —
+# "1.5e-10" must not become "1,5e-10")
+_PLAIN_DECIMAL = re.compile(r"(?<![\d.,])\d+\.\d+(?![\d.,eE])")
 
 
 def localize_numbers(text: str, target: str | None) -> str:
