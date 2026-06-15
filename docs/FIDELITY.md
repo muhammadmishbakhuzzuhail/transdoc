@@ -45,7 +45,7 @@ without rendering it is ◐, not ✓.
 | caption ↔ figure/table association | ✓ | bbox proximity bind + reading-order snap (pdf/structured); office paths no-op |
 | running header / footer (per-section, odd/even, first) | ◐ | detected + removed (PR #76); not section-aware |
 | section / column (structural) | ◐ | reading-order only (PR #78); not structural |
-| page / section breaks | ◐ | page geometry kept in reconstruct |
+| page / section breaks | ◐ | reconstruct keeps page geometry; docx manual page breaks captured + reproduced (pageBreakBefore + w:br type=page); section breaks not yet |
 
 ## Tables
 | Variable | Status | Notes |

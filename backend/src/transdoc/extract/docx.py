@@ -107,6 +107,24 @@ def _capture_runs(item) -> list[Run]:
     return runs
 
 
+def _page_break_before(item) -> bool:
+    """True if a manual page break precedes this paragraph — either the paragraph's
+    pageBreakBefore property, or a run carrying a <w:br w:type="page"/>."""
+    try:
+        if item.paragraph_format.page_break_before:
+            return True
+    except Exception:
+        pass
+    try:
+        from docx.oxml.ns import qn
+        for br in item._p.findall(".//" + qn("w:br")):
+            if br.get(qn("w:type")) == "page":
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def _list_info(item) -> tuple[bool, int]:
     """(ordered, level) for a list paragraph: ordered if the style is a numbered list; level
     from the numbering indent level (ilvl)."""
@@ -239,6 +257,7 @@ def extract(path: str, cfg: Config) -> Document:
                     text=text,
                     style=st,
                     runs=_capture_runs(item),
+                    page_break_before=_page_break_before(item),
                     confidence=Confidence(source="digital"),
                 )
             )

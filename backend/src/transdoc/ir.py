@@ -183,6 +183,8 @@ class Block(BaseModel):
     image_path: Optional[str] = None     # only for BlockType.FIGURE — extracted image file
     anchor_id: Optional[str] = None      # CAPTION -> id of the figure/table it describes, so the
                                          # caption stays adjacent to its media in reading order
+    page_break_before: bool = False      # an explicit manual page break precedes this block
+                                         # (DOCX: w:br type=page or pPr/pageBreakBefore)
     crop_region: bool = False            # layout-detected non-text region: render by cropping
                                          # the source page at bbox (verbatim figure/math/chart)
 
