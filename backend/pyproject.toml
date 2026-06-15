@@ -23,6 +23,8 @@ dependencies = [
   "Jinja2>=3.1",          # report templating
   "langdetect>=1.0.9",    # language detection fallback
   "deep-translator>=1.11", # free MT chain: Google web endpoint / MyMemory / LibreTranslate
+  "python-bidi>=0.4",     # RTL: Unicode bidi reorder for raw-draw paths (core fidelity)
+  "arabic-reshaper>=3.0", # RTL: Arabic letter joining -> presentation forms (core fidelity)
 ]
 
 [project.optional-dependencies]
@@ -44,8 +46,8 @@ easyocr = ["easyocr>=1.7"]
 # non-Latin scans, runs CPU-only. pip install -e ".[paddleocr]"  then  --ocr paddle
 # (commercial-safe Apache-2.0). Use a GPU build of paddlepaddle for speed if available.
 paddleocr = ["paddlepaddle>=3.0", "paddleocr>=3.0"]
-# PDF regeneration with full layout/RTL/CJK font support.
-pdf = ["weasyprint>=62", "python-bidi>=0.4", "arabic-reshaper>=3.0"]
+# PDF regeneration with full layout/CJK font support (RTL libs are in base deps).
+pdf = ["weasyprint>=62"]
 # Web API the React frontend talks to (thread-backed job store — no broker needed).
 api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
 # Optional: move the job store onto a Celery/Redis broker to scale past one node.

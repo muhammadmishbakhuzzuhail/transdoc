@@ -38,7 +38,7 @@ scans, annotated/watermarked pages) preserves these variables natively regardles
 | indentation (first-line / left) | ✓ | docx capture + docx/pdf render #95; hanging via list |
 | list type / marker / nesting level | ✓ | ordered-vs-bullet + level captured (docx) + rendered (md/docx) PR #87 |
 | paragraph border / shading / tab-stops / drop-cap | ✓ | docx para shading + box border + tab-stops (pos/align) + drop-cap frame captured + rendered |
-| direction / bidi (RTL) | ◐ | rtl flag + HarfBuzz overlay; PyMuPDF already logical-order on extract |
+| direction / bidi (RTL) | ✓ | direction recomputed from TRANSLATED text/target lang (textdir) -> Style.rtl; LTR-source-to-RTL-target now flows RTL. DOCX w:bidi+w:rtl, EPUB dir=rtl, PDF dir:rtl (htmlbox) + reshape/reorder on raw-draw fallback (python-bidi+arabic-reshaper). Mixed RTL+LTR lines still flagged (htmlbox UBA limit) |
 
 ## Structure
 | Variable | Status | Notes |
