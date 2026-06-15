@@ -122,6 +122,7 @@ class Cell(BaseModel):
 class Table(BaseModel):
     rows: list[list[Cell]] = Field(default_factory=list)
     has_header_row: bool = True
+    col_widths: list[float] = Field(default_factory=list)   # column widths (pt), if known
 
 
 class Run(BaseModel):

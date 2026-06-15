@@ -135,15 +135,22 @@ def _add_run(p, run) -> None:
             pass
 
 
-def _render_table(d, rows) -> None:
-    """Build a DOCX table honoring merged cells. The IR stores a spanning cell once with
-    colspan/rowspan (HTML semantics), so rows can have fewer cells than the grid is wide; place
-    each cell at the next free grid slot and merge across its span (was: spans ignored, columns
-    misaligned)."""
+def _render_table(d, table) -> None:
+    """Build a DOCX table honoring merged cells + column widths. The IR stores a spanning cell
+    once with colspan/rowspan (HTML semantics), so rows can have fewer cells than the grid is
+    wide; place each cell at the next free grid slot and merge across its span."""
+    from docx.shared import Pt
+    rows = table.rows
     ncols = max((sum(max(1, c.colspan) for c in r) for r in rows), default=1)
     nrows = len(rows)
     t = d.add_table(rows=nrows, cols=ncols)
     t.style = "Table Grid"
+    if table.col_widths:
+        t.autofit = False
+        for i, w in enumerate(table.col_widths):
+            if w and w > 0 and i < ncols:
+                for cell in t.columns[i].cells:
+                    cell.width = Pt(w)
     occupied: set[tuple[int, int]] = set()
     for ri, row in enumerate(rows):
         ci = 0
@@ -195,7 +202,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             continue
 
         if b.type == BlockType.TABLE and b.table and b.table.rows:
-            _render_table(d, b.table.rows)
+            _render_table(d, b.table)
             d.add_paragraph("")
             continue
 
