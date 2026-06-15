@@ -11,9 +11,19 @@ def test_dehyphenates_line_break():
     assert clean("base-\nline shift") == "baseline shift"
 
 
+def test_dehyphenates_space_joined():
+    # blocks are space-joined before normalize (OCR/structured/PDF) — the newline is already gone,
+    # so de-hyphenation must also handle "inter- national" with a space.
+    assert clean("inter- national law") == "international law"
+    assert clean("co- operate now") == "cooperate now"
+
+
 def test_keeps_real_hyphen_and_inline_text():
     assert clean("well-known method") == "well-known method"   # no newline -> untouched
     assert clean("a-\n1") == "a-\n1"                            # digit side -> not a word break
+    assert clean("well- Known brand") == "well- Known brand"   # uppercase after -> keep (compound)
+    assert clean("range 10 - 20 ok") == "range 10 - 20 ok"     # digits -> keep range
+    assert clean("state-of-the-art") == "state-of-the-art"     # no space -> keep compound
 
 
 def test_folds_ligatures():
