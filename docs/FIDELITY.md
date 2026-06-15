@@ -18,7 +18,7 @@ without rendering it is ◐, not ✓.
 | underline | ✓ | DOCX capture + rendered md/docx/pdf (PR #86); PDF-extract n/a (no font flag, drawn as vector) |
 | strikethrough | ✗ | drawn as vector near text — needs detection |
 | highlight / background colour | ✗ | |
-| superscript / subscript | ◐ | IR `Style.superscript` exists, NOT captured/rendered |
+| superscript / subscript | ✓ | inline-runs: captured (docx) + rendered (md/docx) PR #91 |
 | small-caps / all-caps | ✗ | |
 | letter-spacing / word-spacing / kerning / baseline-shift | ✗ | rawdict has per-glyph positions |
 | hyperlink (URI) | ✓ | captured (PDF get_links + DOCX rels) + rendered (md/docx/pdf) PR #83 |

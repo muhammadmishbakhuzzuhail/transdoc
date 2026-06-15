@@ -83,6 +83,7 @@ class Style(BaseModel):
     list_ordered: bool = False           # numbered list vs bullet
     heading_level: int = 0               # 1..6 for HEADING
     superscript: bool = False            # footnote refs / inline exponents
+    subscript: bool = False
     link: Optional[str] = None           # hyperlink target URI, if the block is a link
 
 
@@ -114,6 +115,21 @@ class Table(BaseModel):
     has_header_row: bool = True
 
 
+class Run(BaseModel):
+    """An inline span of a block with its own character style (a bold word, a superscript
+    footnote ref, an inline hyperlink). A block carries runs only when its text is NOT
+    uniformly styled; a uniform paragraph keeps runs empty and is handled block-level (no
+    behavior change). See Block.runs."""
+
+    text: str = ""
+    translated: Optional[str] = None
+    style: Style = Field(default_factory=Style)
+
+    @property
+    def output_text(self) -> str:
+        return self.translated if self.translated is not None else self.text
+
+
 class Block(BaseModel):
     """A single logical unit of the document."""
 
@@ -129,6 +145,10 @@ class Block(BaseModel):
     bbox: Optional[BBox] = None
     style: Style = Field(default_factory=Style)
     confidence: Confidence = Field(default_factory=Confidence)
+    # Inline character runs — populated only when the block's text is NOT uniformly styled
+    # (e.g. a bold word or superscript ref inside a paragraph). Empty = uniform, handled by the
+    # block-level `style` (no behavior change). When present, output renders run-by-run.
+    runs: list[Run] = Field(default_factory=list)
 
     table: Optional[Table] = None        # only for BlockType.TABLE
     image_path: Optional[str] = None     # only for BlockType.FIGURE — extracted image file

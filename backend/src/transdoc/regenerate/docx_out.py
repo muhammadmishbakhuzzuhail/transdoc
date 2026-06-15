@@ -74,6 +74,36 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(link)
 
 
+def _add_run(p, run) -> None:
+    """Add one inline run with its own style (bold/italic/underline/super/sub/size/colour),
+    or a hyperlink run when the run is a link."""
+    from docx.shared import Pt, RGBColor
+
+    s = run.style
+    if s.link:
+        _add_hyperlink(p, s.link, run.output_text)
+        return
+    r = p.add_run(run.output_text)
+    f = r.font
+    f.bold = s.bold or None
+    f.italic = s.italic or None
+    f.underline = s.underline or None
+    if s.superscript:
+        f.superscript = True
+    if s.subscript:
+        f.subscript = True
+    if s.font:
+        f.name = s.font
+    if s.size and s.size > 0:
+        f.size = Pt(s.size)
+    if s.color and s.color.startswith("#") and len(s.color) == 7:
+        try:
+            f.color.rgb = RGBColor(int(s.color[1:3], 16), int(s.color[3:5], 16),
+                                   int(s.color[5:7], 16))
+        except ValueError:
+            pass
+
+
 def _render_table(d, rows) -> None:
     """Build a DOCX table honoring merged cells. The IR stores a spanning cell once with
     colspan/rowspan (HTML semantics), so rows can have fewer cells than the grid is wide; place
@@ -149,6 +179,14 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             d.add_paragraph(b.translated.strip())
             continue
 
+        if b.runs and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION, BlockType.LIST_ITEM):
+            p = d.add_paragraph(style="List Bullet" if b.type == BlockType.LIST_ITEM else None)
+            for run in b.runs:
+                _add_run(p, run)         # inline styled runs (bold word / superscript / link)
+            align = _align(b.style)
+            if align is not None:
+                p.alignment = align
+            continue
         if b.style.link and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION,
                                        BlockType.LIST_ITEM):
             p = d.add_paragraph(style="List Bullet" if b.type == BlockType.LIST_ITEM else None)

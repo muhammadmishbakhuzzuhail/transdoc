@@ -68,6 +68,11 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
             continue
         if b.is_translatable:
             items.append((b.text, b))
+            # inline runs (mixed-style spans) translate per-run so styling survives; the
+            # whole-block translation above still fills b.translated as the uniform fallback.
+            for r in b.runs:
+                if r.text.strip():
+                    items.append((r.text, r))
 
     if not items:
         return
