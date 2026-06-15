@@ -169,6 +169,40 @@ def _para_style(item, level: int) -> Style:
                  indent_left=_pt(pf.left_indent), indent_first=_pt(pf.first_line_indent))
 
 
+def _build_table(item) -> Table:
+    """Build an IR Table from a python-docx table, recursing into nested tables inside cells.
+    Merged cells (repeated <w:tc>) are blanked at continuation positions."""
+    rows: list[list[Cell]] = []
+    seen_tc: set[int] = set()
+    for row in item.rows:
+        cells: list[Cell] = []
+        for c in row.cells:
+            tc = id(c._tc)
+            size = bold = None
+            for para in c.paragraphs:
+                for r in para.runs:
+                    if r.text.strip():
+                        if size is None and r.font.size is not None:
+                            size = float(r.font.size.pt)
+                        bold = bold or bool(r.font.bold)
+            nested = getattr(c, "tables", None)
+            cont = tc in seen_tc
+            cell = Cell(text="" if (cont or nested) else c.text.strip(),
+                        size=size, bold=bool(bold), shading=_cell_shading(c))
+            if nested and not cont:
+                cell.table = _build_table(nested[0])
+            cells.append(cell)
+            seen_tc.add(tc)
+        rows.append(cells)
+    col_widths: list[float] = []
+    try:
+        for col in item.columns:
+            col_widths.append(float(col.width.pt) if col.width else 0.0)
+    except Exception:
+        col_widths = []
+    return Table(rows=rows, has_header_row=True, col_widths=col_widths)
+
+
 def extract(path: str, cfg: Config) -> Document:
     from docx import Document as Docx
     from docx.text.paragraph import Paragraph
@@ -210,37 +244,11 @@ def extract(path: str, cfg: Config) -> Document:
             )
             idx += 1
         else:  # DocxTable
-            # python-docx repeats a merged cell at every grid position it spans (same <w:tc>),
-            # which duplicated the text across columns/rows. Blank the continuation positions —
-            # the first occurrence keeps the text — so a merged cell's text appears once.
-            rows: list[list[Cell]] = []
-            seen_tc: set[int] = set()
-            for row in item.rows:
-                cells: list[Cell] = []
-                for c in row.cells:
-                    tc = id(c._tc)
-                    size = bold = None
-                    for para in c.paragraphs:
-                        for r in para.runs:
-                            if r.text.strip():
-                                if size is None and r.font.size is not None:
-                                    size = float(r.font.size.pt)
-                                bold = bold or bool(r.font.bold)
-                    cells.append(Cell(text="" if tc in seen_tc else c.text.strip(),
-                                      size=size, bold=bool(bold), shading=_cell_shading(c)))
-                    seen_tc.add(tc)
-                rows.append(cells)
-            col_widths: list[float] = []
-            try:
-                for col in item.columns:
-                    col_widths.append(float(col.width.pt) if col.width else 0.0)
-            except Exception:
-                col_widths = []
             out.blocks.append(
                 Block(
                     id=block_id(0, idx),
                     type=BlockType.TABLE,
-                    table=Table(rows=rows, has_header_row=True, col_widths=col_widths),
+                    table=_build_table(item),
                     confidence=Confidence(source="digital"),
                 )
             )

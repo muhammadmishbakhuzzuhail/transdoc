@@ -143,8 +143,11 @@ def _render_table(d, table) -> None:
     rows = table.rows
     ncols = max((sum(max(1, c.colspan) for c in r) for r in rows), default=1)
     nrows = len(rows)
-    t = d.add_table(rows=nrows, cols=ncols)
-    t.style = "Table Grid"
+    t = d.add_table(nrows, ncols)        # positional: works for Document + _Cell (nested)
+    try:
+        t.style = "Table Grid"
+    except Exception:
+        pass
     if table.col_widths:
         t.autofit = False
         for i, w in enumerate(table.col_widths):
@@ -183,6 +186,8 @@ def _render_table(d, table) -> None:
                     run.font.size = Pt(cell.size)
                 if cell.bold:
                     run.font.bold = True
+            if cell.table is not None:
+                _render_table(anchor, cell.table)   # nested table inside the cell
             for rr in range(ri, r2 + 1):
                 for cc in range(ci, c2 + 1):
                     occupied.add((rr, cc))

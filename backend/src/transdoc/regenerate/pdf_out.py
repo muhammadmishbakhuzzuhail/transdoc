@@ -454,7 +454,8 @@ def _cell_td(c) -> str:
         span += f' colspan="{c.colspan}"'
     if c.rowspan > 1:
         span += f' rowspan="{c.rowspan}"'
-    return f'<td style="{";".join(style)}"{span}>{_esc(c.output_text)}</td>'
+    inner = _table_html(c.table) if c.table else _esc(c.output_text)
+    return f'<td style="{";".join(style)}"{span}>{inner}</td>'
 
 
 def _table_html(table) -> str:

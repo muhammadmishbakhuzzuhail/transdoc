@@ -48,6 +48,16 @@ def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     return text
 
 
+def _collect_cells(table, items: list) -> None:
+    """Collect translatable cell texts, recursing into nested tables."""
+    for row in table.rows:
+        for cell in row:
+            if cell.text.strip():
+                items.append((cell.text, cell))
+            if cell.table:
+                _collect_cells(cell.table, items)
+
+
 def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     """Translate the whole IR in place. Collects translatable strings, batches them,
     writes results back to blocks and table cells, then enforces the glossary."""
@@ -61,10 +71,7 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
             # structured table -> translate each cell; a merged numeric table block (no
             # cells, from the PDF parser) is left verbatim so its grid survives.
             if b.table:
-                for row in b.table.rows:
-                    for cell in row:
-                        if cell.text.strip():
-                            items.append((cell.text, cell))
+                _collect_cells(b.table, items)
             continue
         if b.is_translatable:
             items.append((b.text, b))
