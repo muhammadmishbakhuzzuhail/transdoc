@@ -19,7 +19,7 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        eval-real eval-real-baseline eval-ocr eval-judge serve dev clean
+        eval-real eval-real-baseline eval-ocr eval-judge eval-translate serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -70,6 +70,13 @@ eval-real:
 		-m transdoc.eval.harness corpus/real --engine echo \
 		--baseline corpus/baseline_real.json \
 		--exclude-dir full_image --exclude-dir scanned_pdf --structure-only
+
+# Translation quality (chrF) vs the FLORES-200 benchmark — translates the English dev set through
+# the engine and scores against the professional reference. Downloads FLORES-200 on first run
+# (set FLORES_DIR to reuse). Online (the engine is online). Pass langs/N via ARGS.
+#   make eval-translate ARGS="--n 100 fr de ja ar"
+eval-translate:
+	cd backend && .venv/bin/python -m scripts.eval_translate $(ARGS)
 
 # LLM-as-judge: Claude vision scores extraction vs the source image (automates the manual
 # vision-QA audit). Needs ANTHROPIC_API_KEY + the [llm] extra. Online + costs tokens.

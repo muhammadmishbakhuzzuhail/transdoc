@@ -32,5 +32,9 @@ out/
 **/corpus/**/*.doc
 **/corpus/**/*.rtf
 
+# FLORES-200 benchmark (downloaded by scripts/eval_translate.py — reproducible, not committed)
+**/flores200_dataset/
+**/flores200_dataset.tar.gz
+
 # keep the manifest
 !**/corpus/README.md
