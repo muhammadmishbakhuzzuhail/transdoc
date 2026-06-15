@@ -72,6 +72,7 @@ class OCREngine(str, Enum):
     TESSERACT = "tesseract"   # system tesseract, always available
     SURYA = "surya"           # GPU, layout + reading order + strong non-Latin
     PADDLE = "paddle"         # PaddleOCR PP-OCRv5/v6 (lightweight, CPU/GPU) — strong non-Latin
+    EASYOCR = "easyocr"       # EasyOCR 80+ langs (torch, box+conf) — strong multilingual escalation
     AUTO = "auto"
 
 
