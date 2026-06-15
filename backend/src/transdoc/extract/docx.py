@@ -209,11 +209,17 @@ def extract(path: str, cfg: Config) -> Document:
                                       size=size, bold=bool(bold)))
                     seen_tc.add(tc)
                 rows.append(cells)
+            col_widths: list[float] = []
+            try:
+                for col in item.columns:
+                    col_widths.append(float(col.width.pt) if col.width else 0.0)
+            except Exception:
+                col_widths = []
             out.blocks.append(
                 Block(
                     id=block_id(0, idx),
                     type=BlockType.TABLE,
-                    table=Table(rows=rows, has_header_row=True),
+                    table=Table(rows=rows, has_header_row=True, col_widths=col_widths),
                     confidence=Confidence(source="digital"),
                 )
             )

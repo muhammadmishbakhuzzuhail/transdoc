@@ -375,7 +375,7 @@ def render_flow(doc: Document, cfg: Config, out_path: str) -> str:
         # skip below, or the whole table gets dropped.
         if b.type == BlockType.TABLE and b.table:
             # per-cell size/weight/align + row/col span; CSS grid (fitz.Story ignores `border`).
-            parts.append(_table_html(b.table.rows))
+            parts.append(_table_html(b.table))
             continue
         text = _esc(b.output_text.strip())
         if not text:
@@ -440,9 +440,18 @@ def _cell_td(c) -> str:
     return f'<td style="{";".join(style)}"{span}>{_esc(c.output_text)}</td>'
 
 
-def _table_html(rows) -> str:
+def _table_html(table) -> str:
+    """Accepts an IR Table (uses rows + col_widths) or a bare list of rows."""
+    rows = getattr(table, "rows", table)
+    widths = getattr(table, "col_widths", None) or []
+    colgroup = ""
+    if widths:
+        colgroup = "<colgroup>" + "".join(
+            f'<col style="width:{w:.0f}pt">' if w and w > 0 else "<col>"
+            for w in widths) + "</colgroup>"
     body = "".join("<tr>" + "".join(_cell_td(c) for c in row) + "</tr>" for row in rows)
-    return f'<table style="border-collapse:collapse;border:1px solid #000">{body}</table>'
+    return (f'<table style="border-collapse:collapse;border:1px solid #000">'
+            f'{colgroup}{body}</table>')
 
 
 def _norm_rect(b):
@@ -659,7 +668,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                         pass   # fall through to text placement if the crop fails
                 if b.type == BlockType.TABLE and b.table:
                     try:
-                        page.insert_htmlbox(r, _table_html(b.table.rows), scale_low=0)
+                        page.insert_htmlbox(r, _table_html(b.table), scale_low=0)
                     except Exception:
                         pass
                     continue
