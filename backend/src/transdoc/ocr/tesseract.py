@@ -50,7 +50,12 @@ class TesseractOCR:
             wanted.append(TESS_LANG.get(cfg.source_lang, cfg.source_lang))
         elif detected:                       # auto source -> OSD-detected script pack
             wanted.append(detected)
-        wanted.append("eng")
+        # Add English only as a genuine fallback (Latin / unknown). Adding "eng" to a non-Latin
+        # script pack makes tesseract misread native glyphs as Latin lookalikes — Greek ΚΑΙ comes
+        # back as Latin "KAI" (eval finding). The script pack already handles digits/punctuation.
+        primary = wanted[0] if wanted else None
+        if primary is None or primary == "eng":
+            wanted.append("eng")
         # keep only installed, dedupe
         seen, out = set(), []
         for w in wanted:
