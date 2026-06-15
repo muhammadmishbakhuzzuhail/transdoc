@@ -68,16 +68,19 @@ def main(argv: list[str]) -> int:
 
     engine = "google"
     n = 50
+    worst = 0
     args = list(argv)
-    for flag, cast in (("--engine", str), ("--n", int)):
+    for flag, cast in (("--engine", str), ("--n", int), ("--show-worst", int)):
         if flag in args:
             i = args.index(flag)
             val = cast(args[i + 1])
             args = args[:i] + args[i + 2:]
             if flag == "--engine":
                 engine = val
-            else:
+            elif flag == "--n":
                 n = val
+            else:
+                worst = val
     bad = [k for k in args if k not in LANGS]
     if bad:
         sys.stderr.write(f"unknown lang code(s): {bad}; known: {sorted(LANGS)}\n")
@@ -108,10 +111,15 @@ def main(argv: list[str]) -> int:
         except Exception as e:
             print(f"{gcode:8} {fcode:10} ERROR {type(e).__name__}: {e}")
             continue
-        pair = [(r, h) for r, h in zip(refs, hyps) if r.strip()]
-        score = sum(chrf(r, h) for r, h in pair) / len(pair) if pair else 0.0
+        pair = [(r, h, chrf(r, h)) for r, h in zip(refs, hyps) if r.strip()]
+        score = sum(c for _, _, c in pair) / len(pair) if pair else 0.0
         scores.append(score)
         print(f"{gcode:8} {fcode:10} {score:>6.1f}")
+        if worst:
+            # error analysis: the lowest-chrF sentences are where the engine/pipeline loses most
+            for r, h, c in sorted(pair, key=lambda t: t[2])[:worst]:
+                print(f"   [{c:4.1f}] ref: {r[:110]}")
+                print(f"          hyp: {h[:110]}")
     if scores:
         print("-" * 28)
         print(f"{'mean':8} {'':10} {sum(scores) / len(scores):>6.1f}")
