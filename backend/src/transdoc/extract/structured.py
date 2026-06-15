@@ -232,10 +232,12 @@ def _region_style(page, rect) -> Style:
     sizes: dict = {}
     fonts: dict = {}
     colors: dict = {}
+    line_objs: list = []
     nchars = bold_chars = ital_chars = 0
     try:
         for b in page.get_text("dict", clip=rect)["blocks"]:
             for line in b.get("lines", []):
+                line_objs.append(line)
                 for s in line.get("spans", []):
                     n = len(s.get("text", "").strip())
                     if not n:
@@ -259,8 +261,11 @@ def _region_style(page, rect) -> Style:
     if not nchars or not sizes:
         return Style()
     color = max(colors, key=colors.get)
-    return Style(font=max(fonts, key=fonts.get), size=max(sizes, key=sizes.get) or None,
+    dom_size = max(sizes, key=sizes.get)
+    from .pdf import _line_spacing
+    return Style(font=max(fonts, key=fonts.get), size=dom_size or None,
                  color=f"#{color:06x}", bold=bold_chars > nchars / 2,
-                 italic=ital_chars > nchars / 2)
+                 italic=ital_chars > nchars / 2,
+                 line_spacing=_line_spacing(line_objs, dom_size))
 
 

@@ -159,6 +159,26 @@ def _span_style(span) -> Style:
                  font=("monospace" if flags & 8 else "serif" if flags & 4 else "sans-serif"))
 
 
+def _line_spacing(lines, size: float) -> float | None:
+    """Estimate line-height (multiple of font size) from the baseline gaps between a block's
+    lines. PDF has no line-spacing attribute, so derive it geometrically: median(baseline_gap) /
+    font_size. Returns None when there's only one line or the value is out of a sane range."""
+    import statistics
+    ys = []
+    for ln in lines:
+        spans = ln.get("spans") or []
+        if spans and "origin" in spans[0]:
+            ys.append(float(spans[0]["origin"][1]))
+        elif ln.get("bbox"):
+            ys.append(float(ln["bbox"][1]))
+    ys.sort()
+    gaps = [b - a for a, b in zip(ys, ys[1:]) if b - a > 0.1]
+    if not gaps or not size or size <= 0:
+        return None
+    mult = statistics.median(gaps) / size
+    return round(mult, 2) if 0.9 <= mult <= 3.0 else None
+
+
 def _runs_from_spans(lines) -> list[Run]:
     """Group a block's spans into inline runs by style (merging adjacent same-style). Returns []
     for a uniformly-styled block so the block-level path is used unchanged."""
@@ -455,6 +475,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1),
                     style=Style(size=max_size, bold=bold, italic=italic, font=font,
                                 color=color, align=align,
+                                line_spacing=_line_spacing(lines, max_size),
                                 heading_level=1 if btype == BlockType.HEADING else 0),
                     runs=runs,
                     confidence=Confidence(source="digital"),

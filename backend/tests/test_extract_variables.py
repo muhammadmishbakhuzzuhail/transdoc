@@ -44,3 +44,28 @@ def test_pdf_metadata_and_rotation_captured(tmp_path):
     assert doc.metadata.get("title") == "My Doc"
     assert doc.metadata.get("author") == "Tester"
     assert doc.page_rotation.get(0) == 90      # rotation flagged
+
+
+def test_pdf_line_spacing_geometric():
+    """PDF has no line-spacing attribute; derive it from baseline gaps (gap/font_size)."""
+    import tempfile
+
+    import fitz
+
+    from transdoc.config import Config
+    from transdoc.extract.pdf import extract
+    d = fitz.open()
+    p = d.new_page(width=400, height=300)
+    for i in range(4):                                   # font 12, gap 18 -> spacing 1.5
+        p.insert_text((40, 60 + i * 18), f"Body line {i} with several words here.", fontsize=12)
+    f = tempfile.mktemp(suffix=".pdf")
+    d.save(f)
+    d.close()
+    blk = next(b for b in extract(f, Config(target_lang="id")).blocks if b.text.strip())
+    assert blk.style.line_spacing == 1.5
+
+
+def test_line_spacing_single_line_none():
+    from transdoc.extract.pdf import _line_spacing
+    assert _line_spacing([{"spans": [{"origin": (0, 100)}]}], 12) is None   # one line -> None
+    assert _line_spacing([], 12) is None
