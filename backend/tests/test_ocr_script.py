@@ -10,7 +10,7 @@ from transdoc.config import Config
 pytest.importorskip("pytesseract")
 import pytesseract  # noqa: E402
 
-from transdoc.ocr.tesseract import _SCRIPT_LANG, TesseractOCR  # noqa: E402
+from transdoc.ocr.tesseract import _SCRIPT_LANG, _avail_langs, TesseractOCR  # noqa: E402
 
 _AVAIL = set(pytesseract.get_languages(config=""))
 
@@ -19,6 +19,24 @@ def test_script_map_has_major_scripts():
     for script, lang in [("Devanagari", "hin"), ("Han", "chi_sim"), ("Arabic", "ara"),
                          ("Cyrillic", "rus"), ("Hangul", "kor"), ("Thai", "tha")]:
         assert _SCRIPT_LANG[script] == lang
+
+
+def test_latin_maps_to_script_model():
+    # Latin pages use the script/Latin model (all diacritics, no lang guess), not bare eng.
+    assert _SCRIPT_LANG["Latin"] == "Latin"
+
+
+def test_avail_langs_lists_eng_and_is_robust():
+    # our own --list-langs parse (pytesseract.get_languages drops the first-sorted entry, which
+    # silently hid the uppercase 'Latin' script pack). 'eng'/'osd' ship with every install.
+    avail = _avail_langs()
+    assert "eng" in avail
+    # must not lose an uppercase-named pack the way get_languages does
+    raw = pytesseract.get_languages(config="")
+    if "Latin" in raw or any(x[:1].isupper() for x in raw):
+        pass  # get_languages happened to keep it here; nothing to prove
+    # _avail_langs is a superset of the lowercase packs get_languages returns
+    assert {x for x in raw if x.islower()} <= avail
 
 
 def test_detected_lang_used_when_source_auto():

@@ -6,15 +6,38 @@ phase can flag low-confidence spans. Weak on Indic/complex scripts — prefer Su
 
 from __future__ import annotations
 
+import functools
 import io
 
 from ..config import Config
 from ..ir import BBox, Block, BlockType, Confidence, Style
 from .base import TESS_LANG
 
+
+@functools.lru_cache(maxsize=1)
+def _avail_langs() -> frozenset[str]:
+    """Installed tesseract language + script packs. Parses `--list-langs` directly instead of
+    pytesseract.get_languages(), which drops the first-sorted entry — silently hiding the
+    uppercase 'Latin' script model (it sorts before lowercase packs)."""
+    import subprocess
+
+    import pytesseract
+    try:
+        out = subprocess.run([pytesseract.pytesseract.tesseract_cmd, "--list-langs"],
+                             capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return frozenset()
+    # first line is the "List of available languages ..." header; each lang is its own token
+    return frozenset(ln.strip() for ln in out.splitlines()[1:]
+                     if ln.strip() and " " not in ln.strip())
+
 # Tesseract OSD script name -> tesseract language pack. Used when the source language is auto:
 # without this a non-Latin scan is OCR'd with "eng" and comes back as Latin gibberish.
 _SCRIPT_LANG = {
+    # Latin pages: the script/Latin model reads every Latin language's diacritics (ç/ã/â/é/...)
+    # without guessing the language — "eng" alone drops them (portuguese CER 2.96% -> 0.04% with
+    # Latin, eval finding). Falls back to "eng" when the Latin pack isn't installed.
+    "Latin": "Latin",
     "Devanagari": "hin", "Han": "chi_sim", "HanS": "chi_sim", "HanT": "chi_tra",
     "Hangul": "kor", "Japanese": "jpn", "Hiragana": "jpn", "Katakana": "jpn",
     "Arabic": "ara", "Cyrillic": "rus", "Hebrew": "heb", "Greek": "ell",
@@ -42,9 +65,7 @@ class TesseractOCR:
         return code if code in avail else None
 
     def _langs(self, cfg: Config, detected: str | None = None) -> str:
-        import pytesseract
-
-        avail = set(pytesseract.get_languages(config=""))
+        avail = set(_avail_langs())
         wanted: list[str] = []
         if cfg.source_lang and cfg.source_lang != "auto":
             wanted.append(TESS_LANG.get(cfg.source_lang, cfg.source_lang))
@@ -71,7 +92,7 @@ class TesseractOCR:
         image = Image.open(io.BytesIO(img))
         detected = None
         if not cfg.source_lang or cfg.source_lang == "auto":
-            detected = self._detect_script_lang(image, set(pytesseract.get_languages(config="")))
+            detected = self._detect_script_lang(image, set(_avail_langs()))
         lang = self._langs(cfg, detected)
         data = pytesseract.image_to_data(image, lang=lang,
                                          output_type=pytesseract.Output.DICT)

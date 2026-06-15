@@ -17,8 +17,9 @@ provenance:
 > scores against the source text layer — exact, reproducible ground truth, no manual labels.
 > Tesseract baseline mean ≈ 2% CER / 9% WER; `make eval-ocr` then `--layout auto` for the
 > PP-StructureV3 path. `--show` prints gold-vs-OCR snippets for error analysis (this drove the
-> non-Latin "no eng backstop" fix: greek 5.4%→2.7%, russian 0.7%→0.5% CER). Portuguese diacritics
-> need the `por` tessdata pack (not installed by default → OCR'd as `eng`, drops ç/ã/â/í).
+> non-Latin "no eng backstop" fix: greek 5.4%→2.7%, russian 0.7%→0.5% CER; and the Latin
+> script-model fix: portuguese 3.0%→0.04% CER once `tesseract-ocr-script-latn` is installed —
+> bare `eng` drops ç/ã/â/í).
 >
 > **LLM-as-judge (no labels needed):** `make eval-judge ARGS="<files>"` has Claude vision score
 > the extraction against the source image — text fidelity / completeness / structure / reading
