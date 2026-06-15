@@ -11,6 +11,12 @@ provenance:
 > (`full_image/`, `scanned_pdf/`) and font-sensitive render metrics are excluded so the gate is
 > reproducible without network/OCR. It is local/opt-in — CI gates the committed synthetic
 > fixtures only.
+>
+> **OCR accuracy (CER/WER):** `make eval-ocr` rasterizes the text-bearing UDHR PDFs
+> (English/French/German/Spanish/Portuguese/Russian/Greek) to image-only "scans", OCRs them, and
+> scores against the source text layer — exact, reproducible ground truth, no manual labels.
+> Tesseract baseline mean ≈ 2% CER / 9% WER; `make eval-ocr` then `--layout auto` for the
+> PP-StructureV3 path.
 
 ## `real/` — real-world downloads
 Messy, no ground truth → integration / quality stress testing.

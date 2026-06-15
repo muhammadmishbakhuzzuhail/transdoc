@@ -19,7 +19,7 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        eval-real eval-real-baseline serve dev clean
+        eval-real eval-real-baseline eval-ocr serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -77,6 +77,12 @@ eval-real-baseline:
 		-m transdoc.eval.harness corpus/real --engine echo \
 		--exclude-dir full_image --exclude-dir scanned_pdf --structure-only \
 		--out corpus/baseline_real.json
+
+# OCR accuracy (CER/WER) with EXACT ground truth: rasterize text-bearing UDHR PDFs to image-only
+# "scans", OCR them, score vs the source text layer. Latin/Cyrillic/Greek; fetch the corpus first.
+# Add --layout auto to measure the PP-StructureV3 path instead of the Tesseract baseline.
+eval-ocr:
+	cd backend && .venv/bin/python -m scripts.eval_ocr
 
 serve:
 	cd backend && .venv/bin/transdoc serve
