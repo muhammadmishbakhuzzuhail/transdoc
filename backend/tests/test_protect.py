@@ -84,6 +84,22 @@ def test_money_percent_time_hashcode_protected():
     assert Protector.restore(protected, mapping) == text
 
 
+def test_two_currency_amounts_not_swallowed_by_latex():
+    """Audit data-loss bug: the inline-LaTeX $...$ pattern used to span from the first $ to the
+    second, masking the text between two prices. Both amounts must protect independently and the
+    connective text must survive."""
+    p = Protector()
+    text = "Pay $5 and $10 now"
+    protected, mapping = p.protect(text)
+    assert "$5" not in protected and "$10" not in protected
+    assert "and" in protected and "now" in protected   # middle text not eaten
+    assert len(mapping) == 2
+    assert Protector.restore(protected, mapping) == text
+    # real inline math still protected
+    m_protected, m_map = p.protect(r"The $x_{ij}$ and $\alpha$ values")
+    assert "$x_{ij}$" not in m_protected and r"$\alpha$" not in m_protected
+
+
 def test_iso_code_not_broken_by_time_pattern():
     """The clock-time pattern must not chop 'ISO 9001:2015' (4-digit:4-digit is not a time)."""
     p = Protector()

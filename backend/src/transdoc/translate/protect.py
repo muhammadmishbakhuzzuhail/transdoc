@@ -23,7 +23,9 @@ _PATTERNS = [
     r'\b\d+(?:[.,]\d+)?\s?%',                                   # percentages 7.5%, 50 %
     r'\b\d{1,2}:\d{2}(?::\d{2})?\b',                            # clock times 14:05, 08:30:00
     r'#[A-Za-z0-9]+\b',                                         # hash codes / tags #A1B2C3
-    r'\$[^$\n]{1,80}\$',                                        # inline LaTeX math $...$
+    # inline LaTeX math $...$ — require a real math token (\cmd, sub/super, =, braces) inside so
+    # two plain currency amounts ("$5 and $10") aren't swallowed as one span (data-loss audit).
+    r'\$(?=[^$\n]*[\\^_={])[^$\n]{1,80}\$',
     r'\\[a-zA-Z]+(?:\{[^{}\n]*\})?',                           # LaTeX commands \alpha, \frac{..}
     r'\b[A-Za-z][A-Za-z0-9]*[_^]\{?[A-Za-z0-9+\-]+\}?',       # sub/superscript var: head_i, W^Q
     r'\b[A-Z]{2,}-?\d{3,}(?:-\d+)?\b',                          # codes like INV-12345
