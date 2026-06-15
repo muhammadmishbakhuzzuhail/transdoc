@@ -12,6 +12,7 @@ import unicodedata
 from ..config import Config, Fidelity
 from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Run, Style, Table, TocEntry
 from .base import block_id, column_reading_order
+from .spacing import merge_if_only_spacing, text_in_bbox
 
 # Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
 # ids — control chars / mojibake, not real text. Valid pages (any script) have ~0% control
@@ -366,6 +367,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
 
         body = _body_size(page)
         d = page.get_text("dict")
+        raw_blocks = None         # lazily filled with get_text("rawdict") only if a suspect block appears
         idx = 0
         for blk in d.get("blocks", []):
             lines = blk.get("lines", [])
@@ -411,6 +413,14 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             text = _dehyphenate("".join(text_parts).strip())
             if not text:
                 continue
+            # Glyph-gap word spacing (research item F): a very long run with no space hints at
+            # missing space glyphs; re-derive spacing from rawdict geometry, adopt only if it
+            # differs purely by added spaces. Cheap because it only fires on the rare suspect.
+            if max((len(w) for w in text.split()), default=0) >= 25:
+                if raw_blocks is None:
+                    raw_blocks = page.get_text("rawdict").get("blocks", [])
+                spaced = _dehyphenate(text_in_bbox(raw_blocks, blk["bbox"]).strip())
+                text = merge_if_only_spacing(text, spaced)
             x0, y0, x1, y1 = blk["bbox"]
             if table_rects:
                 cx, cy = (x0 + x1) / 2, (y0 + y1) / 2

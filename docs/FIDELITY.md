@@ -24,7 +24,7 @@ scans, annotated/watermarked pages) preserves these variables natively regardles
 | highlight / background colour | ✓ | run highlight captured (docx) + rendered md/docx/pdf #97 |
 | superscript / subscript | ✓ | inline-runs: captured (docx+pdf) + rendered (md/docx/pdf) #91/#92 |
 | small-caps / all-caps | ✓ | docx capture + md/docx/pdf #97/#98 |
-| letter-spacing / word-spacing / kerning / baseline-shift | ⊘ | per-glyph advances are source-language metrics; after translation the word/glyph sequence differs, so re-applying source spacing is meaningless — the renderer re-lays out target text instead |
+| letter-spacing / word-spacing / kerning / baseline-shift | ◐ | re-applying source spacing to target text is meaningless, BUT missing word breaks (glued "twowords" from absent space glyphs) are now repaired from rawdict glyph gaps — conservative, adopted only when it differs by added spaces (extract/spacing.py) |
 | hyperlink (URI) | ✓ | captured (PDF get_links + DOCX rels) + rendered (md/docx/pdf) PR #83 |
 | character rotation / vertical text | ◐ | overlay keeps it natively; reconstruct detects tall/narrow + rotated runs and moves them aside (reorder_vertical_last) rather than re-typesetting at an arbitrary angle (HTML box has no rotation) |
 | per-run language tag | ✓ | output uniformly target language — rebuilt docx default lang set to target (Normal style w:lang) for correct spell-check/hyphenation; source per-run tags moot |
