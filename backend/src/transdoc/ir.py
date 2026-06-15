@@ -280,6 +280,9 @@ class Document(BaseModel):
     footers: list["Block"] = Field(default_factory=list)
     # Number of newspaper-style columns in the (first) DOCX section body. 1 = single column.
     section_columns: int = 1
+    # Per-page text-markup annotations (highlight/underline/strikeout) — repainted in reconstruct
+    # (overlay keeps the source annotations natively). See extract/annots.py.
+    page_annots: dict[int, list[dict]] = Field(default_factory=dict)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

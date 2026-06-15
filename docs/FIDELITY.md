@@ -73,7 +73,7 @@ without rendering it is ◐, not ✓.
 | vector graphics — curves / beziers | ✓ | capture + redraw bezier #96; dashed strokes captured + re-applied |
 | shapes / charts | ◐ | kept as figure crop |
 | AcroForm interactive fields (type/value/label) | ✗ | blank-form value is empty; revisit for filled forms |
-| annotations (comments / highlights / stamps) | ✗ | |
+| annotations (comments / highlights / stamps) | ◐ | text-markup (highlight/underline/strikeout) captured + repainted in reconstruct; overlay keeps all natively; comment/popup text pending |
 | signature / seal / logo | ✓ | cropped verbatim |
 | math / formula (LaTeX) | ✓ | PP-FormulaNet |
 | barcode / QR | ✓ | cropped verbatim (not translated) |

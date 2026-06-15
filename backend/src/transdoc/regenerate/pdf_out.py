@@ -616,6 +616,28 @@ def _hex_rgb(h):
         return None
 
 
+def _redraw_annots(page, annots) -> None:
+    """Repaint captured text-markup annotations on top of the placed text: highlights as a
+    semi-transparent fill, underline below the span, strikeout through its middle. Overlay keeps
+    the source annotations natively; this is only for the reconstruct path."""
+    import fitz
+
+    for a in annots or []:
+        try:
+            color = _hex_rgb(a.get("color")) or (1, 1, 0)
+            for (x0, y0, x1, y1) in a.get("quads", []):
+                if a["kind"] == "highlight":
+                    page.draw_rect(fitz.Rect(x0, y0, x1, y1), color=None, fill=color,
+                                   fill_opacity=0.35)
+                elif a["kind"] == "underline":
+                    page.draw_line(fitz.Point(x0, y1), fitz.Point(x1, y1), color=color, width=1)
+                elif a["kind"] == "strikeout":
+                    ym = (y0 + y1) / 2
+                    page.draw_line(fitz.Point(x0, ym), fitz.Point(x1, ym), color=color, width=1)
+        except Exception:
+            continue
+
+
 def _redraw_vectors(page, drawings) -> None:
     """Redraw captured line-art (lines/rects, PDF points) on a reconstructed page so rules,
     dividers, field underlines and boxes survive — the reconstruct renderer would otherwise
@@ -731,6 +753,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                             f"rendered at {eff:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — box too tight")
                 except Exception:
                     page.insert_textbox(r, b.output_text, fontsize=size, align=0)
+            _redraw_annots(page, doc.page_annots.get(pno, []))
         _subset_pages(out, cfg)
         _apply_pdf_metadata(out, doc)
         _apply_pdf_toc(out, doc)
