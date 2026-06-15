@@ -234,9 +234,14 @@ def _region_style(page, rect) -> Style:
                     if not n:
                         continue
                     nchars += n
-                    sizes[round(s["size"], 1)] = sizes.get(round(s["size"], 1), 0) + n
-                    fonts[s["font"]] = fonts.get(s["font"], 0) + n
-                    colors[s["color"]] = colors.get(s["color"], 0) + n
+                    # .get with defaults: a span missing size/font/colour must not throw and
+                    # wipe the whole region's style via the outer except — fall back per-field.
+                    sz = round(float(s.get("size", 0.0)), 1)
+                    sizes[sz] = sizes.get(sz, 0) + n
+                    fn = s.get("font") or "sans-serif"
+                    fonts[fn] = fonts.get(fn, 0) + n
+                    col = s.get("color", 0)
+                    colors[col] = colors.get(col, 0) + n
                     fl = s.get("flags", 0)
                     if fl & 16:
                         bold_chars += n
@@ -244,10 +249,10 @@ def _region_style(page, rect) -> Style:
                         ital_chars += n
     except Exception:
         return Style()
-    if not nchars:
+    if not nchars or not sizes:
         return Style()
     color = max(colors, key=colors.get)
-    return Style(font=max(fonts, key=fonts.get), size=max(sizes, key=sizes.get),
+    return Style(font=max(fonts, key=fonts.get), size=max(sizes, key=sizes.get) or None,
                  color=f"#{color:06x}", bold=bold_chars > nchars / 2,
                  italic=ital_chars > nchars / 2)
 
