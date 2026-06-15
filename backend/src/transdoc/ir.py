@@ -113,6 +113,7 @@ class Cell(BaseModel):
     bold: bool = False
     align: Optional[str] = None          # left|center|right
     shading: Optional[str] = None        # cell background fill (hex)
+    table: Optional["Table"] = None      # a table nested inside this cell
     confidence: Confidence = Field(default_factory=Confidence)
 
     @property
@@ -124,6 +125,9 @@ class Table(BaseModel):
     rows: list[list[Cell]] = Field(default_factory=list)
     has_header_row: bool = True
     col_widths: list[float] = Field(default_factory=list)   # column widths (pt), if known
+
+
+Cell.model_rebuild()   # resolve Cell.table -> Table forward reference
 
 
 class TocEntry(BaseModel):
