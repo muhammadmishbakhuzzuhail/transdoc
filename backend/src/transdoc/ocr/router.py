@@ -79,27 +79,29 @@ _BUILDERS = {
 # Per-script engine chain (primary first, then escalation targets). paddle_vl is listed ahead of
 # paddle for the scripts Tesseract is weak on; until it's installed the chain collapses to
 # tesseract -> paddle, i.e. today's behavior. Unknown scripts use DEFAULT_CHAIN.
-# Chain order: Tesseract primary (fast, cheap on clean pages) -> EasyOCR (strong multilingual) ->
-# PaddleOCR (max accuracy on degraded/non-Latin, via layout_venv). A low-confidence page walks
-# down the chain; a confident page stops early. Tesseract stays primary on every script so clean
-# Latin/Arabic pages stay fast; the weak-script gains come from EasyOCR/Paddle catching the misses.
-DEFAULT_CHAIN = ["tesseract", "easyocr", "paddle"]
+# Chain order (precision-first). PaddleOCR PP-OCRv5 is the most accurate engine and, with the
+# paddle-GPU layout_venv, runs ~1 s/page on a 6 GB card, so it leads on every script Tesseract is
+# weak at (CJK/Indic/Thai). On Latin/Cyrillic/Greek/Arabic/Hebrew, Tesseract leads (near-equal
+# accuracy, faster) and Paddle is the escalation. EasyOCR is the last-resort fallback (CPU only;
+# its GPU path OOMs on small cards). A low-confidence/weak-tail page walks down the chain; a
+# confident page stops early.
+DEFAULT_CHAIN = ["tesseract", "paddle", "easyocr"]
 ROUTING: dict[str, list[str]] = {
-    "Latin": ["tesseract", "easyocr", "paddle"],
-    "Cyrillic": ["tesseract", "easyocr", "paddle"],
-    "Greek": ["tesseract", "easyocr", "paddle"],
-    "Arabic": ["tesseract", "easyocr", "paddle"],      # Surya excluded: catastrophic on Arabic
-    "Hebrew": ["tesseract", "easyocr", "paddle"],
-    # Scripts where Tesseract is weak: EasyOCR then PaddleOCR recover the low-confidence pages.
-    "Han": ["tesseract", "easyocr", "paddle"],
-    "Hangul": ["tesseract", "easyocr", "paddle"],
-    "Japanese": ["tesseract", "easyocr", "paddle"],
-    "Devanagari": ["tesseract", "easyocr", "paddle"],
-    "Bengali": ["tesseract", "easyocr", "paddle"],
-    "Tamil": ["tesseract", "easyocr", "paddle"],
-    "Telugu": ["tesseract", "easyocr", "paddle"],
-    "Thai": ["tesseract", "easyocr", "paddle"],
-    "Kannada": ["tesseract", "easyocr", "paddle"],
+    "Latin": ["tesseract", "paddle", "easyocr"],
+    "Cyrillic": ["tesseract", "paddle", "easyocr"],
+    "Greek": ["tesseract", "paddle", "easyocr"],
+    "Arabic": ["tesseract", "paddle", "easyocr"],      # Surya excluded: catastrophic on Arabic
+    "Hebrew": ["tesseract", "paddle", "easyocr"],
+    # Scripts where Tesseract is weak: PaddleOCR (precise + GPU-fast) leads, Tesseract/EasyOCR back it.
+    "Han": ["paddle", "tesseract", "easyocr"],
+    "Hangul": ["paddle", "tesseract", "easyocr"],
+    "Japanese": ["paddle", "tesseract", "easyocr"],
+    "Devanagari": ["paddle", "tesseract", "easyocr"],
+    "Bengali": ["paddle", "tesseract", "easyocr"],
+    "Tamil": ["paddle", "tesseract", "easyocr"],
+    "Telugu": ["paddle", "tesseract", "easyocr"],
+    "Thai": ["paddle", "tesseract", "easyocr"],
+    "Kannada": ["paddle", "tesseract", "easyocr"],
 }
 
 
