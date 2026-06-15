@@ -65,6 +65,8 @@ scans, annotated/watermarked pages) preserves these variables natively regardles
 | page size / orientation | ✓ | reconstruct keeps source size |
 | margins | ✓ | docx section margins captured + applied #102 |
 | page rotation (/Rotate) applied | ✓ | PyMuPDF reports visual coords; reconstruct bakes rotation into an upright page, overlay keeps native /Rotate (verified test_rotation) |
+| image scan orientation (90/180/270) | ✓ | standalone image: Tesseract OSD detects coarse rotation, page turned upright before OCR (deskew only fixes small tilt) — audit fix, test_image_robustness |
+| image scan layout/structure | ✓ | standalone image routed through PP-StructureV3 for text output (headings/tables/figures/reading-order), same as a scanned PDF; line-OCR fallback. Large pages downscaled to fit GPU — audit fix |
 | page-number regeneration | ⊘ | overlay keeps source page numbers natively; reconstruct preserves page geometry/count but does not synthesize numbers — detection across paths is unreliable and re-emitting risks duplicating/misplacing numbers the source already drew |
 | background colour / watermark | ◐ | full-page colour fill captured + repainted in reconstruct (pdf); overlay keeps both natively; diagonal text/image watermark left to overlay (isolating it from content in reconstruct is unreliable) |
 | document metadata written to output | ✓ | captured + written to PDF + DOCX #94 |

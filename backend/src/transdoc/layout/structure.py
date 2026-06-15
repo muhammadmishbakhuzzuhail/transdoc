@@ -12,6 +12,31 @@ from . import _layout_python
 
 _DPI = 150
 _SCALE = 72.0 / _DPI
+# Cap the longest rendered side so PP-StructureV3 fits in GPU memory. A full-res phone photo /
+# large scan rendered at 150 DPI can exceed several thousand px and OOM a 6 GB GPU (audit: a
+# newspaper JPG failed with CUDA OOM). Downscaling before inference keeps it on the GPU; region
+# coords are scaled back to points via the per-page factor returned by render_page_array.
+_MAX_PX = 2600
+
+
+def render_page_array(page):
+    """Render a PDF/image page to an RGB ndarray at _DPI, downscaled so its longest side is
+    <= _MAX_PX (GPU memory cap). Returns (array, coord_scale) where region_pixels * coord_scale
+    gives PDF points."""
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    pix = page.get_pixmap(dpi=_DPI)
+    im = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
+    w, h = im.size
+    longest = max(w, h)
+    s = 1.0
+    if longest > _MAX_PX:
+        s = _MAX_PX / longest
+        im = im.resize((max(1, round(w * s)), max(1, round(h * s))), Image.LANCZOS)
+    return np.array(im), (_SCALE / s)
 
 
 @dataclass
@@ -39,19 +64,20 @@ def _iou(a, b) -> float:
     return inter / (area_a + area_b - inter)
 
 
-def parse_regions(root: dict) -> list[dict]:
+def parse_regions(root: dict, scale: float = _SCALE) -> list[dict]:
     """Normalize a PP-StructureV3 result dict into region dicts (bbox in points). Merges in
-    figure/image boxes from layout_det_res, which parsing_res_list omits (they carry no text)."""
+    figure/image boxes from layout_det_res, which parsing_res_list omits (they carry no text).
+    ``scale`` converts render pixels to points (per-page when the render was downscaled)."""
     root = root.get("res", root)
     out = []
     for b in root.get("parsing_res_list", []):
         bb = b.get("block_bbox") or [0, 0, 0, 0]
-        out.append({"label": b.get("block_label"), "bbox": [c * _SCALE for c in bb],
+        out.append({"label": b.get("block_label"), "bbox": [c * scale for c in bb],
                     "content": b.get("block_content", ""), "order": b.get("block_order") or 0})
     for box in root.get("layout_det_res", {}).get("boxes", []):
         if box.get("label") not in _FIG:
             continue
-        bb = [c * _SCALE for c in (box.get("coordinate") or [0, 0, 0, 0])]
+        bb = [c * scale for c in (box.get("coordinate") or [0, 0, 0, 0])]
         if any(_iou(bb, o["bbox"]) > 0.5 for o in out):
             continue
         above = [o["order"] for o in out if o["bbox"][1] < bb[1]]
@@ -71,20 +97,14 @@ class _InProcess:
         return self._pipe
 
     def extract_pages(self, fdoc, pnos) -> dict[int, list[StructRegion]]:
-        import io
-
-        import numpy as np
-        from PIL import Image
-
         pipe = self._get()
         out: dict[int, list[StructRegion]] = {}
         for pno in pnos:
-            pix = fdoc[pno].get_pixmap(dpi=_DPI)
-            arr = np.array(Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB"))
+            arr, scale = render_page_array(fdoc[pno])
             res = list(pipe.predict(arr))
             regs: list[StructRegion] = []
             if res:
-                for d in parse_regions(res[0].json):
+                for d in parse_regions(res[0].json, scale):
                     regs.append(StructRegion(d["label"], *d["bbox"], d["content"], d["order"]))
             out[pno] = regs
         return out

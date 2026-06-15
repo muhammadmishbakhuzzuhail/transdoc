@@ -76,6 +76,35 @@ def extract(det: Detection, cfg: Config) -> Document:
         from .odt import extract as ex
         return ex(p, cfg)
     if k == Kind.IMAGE:
+        # A standalone image is a scan too: route it through PP-StructureV3 so it gets the same
+        # structure-aware layout (headings/tables/figures/reading-order) as a scanned PDF, instead
+        # of flat line-OCR paragraphs (audit: a newspaper JPG came out as 60 untyped paragraphs
+        # with the masthead lost; structured gives titles/headings + the masthead figure). Only
+        # for text outputs that rebuild from the IR — image->image/PDF overlay still needs the
+        # raster path's deskewed render_path. Falls back to line-OCR on any failure (e.g. GPU OOM).
+        from ..config import OutputFormat
+        if (_structured_enabled(cfg)
+                and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX,
+                                          OutputFormat.PLAIN)):
+            from pathlib import Path as _Path
+
+            from .image import _coarse_orient
+            oriented, rot = _coarse_orient(_Path(p).read_bytes())   # upright before layout
+            src, tmp = p, None
+            if rot:
+                tmp = tempfile.mkdtemp(prefix="transdoc_orient_")
+                src = str(_Path(tmp) / "oriented.png")
+                _Path(src).write_bytes(oriented)
+            try:
+                from .structured import extract_structured
+                doc = extract_structured(src, cfg)
+                doc.mime = "image"            # image source, not a real PDF
+                doc.source_path = p
+                if tmp:
+                    doc.tmp_dirs.append(tmp)
+                return doc
+            except Exception:
+                pass
         from .image import extract as ex
         return ex(p, cfg)
     if k == Kind.PPTX:

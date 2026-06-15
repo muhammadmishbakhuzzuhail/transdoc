@@ -14,6 +14,38 @@ from ..ocr import get_ocr
 from .base import reflow_order
 
 
+def _coarse_orient(img_bytes: bytes) -> tuple[bytes, int]:
+    """Correct a 90/180/270 page rotation via Tesseract OSD before OCR.
+
+    Deskew (in _preprocess) only straightens a small tilt; a page photographed sideways or
+    upside-down stays that way and OCR returns garbage (audit: a 90deg-rotated form extracted as
+    vertical gibberish strips). OSD reports the coarse rotation; we rotate the image upright so
+    the OCR — and the overlay background built from these bytes — are oriented correctly.
+
+    Returns (possibly-rotated PNG bytes, degrees rotated clockwise). No-op (raw, 0) when OSD or
+    Pillow/tesseract is unavailable or the page is already upright."""
+    try:
+        import io
+        import re
+
+        import pytesseract
+        from PIL import Image
+
+        im = Image.open(io.BytesIO(img_bytes))
+        osd = pytesseract.image_to_osd(im)
+        m = re.search(r"Rotate:\s*(\d+)", osd)
+        rot = int(m.group(1)) % 360 if m else 0
+        if rot == 0:
+            return img_bytes, 0
+        # OSD "Rotate: N" = degrees to turn the page CLOCKWISE to upright; PIL rotates CCW, so -rot.
+        out = im.rotate(-rot, expand=True)
+        buf = io.BytesIO()
+        out.convert("RGB").save(buf, format="PNG")
+        return buf.getvalue(), rot
+    except Exception:
+        return img_bytes, 0
+
+
 def _preprocess(img_bytes: bytes) -> tuple[bytes, bytes | None]:
     """Deskew + denoise + grayscale to help OCR.
 
@@ -58,12 +90,15 @@ def _preprocess(img_bytes: bytes) -> tuple[bytes, bytes | None]:
 
 def extract(path: str, cfg: Config) -> Document:
     raw = Path(path).read_bytes()
-    ocr_bytes, display_bytes = _preprocess(raw)   # resilient: falls back to raw on bad image
+    oriented, rot = _coarse_orient(raw)            # fix 90/180/270 before fine deskew + OCR
+    ocr_bytes, deskew_display = _preprocess(oriented)  # resilient: falls back to raw on bad image
     ocr = get_ocr(cfg)
     out = Document(source_path=path, mime="image", page_count=1)
     out.blocks = ocr.recognize_image_bytes(ocr_bytes, cfg, page=0)
     out.profile.input_nature = "photo/scan"
-    # If the page was deskewed, overlay on the straightened copy so bboxes line up.
+    # Overlay must sit on the SAME pixels the bboxes came from: prefer the deskewed copy, else the
+    # coarse-oriented copy (when only rotation was applied), else the original needs no background.
+    display_bytes = deskew_display or (oriented if rot else None)
     if display_bytes:
         import tempfile
 

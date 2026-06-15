@@ -14,22 +14,13 @@ from __future__ import annotations
 import json
 import sys
 
-_DPI = 150
-_SCALE = 72.0 / _DPI
-
 
 def _regions_for_page(pipe, page) -> list[dict]:
-    import io
+    from .structure import parse_regions, render_page_array
 
-    import numpy as np
-    from PIL import Image
-
-    from .structure import parse_regions
-
-    pix = page.get_pixmap(dpi=_DPI)
-    arr = np.array(Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB"))
+    arr, scale = render_page_array(page)   # downscaled to fit GPU; scale maps px -> points
     res = list(pipe.predict(arr))
-    return parse_regions(res[0].json) if res else []
+    return parse_regions(res[0].json, scale) if res else []
 
 
 def main(argv: list[str]) -> int:
