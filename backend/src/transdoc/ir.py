@@ -270,6 +270,10 @@ class Document(BaseModel):
     # Per-page background fill (hex) for coloured (non-white) pages — painted first in
     # reconstruct so the page colour survives. Absent page -> plain white.
     page_background: dict[int, str] = Field(default_factory=dict)
+    # Section header / footer paragraphs (DOCX). Kept off `blocks` so they translate but render
+    # into the output section's header/footer, not the body. Other renderers ignore them.
+    headers: list["Block"] = Field(default_factory=list)
+    footers: list["Block"] = Field(default_factory=list)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

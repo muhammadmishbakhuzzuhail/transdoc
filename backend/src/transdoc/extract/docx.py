@@ -295,5 +295,29 @@ def extract(path: str, cfg: Config) -> Document:
             )
             idx += 1
 
+    _capture_headers_footers(d, out)
     reflow_order(out)
     return out
+
+
+def _capture_headers_footers(d, out) -> None:
+    """Section header/footer paragraphs carry real content (page titles, doc refs, confidentiality
+    notices) that the body walk misses entirely. Capture them so they translate and are re-emitted
+    into the output section's header/footer."""
+    hidx = 0
+    for sec in d.sections:
+        for part, sink, btype in ((sec.header, out.headers, BlockType.HEADER),
+                                  (sec.footer, out.footers, BlockType.FOOTER)):
+            try:
+                if part is None or part.is_linked_to_previous:
+                    continue
+                for para in part.paragraphs:
+                    text = para.text.strip()
+                    if not text:
+                        continue
+                    sink.append(Block(id=f"hf{hidx}", type=btype, text=text,
+                                      style=_para_style(para, 0),
+                                      confidence=Confidence(source="digital")))
+                    hidx += 1
+            except Exception:
+                continue
