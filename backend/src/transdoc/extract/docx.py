@@ -180,11 +180,33 @@ def _para_style(item, level: int) -> Style:
 
     pf = item.paragraph_format
     ls = pf.line_spacing
+    shading, border = _para_shading_border(item)
     return Style(font=name, size=size, bold=bold, italic=italic, underline=underline,
                  strike=strike, color=color, align=align, heading_level=level,
                  space_before=_pt(pf.space_before), space_after=_pt(pf.space_after),
                  line_spacing=float(ls) if isinstance(ls, (int, float)) else None,
-                 indent_left=_pt(pf.left_indent), indent_first=_pt(pf.first_line_indent))
+                 indent_left=_pt(pf.left_indent), indent_first=_pt(pf.first_line_indent),
+                 para_shading=shading, para_border=border)
+
+
+def _para_shading_border(item) -> tuple[str | None, bool]:
+    """Paragraph-level background fill (pPr/w:shd) and box border (pPr/w:pBdr) — the markers of a
+    callout / boxed paragraph. Returns (hex_fill_or_None, has_border)."""
+    shading = None
+    border = False
+    try:
+        from docx.oxml.ns import qn
+        ppr = item._p.pPr
+        if ppr is not None:
+            shd = ppr.find(qn("w:shd"))
+            if shd is not None:
+                fill = shd.get(qn("w:fill"))
+                if fill and fill.lower() not in ("auto", "ffffff"):
+                    shading = "#" + fill
+            border = ppr.find(qn("w:pBdr")) is not None
+    except Exception:
+        pass
+    return shading, border
 
 
 def _build_table(item) -> Table:

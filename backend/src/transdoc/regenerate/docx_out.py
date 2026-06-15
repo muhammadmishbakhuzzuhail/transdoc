@@ -92,6 +92,33 @@ def _apply_para_format(p, style) -> None:
         pf.left_indent = Pt(style.indent_left)
     if style.indent_first is not None:
         pf.first_line_indent = Pt(style.indent_first)
+    if style.para_shading or style.para_border:
+        _apply_para_shading_border(p, style)
+
+
+def _apply_para_shading_border(p, style) -> None:
+    """Reproduce a boxed/callout paragraph: pPr/w:shd background fill + pPr/w:pBdr box border."""
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        ppr = p._p.get_or_add_pPr()
+        if style.para_shading:
+            shd = OxmlElement("w:shd")
+            shd.set(qn("w:val"), "clear")
+            shd.set(qn("w:fill"), style.para_shading.lstrip("#"))
+            ppr.append(shd)
+        if style.para_border:
+            pbdr = OxmlElement("w:pBdr")
+            for edge in ("top", "left", "bottom", "right"):
+                e = OxmlElement(f"w:{edge}")
+                e.set(qn("w:val"), "single")
+                e.set(qn("w:sz"), "4")
+                e.set(qn("w:space"), "4")
+                e.set(qn("w:color"), "auto")
+                pbdr.append(e)
+            ppr.append(pbdr)
+    except Exception:
+        pass
 
 
 def _add_run(p, run) -> None:

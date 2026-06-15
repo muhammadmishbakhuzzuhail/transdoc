@@ -33,7 +33,7 @@ without rendering it is ◐, not ✓.
 | line-spacing / space before-after | ✓ | docx capture + docx/pdf render #95 |
 | indentation (first-line / left) | ✓ | docx capture + docx/pdf render #95; hanging via list |
 | list type / marker / nesting level | ✓ | ordered-vs-bullet + level captured (docx) + rendered (md/docx) PR #87 |
-| paragraph border / shading / tab-stops / drop-cap | ✗ | |
+| paragraph border / shading / tab-stops / drop-cap | ◐ | docx para shading (pPr/w:shd) + box border (pPr/w:pBdr) captured + rendered docx/pdf; tab-stops/drop-cap pending |
 | direction / bidi (RTL) | ◐ | rtl flag + HarfBuzz overlay; PyMuPDF already logical-order on extract |
 
 ## Structure

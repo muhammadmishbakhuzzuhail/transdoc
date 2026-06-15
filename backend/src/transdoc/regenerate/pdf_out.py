@@ -585,6 +585,12 @@ def _block_html(b):
     if b.style.line_spacing and b.style.line_spacing > 0:
         css = [c for c in css if not c.startswith("line-height")]
         css.append(f"line-height:{b.style.line_spacing:.2f}")
+    if b.style.para_shading:                      # boxed/callout paragraph background
+        css.append(f"background-color:{b.style.para_shading}")
+    if b.style.para_border:
+        css.append("border:1px solid #000")
+    if b.style.para_shading or b.style.para_border:
+        css.append("padding:3pt")
     inner = _runs_html(b.runs) if b.runs else _esc(b.output_text)
     if b.style.link and not b.runs:
         inner = f'<a href="{_esc(b.style.link)}">{inner}</a>'
