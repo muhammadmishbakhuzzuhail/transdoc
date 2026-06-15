@@ -10,6 +10,15 @@ from ..ingest.detect import Detection, Kind, convert_to_docx
 from ..ir import Document
 
 
+def _structured_enabled(cfg: Config) -> bool:
+    """Whether to take the PP-StructureV3 structure path. On by default (layout=auto); forced off
+    by TRANSDOC_LAYOUT_DISABLE=1 (tests set this for the fast, deterministic heuristic path)."""
+    import os
+    if os.environ.get("TRANSDOC_LAYOUT_DISABLE") == "1":
+        return False
+    return getattr(cfg, "layout", "off") in ("paddle", "auto")
+
+
 def extract(det: Detection, cfg: Config) -> Document:
     k = det.kind
     p = str(det.path)
@@ -21,7 +30,7 @@ def extract(det: Detection, cfg: Config) -> Document:
         # as translatable grids from the structured IR. Falls back to the standard extractor
         # if paddle is absent. SAME resolves to PDF here (this branch is PDF source).
         from ..config import OutputFormat
-        if (getattr(cfg, "layout", "off") in ("paddle", "auto")
+        if (_structured_enabled(cfg)
                 and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX,
                                           OutputFormat.PDF, OutputFormat.SAME, OutputFormat.PLAIN)):
             try:
@@ -32,6 +41,15 @@ def extract(det: Detection, cfg: Config) -> Document:
         from .pdf import extract as ex
         return ex(p, cfg)
     if k == Kind.PDF_SCAN:
+        # PP-StructureV3 also OCRs each region, so a scan gets the same structure-aware layout
+        # (regions/tables/formula/reading-order) as a digital PDF — far better than line-OCR.
+        # Falls back to the heuristic OCR path when paddle isn't reachable.
+        if _structured_enabled(cfg):
+            try:
+                from .structured import extract_structured
+                return extract_structured(p, cfg)
+            except Exception:
+                pass
         from .pdf import extract as ex
         import fitz
         n = fitz.open(p).page_count
