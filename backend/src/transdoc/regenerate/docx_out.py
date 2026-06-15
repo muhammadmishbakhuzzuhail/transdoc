@@ -200,6 +200,8 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
 
     d = Docx()
     for b in doc.ordered_blocks():
+        if b.page_break_before:
+            d.add_page_break()           # reproduce the source's manual page break
         if b.type == BlockType.FIGURE and b.image_path:
             try:
                 d.add_picture(b.image_path, width=Inches(5.5))
