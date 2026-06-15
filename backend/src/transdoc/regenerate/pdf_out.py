@@ -203,10 +203,20 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         _subset_pages(pdf, cfg)
         _apply_pdf_metadata(pdf, doc)
         _apply_pdf_toc(pdf, doc)
-        pdf.save(out_path, garbage=4, deflate=True)
+        _save_pdf(pdf, out_path)
     finally:
         pdf.close()
     return out_path
+
+
+def _save_pdf(pdf, out_path: str) -> None:
+    """Subset embedded fonts (keep only used glyphs) before saving — a full CJK/Indic fallback
+    face is multi-MB; subsetting shrinks the output a lot. Best-effort; plain save on failure."""
+    try:
+        pdf.subset_fonts()
+    except Exception:
+        pass
+    pdf.save(out_path, garbage=4, deflate=True)
 
 
 def _subset_pages(pdf, cfg) -> None:
@@ -294,7 +304,7 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         if ext in ("png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"):
             page.get_pixmap().save(out_path)   # identity matrix -> original pixel dimensions
         else:
-            pdf.save(out_path, garbage=4, deflate=True)
+            _save_pdf(pdf, out_path)
     finally:
         pdf.close()
     return out_path
@@ -332,7 +342,7 @@ def render_searchable(doc: Document, cfg: Config, out_path: str) -> str:
                     size *= 0.7  # shrink until the text fits the original bbox
             except Exception:
                 continue
-        pdf.save(out_path, garbage=4, deflate=True)
+        _save_pdf(pdf, out_path)
     finally:
         pdf.close()
     return out_path
@@ -768,7 +778,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
         _subset_pages(out, cfg)
         _apply_pdf_metadata(out, doc)
         _apply_pdf_toc(out, doc)
-        out.save(out_path, garbage=4, deflate=True)
+        _save_pdf(out, out_path)
     finally:
         out.close()
         if src is not None:
