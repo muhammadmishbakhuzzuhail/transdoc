@@ -83,6 +83,11 @@ class Style(BaseModel):
     list_level: int = 0
     list_ordered: bool = False           # numbered list vs bullet
     heading_level: int = 0               # 1..6 for HEADING
+    space_before: Optional[float] = None  # paragraph spacing (pt)
+    space_after: Optional[float] = None
+    line_spacing: Optional[float] = None  # multiple (1.0/1.5/2.0)
+    indent_left: Optional[float] = None   # left indent (pt)
+    indent_first: Optional[float] = None  # first-line indent (pt)
     superscript: bool = False            # footnote refs / inline exponents
     subscript: bool = False
     link: Optional[str] = None           # hyperlink target URI, if the block is a link

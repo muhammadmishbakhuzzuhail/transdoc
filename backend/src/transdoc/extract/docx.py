@@ -131,8 +131,17 @@ def _para_style(item, level: int) -> Style:
     align = {WD_ALIGN_PARAGRAPH.CENTER: "center", WD_ALIGN_PARAGRAPH.RIGHT: "right",
              WD_ALIGN_PARAGRAPH.JUSTIFY: "justify", WD_ALIGN_PARAGRAPH.LEFT: "left"
              }.get(item.alignment) if item.alignment is not None else None
+
+    def _pt(length):
+        return float(length.pt) if length is not None else None
+
+    pf = item.paragraph_format
+    ls = pf.line_spacing
     return Style(font=name, size=size, bold=bold, italic=italic, underline=underline,
-                 strike=strike, color=color, align=align, heading_level=level)
+                 strike=strike, color=color, align=align, heading_level=level,
+                 space_before=_pt(pf.space_before), space_after=_pt(pf.space_after),
+                 line_spacing=float(ls) if isinstance(ls, (int, float)) else None,
+                 indent_left=_pt(pf.left_indent), indent_first=_pt(pf.first_line_indent))
 
 
 def extract(path: str, cfg: Config) -> Document:

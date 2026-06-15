@@ -76,6 +76,22 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(link)
 
 
+def _apply_para_format(p, style) -> None:
+    """Carry paragraph spacing + indentation onto the output paragraph."""
+    from docx.shared import Pt
+    pf = p.paragraph_format
+    if style.space_before is not None:
+        pf.space_before = Pt(style.space_before)
+    if style.space_after is not None:
+        pf.space_after = Pt(style.space_after)
+    if style.line_spacing:
+        pf.line_spacing = style.line_spacing
+    if style.indent_left is not None:
+        pf.left_indent = Pt(style.indent_left)
+    if style.indent_first is not None:
+        pf.first_line_indent = Pt(style.indent_first)
+
+
 def _add_run(p, run) -> None:
     """Add one inline run with its own style (bold/italic/underline/super/sub/size/colour),
     or a hyperlink run when the run is a link."""
@@ -189,6 +205,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             align = _align(b.style)
             if align is not None:
                 p.alignment = align
+            _apply_para_format(p, b.style)
             continue
         if b.style.link and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION,
                                        BlockType.LIST_ITEM):
@@ -208,6 +225,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         align = _align(b.style)
         if align is not None:
             p.alignment = align
+        _apply_para_format(p, b.style)
 
     md = doc.metadata or {}
     cp = d.core_properties
