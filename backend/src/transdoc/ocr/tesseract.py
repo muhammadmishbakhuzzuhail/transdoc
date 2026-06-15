@@ -12,17 +12,44 @@ from ..config import Config
 from ..ir import BBox, Block, BlockType, Confidence, Style
 from .base import TESS_LANG
 
+# Tesseract OSD script name -> tesseract language pack. Used when the source language is auto:
+# without this a non-Latin scan is OCR'd with "eng" and comes back as Latin gibberish.
+_SCRIPT_LANG = {
+    "Devanagari": "hin", "Han": "chi_sim", "HanS": "chi_sim", "HanT": "chi_tra",
+    "Hangul": "kor", "Japanese": "jpn", "Hiragana": "jpn", "Katakana": "jpn",
+    "Arabic": "ara", "Cyrillic": "rus", "Hebrew": "heb", "Greek": "ell",
+    "Bengali": "ben", "Tamil": "tam", "Telugu": "tel", "Thai": "tha",
+    "Kannada": "kan", "Malayalam": "mal", "Gujarati": "guj", "Gurmukhi": "pan",
+    "Oriya": "ori", "Sinhala": "sin",
+}
+
 
 class TesseractOCR:
     name = "tesseract"
 
-    def _langs(self, cfg: Config) -> str:
+    def _detect_script_lang(self, image, avail: set) -> str | None:
+        """Source=auto: ask Tesseract OSD which SCRIPT the page uses and map it to a lang pack,
+        so a Devanagari/Han/Arabic scan isn't read as English. None if undetectable/uninstalled."""
+        import re
+
+        import pytesseract
+        try:
+            osd = pytesseract.image_to_osd(image)
+        except Exception:
+            return None
+        m = re.search(r"Script:\s*([\w]+)", osd)
+        code = _SCRIPT_LANG.get(m.group(1)) if m else None
+        return code if code in avail else None
+
+    def _langs(self, cfg: Config, detected: str | None = None) -> str:
         import pytesseract
 
         avail = set(pytesseract.get_languages(config=""))
         wanted: list[str] = []
         if cfg.source_lang and cfg.source_lang != "auto":
             wanted.append(TESS_LANG.get(cfg.source_lang, cfg.source_lang))
+        elif detected:                       # auto source -> OSD-detected script pack
+            wanted.append(detected)
         wanted.append("eng")
         # keep only installed, dedupe
         seen, out = set(), []
@@ -37,7 +64,10 @@ class TesseractOCR:
         from PIL import Image
 
         image = Image.open(io.BytesIO(img))
-        lang = self._langs(cfg)
+        detected = None
+        if not cfg.source_lang or cfg.source_lang == "auto":
+            detected = self._detect_script_lang(image, set(pytesseract.get_languages(config="")))
+        lang = self._langs(cfg, detected)
         data = pytesseract.image_to_data(image, lang=lang,
                                          output_type=pytesseract.Output.DICT)
 
