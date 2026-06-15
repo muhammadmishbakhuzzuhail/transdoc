@@ -19,6 +19,10 @@ from ..ir import Block, Document
 
 
 def _set_paragraph(paragraph, b: Block) -> None:
+    from .docx_out import _set_para_bidi, _set_run_rtl
+    # An LTR source paragraph translated into an RTL target must flip its base direction.
+    if b.style.rtl:
+        _set_para_bidi(paragraph)
     if getattr(b, "runs", None):
         # mixed-style paragraph: blank the source runs, re-emit the translated runs WITH their
         # captured character style (bold/italic/super/link/...) — preserves inline formatting a
@@ -27,13 +31,17 @@ def _set_paragraph(paragraph, b: Block) -> None:
         for r in list(paragraph.runs):
             r.text = ""
         for run in b.runs:
-            _add_run(paragraph, run)
+            _add_run(paragraph, run)   # _add_run sets run-level rtl from run.style.rtl
         return
     runs = paragraph.runs
     if not runs:
-        paragraph.add_run(b.output_text)
+        r = paragraph.add_run(b.output_text)
+        if b.style.rtl:
+            _set_run_rtl(r)
         return
     runs[0].text = b.output_text        # uniform paragraph: keep run-0 formatting
+    if b.style.rtl:
+        _set_run_rtl(runs[0])
     for r in runs[1:]:
         r.text = ""
 

@@ -12,7 +12,6 @@ geometry (e.g. source was DOCX/image). Uses insert_htmlbox so all scripts render
 from __future__ import annotations
 
 import html
-import re
 
 from ..config import Config
 from ..ir import BlockType, Document
@@ -35,12 +34,10 @@ def _ocr_garbage(b) -> bool:
 # RTL scripts: Hebrew, Arabic (+ supplements/presentation forms). insert_htmlbox shapes each
 # script via HarfBuzz but does NOT correctly order a single line that MIXES RTL + LTR runs
 # (PyMuPDF maintainer, discussion #3022). We can't fix it here, so we flag it for review.
-_RTL_RE = re.compile(r"[֐-׿؀-ۿݐ-ݿࢠ-ࣿיִ-﷿ﹰ-﻿]")
-_LATIN_RE = re.compile(r"[A-Za-z]")
 
-
-def _is_mixed_bidi(s: str) -> bool:
-    return bool(_RTL_RE.search(s) and _LATIN_RE.search(s))
+# Direction detection + raw-draw shaping live in textdir (single source of truth).
+from ..textdir import is_mixed_bidi as _is_mixed_bidi  # noqa: E402
+from ..textdir import shape_for_raw_draw  # noqa: E402
 
 
 def _esc(s: str) -> str:
@@ -196,7 +193,9 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
                         b.flags["text_expansion"] = (
                             f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
                 except Exception:
-                    page.insert_textbox(r, b.output_text, fontsize=size, align=0)
+                    # raw glyph draw — no HarfBuzz/UBA here, so reshape+reorder RTL ourselves
+                    raw = shape_for_raw_draw(b.output_text, rtl)
+                    page.insert_textbox(r, raw, fontsize=size, align=2 if rtl else 0)
 
         # If only some pages were selected (--pages), the overlay covered just those; the rest
         # are still untranslated original. Drop them so the output isn't a translated/source mix.
@@ -296,7 +295,8 @@ def render_image_overlay(doc: Document, cfg: Config, out_path: str) -> str:
                     b.flags["text_expansion"] = (
                         f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
             except Exception:
-                page.insert_textbox(r, b.output_text, fontsize=11, align=0)
+                raw = shape_for_raw_draw(b.output_text, rtl)
+                page.insert_textbox(r, raw, fontsize=11, align=2 if rtl else 0)
 
         # Output a translated image when the target is an image (the natural Lens-style
         # result: upload a photo, get the photo back translated), else an image-backed PDF.
@@ -773,7 +773,9 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                         b.flags["illegible"] = (
                             f"rendered at {eff:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — box too tight")
                 except Exception:
-                    page.insert_textbox(r, b.output_text, fontsize=size, align=0)
+                    # raw glyph draw — no HarfBuzz/UBA here, so reshape+reorder RTL ourselves
+                    raw = shape_for_raw_draw(b.output_text, b.style.rtl)
+                    page.insert_textbox(r, raw, fontsize=size, align=2 if b.style.rtl else 0)
             _redraw_annots(page, doc.page_annots.get(pno, []))
         _subset_pages(out, cfg)
         _apply_pdf_metadata(out, doc)

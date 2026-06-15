@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from ..config import Config
 from ..ir import BlockType, Document, Style
+from ..textdir import is_rtl_text
 
 
 def _align(style: Style):
@@ -50,6 +51,8 @@ def _style_runs(para, style: Style) -> None:
             f.size = Pt(style.size)
         if rgb is not None:
             f.color.rgb = rgb
+        if style.rtl:
+            _set_run_rtl(run)
 
 
 def _add_hyperlink(paragraph, url: str, text: str) -> None:
@@ -78,9 +81,30 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(link)
 
 
+def _set_para_bidi(p) -> None:
+    """Mark a paragraph right-to-left (pPr/w:bidi) so Word runs the bidi algorithm + flows it RTL.
+    Alignment is set separately via _align; this sets the *base direction*."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    ppr = p._p.get_or_add_pPr()
+    if ppr.find(qn("w:bidi")) is None:
+        ppr.append(OxmlElement("w:bidi"))
+
+
+def _set_run_rtl(run) -> None:
+    """Mark a run right-to-left (rPr/w:rtl) so its characters + adjacent punctuation order RTL."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    rpr = run._r.get_or_add_rPr()
+    if rpr.find(qn("w:rtl")) is None:
+        rpr.append(OxmlElement("w:rtl"))
+
+
 def _apply_para_format(p, style) -> None:
     """Carry paragraph spacing + indentation onto the output paragraph."""
     from docx.shared import Pt
+    if style.rtl:
+        _set_para_bidi(p)
     pf = p.paragraph_format
     if style.space_before is not None:
         pf.space_before = Pt(style.space_before)
@@ -188,6 +212,8 @@ def _add_run(p, run) -> None:
                                    int(s.color[5:7], 16))
         except ValueError:
             pass
+    if s.rtl:
+        _set_run_rtl(r)
 
 
 def _render_table(d, table) -> None:
@@ -252,6 +278,11 @@ def _render_table(d, table) -> None:
                 anchor.paragraphs[0].alignment = {
                     "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT,
                     "left": WD_ALIGN_PARAGRAPH.LEFT}.get(cell.align)
+            # RTL cell text -> base direction so Word flows + orders it right-to-left
+            if anchor.paragraphs and is_rtl_text(cell.output_text):
+                _set_para_bidi(anchor.paragraphs[0])
+                for rr in anchor.paragraphs[0].runs:
+                    _set_run_rtl(rr)
             if cell.table is not None:
                 _render_table(anchor, cell.table)   # nested table inside the cell
             for rr in range(ri, r2 + 1):
@@ -327,6 +358,8 @@ def _fill_hf(part, blocks) -> None:
         p = existing[0] if (i == 0 and existing) else part.add_paragraph()
         p.text = b.output_text.strip()
         _style_runs(p, b.style)
+        if b.style.rtl:
+            _set_para_bidi(p)
         align = _align(b.style)
         if align is not None:
             p.alignment = align

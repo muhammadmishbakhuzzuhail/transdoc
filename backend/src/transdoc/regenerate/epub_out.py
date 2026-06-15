@@ -30,7 +30,10 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
     from bs4 import BeautifulSoup, NavigableString
     from ebooklib import ITEM_DOCUMENT, epub
 
+    from ..textdir import is_rtl_lang
     m = {b.id: b.output_text for b in doc.blocks}
+    target = doc.target_lang or cfg.target_lang
+    rtl = is_rtl_lang(target)
     book = epub.read_epub(doc.source_path)
     _ensure_toc_uids(book.toc)
     for item in book.get_items_of_type(ITEM_DOCUMENT):
@@ -41,6 +44,13 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             if t is not None:
                 node.replace_with(NavigableString(t))
                 changed = True
+        # An LTR book translated into an RTL language needs the base direction flipped so readers
+        # lay it out right-to-left (set on <html>; harmless if it was already RTL).
+        if rtl and soup.html is not None:
+            soup.html["dir"] = "rtl"
+            if target:
+                soup.html["lang"] = str(target)
+            changed = True
         if changed:
             item.set_content(str(soup).encode("utf-8"))
     epub.write_epub(out_path, book)

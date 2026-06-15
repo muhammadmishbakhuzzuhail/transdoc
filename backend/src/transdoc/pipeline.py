@@ -109,6 +109,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     tr = get_translator(cfg)
     translate_document(doc, tr, cfg)
 
+    # Phase 5a: recompute text direction from the TRANSLATED text. An LTR source translated into
+    # an RTL target (Arabic/Hebrew/...) must now flow right-to-left, so set Style.rtl from the
+    # output before rendering (the renderers already honour style.rtl).
+    from .textdir import apply_text_direction
+
+    apply_text_direction(doc, cfg)
+
     # Phase 5b: optional reference-free quality estimation -> flag weak segments
     if cfg.quality_check:
         from .translate.quality import annotate_quality
