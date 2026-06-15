@@ -59,7 +59,7 @@ without rendering it is ◐, not ✓.
 | Variable | Status | Notes |
 |---|---|---|
 | page size / orientation | ✓ | reconstruct keeps source size |
-| margins | ◐ | |
+| margins | ✓ | docx section margins captured + applied #102 |
 | page rotation (/Rotate) applied | ◐ | captured (#74), not applied to placement |
 | page-number regeneration | ✗ | removed as furniture, not re-emitted |
 | background colour / watermark | ✗ | |

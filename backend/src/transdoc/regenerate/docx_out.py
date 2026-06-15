@@ -256,6 +256,22 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             p.alignment = align
         _apply_para_format(p, b.style)
 
+    pm = doc.page_margins or {}
+    if pm:
+        from docx.shared import Pt
+        try:
+            sec = d.sections[0]
+            if pm.get("left"):
+                sec.left_margin = Pt(pm["left"])
+            if pm.get("right"):
+                sec.right_margin = Pt(pm["right"])
+            if pm.get("top"):
+                sec.top_margin = Pt(pm["top"])
+            if pm.get("bottom"):
+                sec.bottom_margin = Pt(pm["bottom"])
+        except Exception:
+            pass
+
     md = doc.metadata or {}
     cp = d.core_properties
     if md.get("title"):
