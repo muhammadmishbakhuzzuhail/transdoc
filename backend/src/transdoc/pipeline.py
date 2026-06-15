@@ -119,7 +119,17 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     outp = _resolve_out(input_path, cfg, out_path)
     regenerate(doc, cfg, outp)
 
+    # Phase 6b: optional post-render verification — re-extract the output and diff its structure
+    # against the source IR, surfacing content-loss warnings in the report.
+    verify_warnings: list[str] = []
+    if getattr(cfg, "verify", False):
+        from .verify import verify_output
+        verify_warnings = verify_output(doc, outp, cfg)
+
     report = build_report(doc, cfg)
+    if verify_warnings:
+        report += "\n\n## Post-render verification\n" + "\n".join(
+            f"- {w}" for w in verify_warnings)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
     Path(report_path).write_text(report, encoding="utf-8")
     _cleanup_tmp(doc)
