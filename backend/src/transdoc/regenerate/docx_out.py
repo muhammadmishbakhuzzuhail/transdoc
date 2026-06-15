@@ -94,6 +94,34 @@ def _apply_para_format(p, style) -> None:
         pf.first_line_indent = Pt(style.indent_first)
     if style.para_shading or style.para_border:
         _apply_para_shading_border(p, style)
+    if style.tab_stops:
+        try:
+            from docx.enum.text import WD_TAB_ALIGNMENT
+            amap = {"left": WD_TAB_ALIGNMENT.LEFT, "center": WD_TAB_ALIGNMENT.CENTER,
+                    "right": WD_TAB_ALIGNMENT.RIGHT, "decimal": WD_TAB_ALIGNMENT.DECIMAL}
+            for pos, al in style.tab_stops:
+                pf.tab_stops.add_tab_stop(Pt(pos), amap.get(al, WD_TAB_ALIGNMENT.LEFT))
+        except Exception:
+            pass
+    if style.drop_cap:
+        _apply_drop_cap(p)
+
+
+def _apply_drop_cap(p) -> None:
+    """Reproduce a drop-cap by adding a pPr/framePr dropCap frame (best effort)."""
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        ppr = p._p.get_or_add_pPr()
+        fp = OxmlElement("w:framePr")
+        fp.set(qn("w:dropCap"), "drop")
+        fp.set(qn("w:lines"), "3")
+        fp.set(qn("w:wrap"), "around")
+        fp.set(qn("w:vAnchor"), "text")
+        fp.set(qn("w:hAnchor"), "text")
+        ppr.append(fp)
+    except Exception:
+        pass
 
 
 def _apply_para_shading_border(p, style) -> None:
