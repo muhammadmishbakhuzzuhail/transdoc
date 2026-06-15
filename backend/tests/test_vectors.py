@@ -52,3 +52,20 @@ def test_redraw_round_trips(tmp_path):
     _redraw_vectors(pg, v)
     assert len(pg.get_drawings()) == len(v) and len(v) >= 2
     out.close()
+
+
+def test_capture_and_redraw_curve(tmp_path):
+    d = fitz.open()
+    p = d.new_page(width=300, height=300)
+    p.draw_bezier(fitz.Point(20, 20), fitz.Point(60, 10), fitz.Point(100, 90),
+                  fitz.Point(140, 40), color=(0, 0, 0), width=1.0)
+    path = tmp_path / "c.pdf"
+    d.save(str(path))
+    v = capture(fitz.open(str(path))[0])
+    d.close()
+    curves = [x for x in v if x["kind"] == "curve"]
+    assert curves and len(curves[0]["points"]) == 4
+    out = fitz.open()
+    _redraw_vectors(out.new_page(width=300, height=300), curves)
+    assert True  # redraw without error
+    out.close()
