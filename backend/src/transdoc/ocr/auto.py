@@ -13,6 +13,10 @@ from ..ir import Block
 
 # Below this average OCR confidence, a page is worth a second pass with a stronger engine.
 ESCALATE_BELOW = 0.6
+# Also escalate when this fraction of blocks is below the floor — a page can average "fine" yet
+# leave many weak lines (e.g. Tesseract on a non-Latin scan: most lines ok, a chunk garbled). A
+# stronger engine usually fixes the whole page, so don't settle for a good average with bad tails.
+LOW_FRACTION = 0.25
 
 
 def _avg_conf(blocks: list[Block]) -> float:
@@ -20,17 +24,32 @@ def _avg_conf(blocks: list[Block]) -> float:
     return sum(cs) / len(cs) if cs else 1.0
 
 
+def _low_fraction(blocks: list[Block]) -> float:
+    cs = [b.confidence.ocr for b in blocks if b.confidence.ocr is not None]
+    return sum(1 for c in cs if c < ESCALATE_BELOW) / len(cs) if cs else 0.0
+
+
+def _needs_escalation(blocks: list[Block]) -> bool:
+    return _avg_conf(blocks) < ESCALATE_BELOW or _low_fraction(blocks) > LOW_FRACTION
+
+
+def _quality(blocks: list[Block]) -> float:
+    """Rank a pass: high average, few weak lines. Lets a stronger engine win even when its average
+    is close, as long as it leaves fewer garbled lines."""
+    return _avg_conf(blocks) - 0.3 * _low_fraction(blocks)
+
+
 def run_with_escalation(engines: list, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
-    """Run an ordered engine chain (primary first). Keep the primary if it's confident enough;
-    otherwise retry the primary on a cleaned image, then escalate through the remaining engines,
-    always keeping the most-confident pass. `engines` may contain None (unavailable) -> skipped."""
+    """Run an ordered engine chain (primary first). Keep the primary if it's confident enough
+    (good average AND few weak lines); otherwise retry the primary on a cleaned image, then
+    escalate through the remaining engines, keeping the highest-quality pass. `engines` may
+    contain None (unavailable) -> skipped."""
     engines = [e for e in engines if e is not None]
     if not engines:
         return []
     primary = engines[0]
     best = primary.recognize_image_bytes(img, cfg, page)
-    best_c = _avg_conf(best)
-    if best_c >= ESCALATE_BELOW:
+    if not _needs_escalation(best):
         return best
 
     # 1) cheap retry on a cleaned image (grayscale/denoise/binarize, geometry-preserving):
@@ -40,20 +59,20 @@ def run_with_escalation(engines: list, img: bytes, cfg: Config, page: int = 0) -
         pre = enhance(img)
         if pre is not img:
             pblocks = primary.recognize_image_bytes(pre, cfg, page)
-            if _avg_conf(pblocks) > best_c:
-                best, best_c = pblocks, _avg_conf(pblocks)
+            if _quality(pblocks) > _quality(best):
+                best = pblocks
     except Exception:
         pass
-    if best_c >= ESCALATE_BELOW:
+    if not _needs_escalation(best):
         return best
 
-    # 2) escalate through the stronger engines; keep whichever pass is most confident.
+    # 2) escalate through the stronger engines; keep whichever pass is highest quality.
     for eng in engines[1:]:
         try:
             alt = eng.recognize_image_bytes(img, cfg, page)
-            if _avg_conf(alt) > best_c:
-                best, best_c = alt, _avg_conf(alt)
-                if best_c >= ESCALATE_BELOW:
+            if _quality(alt) > _quality(best):
+                best = alt
+                if not _needs_escalation(best):
                     break
         except Exception:
             continue
