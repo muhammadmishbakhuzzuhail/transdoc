@@ -10,7 +10,7 @@ import re
 import unicodedata
 
 from ..config import Config, Fidelity
-from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Style, Table
+from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Run, Style, Table
 from .base import block_id, column_reading_order
 
 # Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
@@ -147,6 +147,39 @@ def _alignment(x0: float, x1: float, page_width: float,
     if right < page_width * 0.08 and left > page_width * 0.25:
         return "right"
     return None
+
+
+def _span_style(span) -> Style:
+    flags = span.get("flags", 0)
+    c = span.get("color")
+    return Style(bold=bool(flags & 16), italic=bool(flags & 2),
+                 superscript=bool(flags & 1), size=round(span.get("size", 0.0), 1),
+                 color=f"#{c & 0xFFFFFF:06x}" if isinstance(c, int) else None,
+                 font=("monospace" if flags & 8 else "serif" if flags & 4 else "sans-serif"))
+
+
+def _runs_from_spans(lines) -> list[Run]:
+    """Group a block's spans into inline runs by style (merging adjacent same-style). Returns []
+    for a uniformly-styled block so the block-level path is used unchanged."""
+    def key(s: Style):
+        return (s.bold, s.italic, s.underline, s.superscript, s.size, s.color, s.font)
+
+    runs: list[Run] = []
+    for line in lines:
+        for span in line.get("spans", []):
+            txt = span.get("text", "")
+            if not txt:
+                continue
+            st = _span_style(span)
+            if runs and key(runs[-1].style) == key(st):
+                runs[-1].text += txt
+            else:
+                runs.append(Run(text=txt, style=st))
+        if runs:
+            runs[-1].text += " "
+    if len({key(r.style) for r in runs}) <= 1:
+        return []
+    return runs
 
 
 def _guess_type(size: float, body_size: float, bold: bool = False,
@@ -387,6 +420,9 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             else:
                 btype = _guess_type(max_size, body, bold, text)
             align = _alignment(x0, x1, page.rect.width, text=text, btype=btype)
+            # inline runs only for flowing prose (not formula/table/list-marker blocks)
+            runs = (_runs_from_spans(lines)
+                    if btype in (BlockType.PARAGRAPH, BlockType.CAPTION) else [])
             out.blocks.append(
                 Block(
                     id=block_id(pno, idx),
@@ -397,6 +433,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
                     style=Style(size=max_size, bold=bold, italic=italic, font=font,
                                 color=color, align=align,
                                 heading_level=1 if btype == BlockType.HEADING else 0),
+                    runs=runs,
                     confidence=Confidence(source="digital"),
                 )
             )

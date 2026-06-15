@@ -175,6 +175,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 id=f"p{pno}-r{r.order}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
                 page=pno, reading_order=len(out.blocks), bbox=bbox, text=text,
                 style=_region_style(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)),
+                runs=_region_runs(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)) if digital else [],
                 confidence=Confidence(source="digital"))
             if not digital:
                 blk.flags["ocr_text"] = "text from PP-OCR (no digital layer in this region)"
@@ -191,6 +192,17 @@ def extract_structured(path: str, cfg: Config) -> Document:
         b.reading_order = i
     out.blocks.sort(key=lambda b: b.reading_order)
     return out
+
+
+def _region_runs(page, rect):
+    """Inline runs (mixed-style spans) for a region — reuses the heuristic span grouper."""
+    from .pdf import _runs_from_spans
+    try:
+        lines = [ln for blk in page.get_text("dict", clip=rect)["blocks"]
+                 for ln in blk.get("lines", [])]
+        return _runs_from_spans(lines)
+    except Exception:
+        return []
 
 
 def _region_style(page, rect) -> Style:

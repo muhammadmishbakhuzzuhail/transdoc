@@ -136,8 +136,8 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
                 italic_css = "font-style:italic;" if b.style.italic else ""
                 ul_css = "text-decoration:underline;" if b.style.underline else ""
                 color_css = f"color:{b.style.color};" if b.style.color else ""
-                _inner = _esc(b.output_text)
-                if b.style.link:
+                _inner = _runs_html(b.runs) if b.runs else _esc(b.output_text)
+                if b.style.link and not b.runs:
                     _inner = f'<a href="{_esc(b.style.link)}">{_inner}</a>'
                 htmlbox = (f'<div style="{dir_css}{weight_css}{italic_css}{ul_css}{color_css}'
                            f'font-size:{size:.0f}px;text-align:{align};'
@@ -449,6 +449,32 @@ def _grow_rect(r, obstacles, page_height):
     return fitz.Rect(r.x0, r.y0, r.x1, new_y1) if new_y1 > r.y1 + 1 else r
 
 
+def _run_span(run) -> str:
+    """One inline run -> styled <span> (bold/italic/underline/super/sub/colour/link)."""
+    s = run.style
+    css = []
+    if s.bold:
+        css.append("font-weight:bold")
+    if s.italic:
+        css.append("font-style:italic")
+    if s.underline:
+        css.append("text-decoration:underline")
+    if s.superscript:
+        css.append("vertical-align:super;font-size:smaller")
+    elif s.subscript:
+        css.append("vertical-align:sub;font-size:smaller")
+    if s.color and s.color.lower() not in ("#000000", "#000"):
+        css.append(f"color:{s.color}")
+    inner = _esc(run.output_text)
+    if s.link:
+        inner = f'<a href="{_esc(s.link)}">{inner}</a>'
+    return f'<span style="{";".join(css)}">{inner}</span>' if css else inner
+
+
+def _runs_html(runs) -> str:
+    return "".join(_run_span(r) for r in runs)
+
+
 def _block_html(b):
     """Styled HTML for a block (size/bold/italic/colour/align/rtl) -> (html, size_pt)."""
     size = b.style.size or 11
@@ -473,8 +499,8 @@ def _block_html(b):
         css.append("text-decoration:underline")
     if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{b.style.color}")
-    inner = _esc(b.output_text)
-    if b.style.link:
+    inner = _runs_html(b.runs) if b.runs else _esc(b.output_text)
+    if b.style.link and not b.runs:
         inner = f'<a href="{_esc(b.style.link)}">{inner}</a>'
     return f'<div style="{";".join(css)}">{inner}</div>', size
 

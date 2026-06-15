@@ -44,6 +44,9 @@ def normalize_doc(doc) -> None:
     for b in doc.blocks:
         if b.text:
             b.text = clean(b.text)
+        for r in b.runs:
+            if r.text:
+                r.text = clean(r.text)
         if b.table:
             for row in b.table.rows:
                 for c in row:
