@@ -518,6 +518,17 @@ def _block_html(b):
         css.append("text-decoration:" + " ".join(_deco))
     if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{b.style.color}")
+    if b.style.space_before:
+        css.append(f"margin-top:{b.style.space_before:.0f}pt")
+    if b.style.space_after:
+        css.append(f"margin-bottom:{b.style.space_after:.0f}pt")
+    if b.style.indent_left:
+        css.append(f"margin-left:{b.style.indent_left:.0f}pt")
+    if b.style.indent_first:
+        css.append(f"text-indent:{b.style.indent_first:.0f}pt")
+    if b.style.line_spacing and b.style.line_spacing > 0:
+        css = [c for c in css if not c.startswith("line-height")]
+        css.append(f"line-height:{b.style.line_spacing:.2f}")
     inner = _runs_html(b.runs) if b.runs else _esc(b.output_text)
     if b.style.link and not b.runs:
         inner = f'<a href="{_esc(b.style.link)}">{inner}</a>'
