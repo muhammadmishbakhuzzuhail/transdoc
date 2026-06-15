@@ -43,6 +43,10 @@ def get_translator(cfg: Config) -> Translator:
         from .nllb import NLLBTranslator
 
         return NLLBTranslator()
+    if cfg.engine == Engine.INDICTRANS:
+        from .indictrans import IndicTransTranslator
+
+        return IndicTransTranslator()
     if cfg.engine == Engine.OPUSMT:
         from .opusmt import OpusMTTranslator
 

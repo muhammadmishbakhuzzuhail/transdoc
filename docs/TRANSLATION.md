@@ -22,6 +22,7 @@ like DeepL.** That favors a single broad-coverage NMT model (NLLB-200) over per-
 | **NLLB-200** distilled 600M / 1.3B | 200+ langs, 40k directions | ✅ all | **CC-BY-NC** ✗ | ✅ 600M ~2.4GB fp16, less int8 | best id quality, broad — **non-commercial only** |
 | **MADLAD-400-3B** | 450+ langs | ✅ all | **Apache-2.0** ✓ | ⚠️ ~3GB int8 (3B is smallest) | commercial-safe broad-coverage default |
 | **Opus-MT / Marian** | per-pair | ✅ en↔id exists | **MIT** ✓ | ✅ tiny | per-pair, CTranslate2-native, fast on CPU |
+| **IndicTrans2** dist 200M/320M | 22 Indic langs (multi-script), en↔indic + indic↔indic | n/a (Indic) | **MIT** ✓ | ✅ distilled ~0.8–1.3GB | closes the Indic gap, commercial-safe; `-e indictrans` (`[indic]` extra) |
 | **M2M-100 / SeamlessM4T** | many | partial | mixed/CC-BY-NC | varies | NLLB generally supersedes |
 | **Tower+ / ALMA-R** (translation LLMs) | ~10–22 high-resource | ❌ **id & ar NOT covered** | varies | ⚠️ quantized | rivals GPT-4o on en↔zh etc., **not for Indonesian** |
 | **CTranslate2 int8** | — | — | — | ✅ enabler | ~99–100% of FP32 BLEU, 2–8× speedup, **CPU + GPU** |

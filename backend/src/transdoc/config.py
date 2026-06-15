@@ -62,6 +62,7 @@ class Engine(str, Enum):
     OPUSMT = "opusmt"         # offline Opus-MT/Marian, per-pair — MIT (commercial-safe, CPU-fast)
     ARGOS = "argos"           # offline Argos/LibreTranslate — MIT/Apache (commercial-safe, light)
     NLLB = "nllb"             # offline NMT, 200 langs — CC-BY-NC (NON-COMMERCIAL only)
+    INDICTRANS = "indictrans"  # offline NMT, 22 Indic langs (multi-script) — MIT (commercial-safe)
     OPENROUTER = "openrouter"  # LLM via OpenRouter (needs API key)
     ANTHROPIC = "anthropic"   # LLM, needs API key
     ECHO = "echo"             # no-op passthrough, for testing the pipeline
