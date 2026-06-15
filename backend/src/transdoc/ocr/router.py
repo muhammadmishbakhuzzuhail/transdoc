@@ -50,10 +50,13 @@ def _build_tesseract():
 
 
 def _build_paddle():
+    # PaddleOCR PP-OCRv5 — strongest on degraded/non-Latin scans. Runs in-process if paddle is
+    # importable here, else via the isolated layout_venv subprocess (paddle/torch nccl clash).
+    # (PaddleOCR-VL 0.9B was rejected: OOM on 6 GB GPU / 11 GB RAM — this is the classic pipeline.)
     try:
-        import paddleocr  # noqa: F401
         from .paddle import PaddleOCREngine
-        return PaddleOCREngine()
+        eng = PaddleOCREngine()
+        return eng if eng.available else None
     except Exception:
         return None
 
@@ -67,47 +70,36 @@ def _build_easyocr():
         return None
 
 
-def _build_paddle_vl():
-    # Strongest all-script engine (PaddleOCR-VL, GPU). Boxes need the paddlepaddle pipeline, so it
-    # runs in the isolated layout_venv subprocess (like PP-StructureV3) — added in a follow-up.
-    try:
-        from .paddle_vl import PaddleVLOCR
-        return PaddleVLOCR()
-    except Exception:
-        return None
-
-
 _BUILDERS = {
     "tesseract": _build_tesseract,
     "easyocr": _build_easyocr,
     "paddle": _build_paddle,
-    "paddle_vl": _build_paddle_vl,
 }
 
 # Per-script engine chain (primary first, then escalation targets). paddle_vl is listed ahead of
 # paddle for the scripts Tesseract is weak on; until it's installed the chain collapses to
 # tesseract -> paddle, i.e. today's behavior. Unknown scripts use DEFAULT_CHAIN.
-# Chain order: Tesseract primary (fast, cheap on clean pages) -> EasyOCR (strong multilingual,
-# the real escalation) -> paddle_vl/paddle (max accuracy, when installed). A low-confidence page
-# walks down the chain; a confident page stops early. Tesseract stays primary on every script so
-# clean Latin/Arabic pages stay fast; the weak-script gains come from EasyOCR catching the misses.
-DEFAULT_CHAIN = ["tesseract", "easyocr", "paddle_vl", "paddle"]
+# Chain order: Tesseract primary (fast, cheap on clean pages) -> EasyOCR (strong multilingual) ->
+# PaddleOCR (max accuracy on degraded/non-Latin, via layout_venv). A low-confidence page walks
+# down the chain; a confident page stops early. Tesseract stays primary on every script so clean
+# Latin/Arabic pages stay fast; the weak-script gains come from EasyOCR/Paddle catching the misses.
+DEFAULT_CHAIN = ["tesseract", "easyocr", "paddle"]
 ROUTING: dict[str, list[str]] = {
-    "Latin": ["tesseract", "easyocr", "paddle_vl"],
-    "Cyrillic": ["tesseract", "easyocr", "paddle_vl"],
-    "Greek": ["tesseract", "easyocr", "paddle_vl"],
-    "Arabic": ["tesseract", "easyocr", "paddle_vl"],   # Surya excluded: catastrophic on Arabic
-    "Hebrew": ["tesseract", "easyocr", "paddle_vl"],
-    # Scripts where Tesseract is weak: EasyOCR (then paddle_vl/paddle) recovers the low-conf pages.
-    "Han": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Hangul": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Japanese": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Devanagari": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Bengali": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Tamil": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Telugu": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Thai": ["tesseract", "easyocr", "paddle_vl", "paddle"],
-    "Kannada": ["tesseract", "easyocr", "paddle_vl", "paddle"],
+    "Latin": ["tesseract", "easyocr", "paddle"],
+    "Cyrillic": ["tesseract", "easyocr", "paddle"],
+    "Greek": ["tesseract", "easyocr", "paddle"],
+    "Arabic": ["tesseract", "easyocr", "paddle"],      # Surya excluded: catastrophic on Arabic
+    "Hebrew": ["tesseract", "easyocr", "paddle"],
+    # Scripts where Tesseract is weak: EasyOCR then PaddleOCR recover the low-confidence pages.
+    "Han": ["tesseract", "easyocr", "paddle"],
+    "Hangul": ["tesseract", "easyocr", "paddle"],
+    "Japanese": ["tesseract", "easyocr", "paddle"],
+    "Devanagari": ["tesseract", "easyocr", "paddle"],
+    "Bengali": ["tesseract", "easyocr", "paddle"],
+    "Tamil": ["tesseract", "easyocr", "paddle"],
+    "Telugu": ["tesseract", "easyocr", "paddle"],
+    "Thai": ["tesseract", "easyocr", "paddle"],
+    "Kannada": ["tesseract", "easyocr", "paddle"],
 }
 
 
