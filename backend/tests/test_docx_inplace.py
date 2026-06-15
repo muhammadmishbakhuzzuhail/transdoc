@@ -43,3 +43,31 @@ def test_inplace_keeps_styles_and_swaps_text(tmp_path):
     assert any("List" in s for s in by_style)
     # table cell translated in place
     assert t.tables[0].rows[0].cells[0].text == "[id] Name"
+
+
+def test_inplace_falls_back_when_block_count_diverges(tmp_path, monkeypatch):
+    """If extraction/reconcile dropped a block, the index-zip would misalign every later
+    paragraph. The renderer must detect the count mismatch and fall back to the IR rebuild
+    instead of writing translations into the wrong paragraphs."""
+    from transdoc.config import Config
+    from transdoc.extract import extract
+    from transdoc.ingest.detect import detect
+    from transdoc.regenerate import docx_inplace, docx_out
+
+    src = tmp_path / "doc.docx"
+    _make_docx(src)
+    cfg = Config(source_lang="en", target_lang="id", engine=Engine.ECHO)
+    doc = extract(detect(str(src)), cfg)
+    for b in doc.blocks:          # echo-translate so output_text is set
+        if b.is_translatable:
+            b.translated = b.text
+    doc.blocks = doc.blocks[:-1]  # simulate a dropped block -> count now diverges from source
+
+    called = {"out": False}
+    real_out = docx_out.render
+    monkeypatch.setattr(docx_out, "render",
+                        lambda *a, **k: called.__setitem__("out", True) or real_out(*a, **k))
+    out = tmp_path / "doc.id.docx"
+    docx_inplace.render(doc, cfg, str(out))
+    assert called["out"] is True   # delegated to the safe rebuild path
+    assert out.exists()
