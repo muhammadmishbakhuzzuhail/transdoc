@@ -71,6 +71,26 @@ def test_brand_names_protected_case_sensitively():
     assert m == {}
 
 
+def test_money_percent_time_hashcode_protected():
+    """Preservation-eval finding: prices, percentages, clock times, and #codes were reformatted
+    by the engine because they weren't protected. They must now round-trip verbatim."""
+    p = Protector()
+    text = "Pay $1,299.99 (7.5% tax) for order #A1B2C3 at 14:05."
+    protected, mapping = p.protect(text)
+    for tok in ("$1,299.99", "7.5%", "#A1B2C3", "14:05"):
+        assert tok not in protected, f"{tok} not protected"
+    # survives an engine that uppercases/reformats words but keeps [PHn] tags
+    assert Protector.restore(protected.upper(), mapping).upper() == text.upper()
+    assert Protector.restore(protected, mapping) == text
+
+
+def test_iso_code_not_broken_by_time_pattern():
+    """The clock-time pattern must not chop 'ISO 9001:2015' (4-digit:4-digit is not a time)."""
+    p = Protector()
+    protected, mapping = p.protect("See ISO 9001:2015 for details.")
+    assert Protector.restore(protected, mapping) == "See ISO 9001:2015 for details."
+
+
 def test_load_glossary_missing_returns_empty(tmp_path):
     assert load_glossary(None) == {}
     assert load_glossary(tmp_path / "nope.json") == {}

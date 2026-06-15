@@ -19,6 +19,10 @@ _PATTERNS = [
     r'(?:\+?\d[\d\s\-().]{7,}\d)',                              # phone numbers
     r'\b\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}\b',                # numeric dates
     r'\b\d+(?:[.,]\d+)?\s*(?:USD|IDR|MYR|THB|VND|PHP|SGD|EUR|JPY|CNY|kg|km|cm|mm|ml)\b',
+    r'[$€£¥₹]\s?\d[\d,]*(?:\.\d+)?',                            # symbol currency $1,299.99 / €50
+    r'\b\d+(?:[.,]\d+)?\s?%',                                   # percentages 7.5%, 50 %
+    r'\b\d{1,2}:\d{2}(?::\d{2})?\b',                            # clock times 14:05, 08:30:00
+    r'#[A-Za-z0-9]+\b',                                         # hash codes / tags #A1B2C3
     r'\$[^$\n]{1,80}\$',                                        # inline LaTeX math $...$
     r'\\[a-zA-Z]+(?:\{[^{}\n]*\})?',                           # LaTeX commands \alpha, \frac{..}
     r'\b[A-Za-z][A-Za-z0-9]*[_^]\{?[A-Za-z0-9+\-]+\}?',       # sub/superscript var: head_i, W^Q

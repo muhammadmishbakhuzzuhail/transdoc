@@ -27,6 +27,13 @@ provenance:
 > translates the FLORES-200 English dev set through the engine and scores against the
 > professional reference with chrF, per language (15 langs across 7 scripts by default).
 > Downloads FLORES-200 on first run (set `FLORES_DIR` to reuse); online (the engine is online).
+> Note: single-reference chrF saturates on legitimate paraphrase — use it for tracking the
+> pipeline over time, not as an absolute quality bar.
+>
+> **Entity preservation:** `make eval-preserve ARGS="--show fr ar ja"` checks that numbers, URLs,
+> emails, dates, prices, and codes survive translation verbatim (the accuracy that matters for a
+> document translator). Runs curated cases through the full translate path; online. This eval
+> drove the protect.py currency/percent/time/#-code patterns (mean preservation 86% → 98%).
 
 ## `real/` — real-world downloads
 Messy, no ground truth → integration / quality stress testing.

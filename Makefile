@@ -19,7 +19,8 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        eval-real eval-real-baseline eval-ocr eval-judge eval-translate serve dev clean
+        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve \
+        serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -77,6 +78,13 @@ eval-real:
 #   make eval-translate ARGS="--n 100 fr de ja ar"
 eval-translate:
 	cd backend && .venv/bin/python -m scripts.eval_translate $(ARGS)
+
+# Entity preservation: do numbers/URLs/emails/dates/prices/codes survive translation verbatim?
+# The accuracy that matters for a document translator (a mangled account number > an awkward
+# sentence). Runs curated cases through the full translate path. Online. Pass langs/--show via ARGS.
+#   make eval-preserve ARGS="--show fr ar ja"
+eval-preserve:
+	cd backend && .venv/bin/python -m scripts.eval_preserve $(ARGS)
 
 # LLM-as-judge: Claude vision scores extraction vs the source image (automates the manual
 # vision-QA audit). Needs ANTHROPIC_API_KEY + the [llm] extra. Online + costs tokens.
