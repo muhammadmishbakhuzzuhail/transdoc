@@ -90,11 +90,13 @@ class Config(BaseModel):
     quality_check: bool = False                 # run reference-free QE, flag weak segments
     ocr_figures: bool = False                   # OCR text inside large embedded images
                                                 # (a scanned image sitting on a digital page)
-    layout: str = "off"                          # "paddle" -> PP-DocLayout region detection
-                                                # (crop figures/math/charts verbatim). Uses
-                                                # in-process paddle if installed, else delegates
-                                                # to an isolated paddle venv via subprocess
-                                                # (TRANSDOC_LAYOUT_PYTHON / ./layout_venv).
+    layout: str = "auto"                         # "auto" -> PP-StructureV3 structure path when
+                                                # paddle is reachable (regions/tables->HTML/
+                                                # formula->LaTeX/reading-order = best layout
+                                                # fidelity), else heuristic. "paddle" forces it,
+                                                # "off" forces the heuristic. Uses in-process
+                                                # paddle if installed, else the isolated layout_venv
+                                                # subprocess (TRANSDOC_LAYOUT_PYTHON / ./layout_venv).
                                                 # "off" = heuristics.
 
     engine: Engine = Engine.GOOGLE             # benchmark winner (chrF 85.1); personal/local, no fallback chain

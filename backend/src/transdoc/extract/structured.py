@@ -108,12 +108,16 @@ def extract_structured(path: str, cfg: Config) -> Document:
         pass
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
+        rot = int(getattr(page, "rotation", 0) or 0)   # carry /Rotate so review flags it
+        if rot:
+            out.page_rotation[pno] = rot
 
     from .pdf import _parse_pages
     selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
     pnos = [p for p in range(doc.page_count) if selected is None or p in selected]
     regions_by_page = get_structure_extractor().extract_pages(doc, pnos)
 
+    from .annots import capture as _capture_annots
     from .vectors import capture as _capture_vectors
     from .vectors import page_background as _page_bg
 
@@ -123,6 +127,9 @@ def extract_structured(path: str, cfg: Config) -> Document:
     for pno in pnos:
         page = doc[pno]
         out.page_drawings[pno] = _capture_vectors(page)
+        ann = _capture_annots(page)
+        if ann:
+            out.page_annots[pno] = ann
         bg = _page_bg(page)
         if bg:
             out.page_background[pno] = bg
