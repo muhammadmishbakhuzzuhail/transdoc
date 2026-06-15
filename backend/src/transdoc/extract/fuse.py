@@ -68,12 +68,24 @@ def _dedup_text(blocks: list[Block]) -> list[Block]:
 
 
 def reconcile(blocks: list[Block]) -> list[Block]:
-    """Drop text blocks contained in a non-text region, then dedup overlapping text."""
+    """Drop text blocks contained in a non-text region, then dedup overlapping text.
+
+    Guard against silent loss: only drop a covered text block when it's plausibly the region's
+    own small label/caption (short AND a minor part of the region). A LONG text block that a
+    mis-sized figure/table region happens to cover is real prose — keep it and flag it for review
+    rather than silently dropping it into an untranslated crop (audit finding)."""
     nontext = [b for b in blocks if b.type in _NONTEXT and b.bbox]
     survivors: list[Block] = []
     for b in blocks:
-        if (b.type in _TEXT and b.bbox
-                and any(_contained(b.bbox, nt.bbox) for nt in nontext)):
-            continue   # part of a figure/formula/table region — its crop/grid carries it
+        if b.type in _TEXT and b.bbox:
+            cover = next((nt for nt in nontext if _contained(b.bbox, nt.bbox)), None)
+            if cover is not None:
+                small = (len(_norm(b.text)) <= 200
+                         and _area(b.bbox) <= 0.5 * max(_area(cover.bbox), 1e-6))
+                if small:
+                    continue   # region's own label/caption — its crop/grid carries it
+                b.flags["region_overlap"] = (
+                    "text sits inside a figure/table region — kept (verify it isn't duplicated "
+                    "by the crop)")
         survivors.append(b)
     return _dedup_text(survivors)
