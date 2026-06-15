@@ -63,7 +63,7 @@ without rendering it is ◐, not ✓.
 | page rotation (/Rotate) applied | ◐ | captured (#74), not applied to placement |
 | page-number regeneration | ✗ | removed as furniture, not re-emitted |
 | background colour / watermark | ✗ | |
-| document metadata written to output | ◐ | captured (#74), not written |
+| document metadata written to output | ✓ | captured + written to PDF + DOCX #94 |
 
 ## Non-text
 | Variable | Status | Notes |

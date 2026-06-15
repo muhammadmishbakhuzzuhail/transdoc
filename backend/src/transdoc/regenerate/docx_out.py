@@ -209,5 +209,15 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         if align is not None:
             p.alignment = align
 
+    md = doc.metadata or {}
+    cp = d.core_properties
+    if md.get("title"):
+        cp.title = md["title"]
+    if md.get("author"):
+        cp.author = md["author"]
+    if md.get("subject"):
+        cp.subject = md["subject"]
+    if md.get("keywords"):
+        cp.keywords = md["keywords"]
     d.save(out_path)
     return out_path
