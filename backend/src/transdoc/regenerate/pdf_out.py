@@ -660,6 +660,14 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
         for pno in range(npages):
             w, h = doc.page_sizes.get(pno, (595.0, 842.0))
             page = out.new_page(width=w, height=h)
+            bg = doc.page_background.get(pno)
+            if bg:                                # coloured page: paint the panel first
+                try:
+                    rgb = _hex_rgb(bg)
+                    if rgb:
+                        page.draw_rect(page.rect, color=rgb, fill=rgb)
+                except Exception:
+                    pass
             _redraw_vectors(page, doc.page_drawings.get(pno, []))
             blocks = by_page.get(pno, [])
             obstacles = [_norm_rect(b) for b in blocks if b.bbox]

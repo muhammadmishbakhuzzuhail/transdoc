@@ -115,6 +115,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
     regions_by_page = get_structure_extractor().extract_pages(doc, pnos)
 
     from .vectors import capture as _capture_vectors
+    from .vectors import page_background as _page_bg
 
     img_dir = Path(tempfile.mkdtemp(prefix="transdoc_struct_"))
     out.tmp_dirs.append(str(img_dir))
@@ -122,6 +123,9 @@ def extract_structured(path: str, cfg: Config) -> Document:
     for pno in pnos:
         page = doc[pno]
         out.page_drawings[pno] = _capture_vectors(page)
+        bg = _page_bg(page)
+        if bg:
+            out.page_background[pno] = bg
         for r in _ordered_regions(regions_by_page.get(pno, [])):
             if r.label in _SKIP:
                 continue

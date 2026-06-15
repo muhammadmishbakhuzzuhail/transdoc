@@ -267,6 +267,9 @@ class Document(BaseModel):
     toc: list[TocEntry] = Field(default_factory=list)
     # Page margins (pt): {left,right,top,bottom}. Carried to the rebuilt document.
     page_margins: dict[str, float] = Field(default_factory=dict)
+    # Per-page background fill (hex) for coloured (non-white) pages — painted first in
+    # reconstruct so the page colour survives. Absent page -> plain white.
+    page_background: dict[int, str] = Field(default_factory=dict)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

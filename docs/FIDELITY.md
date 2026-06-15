@@ -62,7 +62,7 @@ without rendering it is ◐, not ✓.
 | margins | ✓ | docx section margins captured + applied #102 |
 | page rotation (/Rotate) applied | ✓ | PyMuPDF reports visual coords; reconstruct bakes rotation into an upright page, overlay keeps native /Rotate (verified test_rotation) |
 | page-number regeneration | ✗ | removed as furniture, not re-emitted |
-| background colour / watermark | ✗ | |
+| background colour / watermark | ◐ | full-page colour fill captured + repainted in reconstruct (pdf); overlay keeps it natively; watermark (diagonal text/image) still pending |
 | document metadata written to output | ✓ | captured + written to PDF + DOCX #94 |
 
 ## Non-text
