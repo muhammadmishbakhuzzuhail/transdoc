@@ -622,12 +622,14 @@ def _redraw_vectors(page, drawings) -> None:
                     page.draw_bezier(p[0], p[1], p[2], p[3],
                                      color=_hex_rgb(d.get("color")) or (0, 0, 0), width=w)
             elif d.get("kind") == "line":
+                _kw = {"dashes": d["dashes"]} if d.get("dashes") else {}
                 page.draw_line(fitz.Point(d["x0"], d["y0"]), fitz.Point(d["x1"], d["y1"]),
-                               color=_hex_rgb(d.get("color")) or (0, 0, 0), width=w)
+                               color=_hex_rgb(d.get("color")) or (0, 0, 0), width=w, **_kw)
             elif d.get("kind") == "rect":
+                _kw = {"dashes": d["dashes"]} if d.get("dashes") else {}
                 page.draw_rect(fitz.Rect(d["x0"], d["y0"], d["x1"], d["y1"]),
                                color=_hex_rgb(d.get("color")), fill=_hex_rgb(d.get("fill")),
-                               width=w)
+                               width=w, **_kw)
         except Exception:
             continue
 

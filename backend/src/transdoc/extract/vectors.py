@@ -36,6 +36,9 @@ def capture(page) -> list[dict]:
         color = _rgb(d.get("color"))
         fill = _rgb(d.get("fill"))
         width = float(d.get("width") or 0.0) or 0.6
+        # dash pattern, e.g. "[3 2] 0" for a dashed/dotted stroke; "[] 0" / None = solid
+        dash = d.get("dashes")
+        dash = dash if (dash and dash != "[] 0") else None
         for item in d.get("items", []):
             op = item[0]
             if op == "l":                      # line: (p1, p2)
@@ -43,7 +46,7 @@ def capture(page) -> list[dict]:
                 if abs(p2.x - p1.x) + abs(p2.y - p1.y) < _MIN_LEN:
                     continue
                 out.append({"kind": "line", "x0": p1.x, "y0": p1.y, "x1": p2.x, "y1": p2.y,
-                            "color": color or "#000000", "width": width})
+                            "color": color or "#000000", "width": width, "dashes": dash})
             elif op == "c":                    # cubic bezier curve: (p1, p2, p3, p4)
                 try:
                     pts = [(p.x, p.y) for p in item[1:5]]
@@ -59,7 +62,7 @@ def capture(page) -> list[dict]:
                 if r.width >= pw * 0.95 and r.height >= ph * 0.95:
                     continue
                 out.append({"kind": "rect", "x0": r.x0, "y0": r.y0, "x1": r.x1, "y1": r.y1,
-                            "color": color, "width": width, "fill": fill})
+                            "color": color, "width": width, "fill": fill, "dashes": dash})
     return out
 
 
