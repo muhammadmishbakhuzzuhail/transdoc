@@ -81,7 +81,8 @@ class PersistentTM:
 
     def put_many(self, pairs: dict[str, str], target: str) -> None:
         """Store {source_text: translation} for this target. Empty values are skipped."""
-        rows = [(self._key(s, target), t) for s, t in pairs.items() if s.strip() and t]
+        rows = [(self._key(s, target), t) for s, t in pairs.items()
+                if s.strip() and t and t.strip()]   # don't cache whitespace-only translations
         if not rows:
             return
         with self._lock:
