@@ -40,6 +40,18 @@ def test_full_width_title_breaks_columns():
     assert _ordered(d) == ["TITLE", "L1", "R1", "FOOTER"]
 
 
+def test_three_column_reads_column_by_column():
+    # page width 900, three 300pt columns. Each column top-then-bottom, columns left-to-right.
+    d = Document(source_path="x", mime="application/pdf", page_count=1)
+    d.page_sizes[0] = (900.0, 800.0)
+    d.blocks = [
+        _b("C1", 620, 50, 880, 100), _b("A1", 20, 50, 280, 100), _b("B1", 320, 50, 580, 100),
+        _b("B2", 320, 150, 580, 200), _b("A2", 20, 150, 280, 200), _b("C2", 620, 150, 880, 200),
+    ]
+    column_reading_order(d)
+    assert _ordered(d) == ["A1", "A2", "B1", "B2", "C1", "C2"]
+
+
 def test_single_column_is_top_to_bottom():
     d = Document(source_path="x", mime="application/pdf", page_count=1)
     d.page_sizes[0] = (600.0, 800.0)

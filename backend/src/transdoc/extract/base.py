@@ -22,21 +22,41 @@ def reflow_order(doc: Document) -> None:
         b.reading_order = i
 
 
+def _try_columns(band: list[Block], pw: float, k: int) -> list[Block] | None:
+    """Try to read a band as k equal-width columns. Assign each block to the column its centre
+    lands in; accept only if the split is clean — at least 2 columns are non-empty and every
+    block sits within its column strip (no block straddles a boundary, tol = 3% page width).
+    Returns the column-by-column (each top-to-bottom) order, or None if it isn't a clean k-split."""
+    if k < 2 or len(band) < k:
+        return None
+    cw = pw / k
+    tol = pw * 0.03
+    cols: list[list[Block]] = [[] for _ in range(k)]
+    for b in band:
+        c = (b.bbox.x0 + b.bbox.x1) / 2
+        idx = min(k - 1, max(0, int(c // cw)))
+        lo, hi = idx * cw, (idx + 1) * cw
+        if b.bbox.x0 < lo - tol or b.bbox.x1 > hi + tol:
+            return None                     # a block straddles a column boundary -> not k-col
+        cols[idx].append(b)
+    if sum(1 for col in cols if col) < 2:
+        return None                         # everything in one column -> not multi-column
+    out: list[Block] = []
+    for col in cols:
+        out += sorted(col, key=lambda b: b.bbox.y0)
+    return out
+
+
 def _order_band(band: list[Block], pw: float) -> list[Block]:
-    """Order a horizontal band of blocks: if it splits cleanly into a left and right column
-    (disjoint across the page centre), read the whole left column then the whole right; else
+    """Order a horizontal band of blocks: if it splits cleanly into equal-width columns
+    (3 then 2 — disjoint, no straddling), read each column top-to-bottom in turn; else
     top-to-bottom."""
     if len(band) <= 1:
         return band
-    mid = pw * 0.5
-    left = [b for b in band if (b.bbox.x0 + b.bbox.x1) / 2 < mid]
-    right = [b for b in band if (b.bbox.x0 + b.bbox.x1) / 2 >= mid]
-    disjoint = (left and right
-                and max(b.bbox.x1 for b in left) <= mid + pw * 0.03
-                and min(b.bbox.x0 for b in right) >= mid - pw * 0.03)
-    if disjoint:
-        return (sorted(left, key=lambda b: b.bbox.y0)
-                + sorted(right, key=lambda b: b.bbox.y0))
+    for k in (3, 2):
+        ordered = _try_columns(band, pw, k)
+        if ordered is not None:
+            return ordered
     return sorted(band, key=lambda b: (b.bbox.y0, b.bbox.x0))
 
 
@@ -44,7 +64,7 @@ def column_reading_order(doc: Document) -> None:
     """Assign reading_order handling multi-column layouts. Naively sorting blocks by y
     interleaves columns (research: PyMuPDF order ≠ reading order on multi-column pages). Per
     page: full-width blocks (>60% of page width — titles, rules, wide figures) break the page
-    into bands; within each band a clean 2-column split is read left-column-then-right; otherwise
+    into bands; within each band a clean 3- or 2-column split is read column-by-column; otherwise
     top-to-bottom. Single-column pages are unaffected."""
     order = 0
     by_page: dict[int, list[Block]] = {}
