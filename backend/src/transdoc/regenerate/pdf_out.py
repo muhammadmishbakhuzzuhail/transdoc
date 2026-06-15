@@ -65,13 +65,19 @@ def _apply_pdf_metadata(pdf, doc) -> None:
     """Carry the source document metadata (title/author/subject/keywords/creator) onto the
     output PDF — captured in extract but previously not written out."""
     md = getattr(doc, "metadata", None)
-    if not md:
-        return
     keep = {k: md[k] for k in ("title", "author", "subject", "keywords", "creator")
-            if md.get(k)}
+            if md and md.get(k)}
     if keep:
         try:
             pdf.set_metadata(keep)
+        except Exception:
+            pass
+    # Tag the output's document language as the TARGET (catalog /Lang) so readers/AT announce
+    # the translated text in the right language. (DOCX gets the same via _set_doc_language.)
+    lang = getattr(doc, "target_lang", None)
+    if lang:
+        try:
+            pdf.xref_set_key(pdf.pdf_catalog(), "Lang", f"({str(lang).replace('_', '-')})")
         except Exception:
             pass
 

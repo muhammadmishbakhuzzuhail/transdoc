@@ -247,6 +247,11 @@ def _render_table(d, table) -> None:
                     run.font.size = Pt(cell.size)
                 if cell.bold:
                     run.font.bold = True
+            if cell.align and anchor.paragraphs:
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                anchor.paragraphs[0].alignment = {
+                    "center": WD_ALIGN_PARAGRAPH.CENTER, "right": WD_ALIGN_PARAGRAPH.RIGHT,
+                    "left": WD_ALIGN_PARAGRAPH.LEFT}.get(cell.align)
             if cell.table is not None:
                 _render_table(anchor, cell.table)   # nested table inside the cell
             for rr in range(ri, r2 + 1):
@@ -292,6 +297,23 @@ def _set_doc_language(d, lang) -> None:
         rpr.append(el)
     except Exception:
         pass
+
+
+def _list_style(d, b):
+    """Word list style honoring nesting: 'List Bullet'/'List Number' for level 0, then the
+    leveled variants ('List Bullet 2'..'3') for deeper items. Falls back to the base style (then
+    None) when a template lacks the leveled one — python-docx raises KeyError on a missing style."""
+    from ..ir import BlockType
+    if b.type != BlockType.LIST_ITEM:
+        return None
+    base = "List Number" if b.style.list_ordered else "List Bullet"
+    lvl = max(0, min(b.style.list_level or 0, 2))     # built-in templates cover base + 2/3
+    names = ([f"{base} {lvl + 1}"] if lvl else []) + [base]
+    avail = {s.name for s in d.styles}
+    for n in names:
+        if n in avail:
+            return n
+    return None
 
 
 def _fill_hf(part, blocks) -> None:
@@ -352,7 +374,7 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             continue
 
         if b.runs and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION, BlockType.LIST_ITEM):
-            p = d.add_paragraph(style="List Bullet" if b.type == BlockType.LIST_ITEM else None)
+            p = d.add_paragraph(style=_list_style(d, b))
             for run in b.runs:
                 _add_run(p, run)         # inline styled runs (bold word / superscript / link)
             align = _align(b.style)
@@ -362,15 +384,14 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             continue
         if b.style.link and b.type in (BlockType.PARAGRAPH, BlockType.CAPTION,
                                        BlockType.LIST_ITEM):
-            p = d.add_paragraph(style="List Bullet" if b.type == BlockType.LIST_ITEM else None)
+            p = d.add_paragraph(style=_list_style(d, b))
             _add_hyperlink(p, b.style.link, text)   # link run, not a plain run
         elif b.type == BlockType.TITLE:
             p = d.add_heading(text, level=0)
         elif b.type == BlockType.HEADING:
             p = d.add_heading(text, level=max(1, min(9, b.style.heading_level or 1)))
         elif b.type == BlockType.LIST_ITEM:
-            p = d.add_paragraph(text, style="List Number" if b.style.list_ordered
-                                else "List Bullet")
+            p = d.add_paragraph(text, style=_list_style(d, b))
         else:
             p = d.add_paragraph(text)
         # carry the source character styling + alignment into the output (was dropped)
