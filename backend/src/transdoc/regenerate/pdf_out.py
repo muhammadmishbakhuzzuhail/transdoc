@@ -169,13 +169,18 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
                 # Carry the source character styling so the translation looks like the original.
                 weight_css = "font-weight:bold;" if b.style.bold else ""
                 italic_css = "font-style:italic;" if b.style.italic else ""
-                ul_css = "text-decoration:underline;" if b.style.underline else ""
+                # underline + strikethrough share the text-decoration property
+                _deco = ([("underline")] if b.style.underline else []) + \
+                        (["line-through"] if b.style.strike else [])
+                ul_css = f"text-decoration:{' '.join(_deco)};" if _deco else ""
                 color_css = f"color:{b.style.color};" if b.style.color else ""
+                # small-caps / all-caps / highlight (block-level char styles the overlay dropped)
+                extra_css = ("".join(c + ";" for c in _char_css(b.style)))
                 _inner = _runs_html(b.runs) if b.runs else _esc(b.output_text)
                 if b.style.link and not b.runs:
                     _inner = f'<a href="{_esc(b.style.link)}">{_inner}</a>'
                 htmlbox = (f'<div style="{dir_css}{weight_css}{italic_css}{ul_css}{color_css}'
-                           f'font-size:{size:.0f}px;text-align:{align};'
+                           f'{extra_css}font-size:{size:.0f}px;text-align:{align};'
                            f'line-height:1.05">{_inner}</div>')
                 try:
                     # scale_low=0 lets PyMuPDF shrink text down to fit; returns (spare, scale)
