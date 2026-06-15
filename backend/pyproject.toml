@@ -82,3 +82,4 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+pythonpath = ["."]   # put backend/ on sys.path so tests can `from scripts import ...`
