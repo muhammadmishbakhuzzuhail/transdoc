@@ -278,6 +278,8 @@ class Document(BaseModel):
     # into the output section's header/footer, not the body. Other renderers ignore them.
     headers: list["Block"] = Field(default_factory=list)
     footers: list["Block"] = Field(default_factory=list)
+    # Number of newspaper-style columns in the (first) DOCX section body. 1 = single column.
+    section_columns: int = 1
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

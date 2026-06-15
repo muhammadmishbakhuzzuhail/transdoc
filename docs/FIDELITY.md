@@ -44,7 +44,7 @@ without rendering it is ◐, not ✓.
 | footnote / endnote + reference anchor | ◐ | kept as paragraph, link not preserved |
 | caption ↔ figure/table association | ✓ | bbox proximity bind + reading-order snap (pdf/structured); office paths no-op |
 | running header / footer (per-section, odd/even, first) | ◐ | pdf: detected + removed (PR #76); docx: header/footer content captured + translated + re-emitted; odd/even/first + per-section variants pending |
-| section / column (structural) | ◐ | reading-order only (PR #78); not structural |
+| section / column (structural) | ✓ | pdf reading-order (PR #78); docx multi-column count (w:cols) captured + re-emitted |
 | page / section breaks | ◐ | reconstruct keeps page geometry; docx manual page breaks captured + reproduced (pageBreakBefore + w:br type=page); section breaks not yet |
 
 ## Tables

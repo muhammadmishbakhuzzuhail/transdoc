@@ -388,6 +388,20 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         except Exception:
             pass
 
+    if doc.section_columns and doc.section_columns > 1:
+        try:
+            from docx.oxml import OxmlElement
+            from docx.oxml.ns import qn
+            sectpr = d.sections[0]._sectPr
+            for old in sectpr.findall(qn("w:cols")):
+                sectpr.remove(old)
+            cols = OxmlElement("w:cols")
+            cols.set(qn("w:num"), str(doc.section_columns))
+            cols.set(qn("w:space"), "425")        # 0.3" gutter (twips)
+            sectpr.append(cols)
+        except Exception:
+            pass
+
     pm = doc.page_margins or {}
     if pm:
         from docx.shared import Pt

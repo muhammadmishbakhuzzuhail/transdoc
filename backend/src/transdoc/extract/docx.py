@@ -309,6 +309,14 @@ def extract(path: str, cfg: Config) -> Document:
             "top": float(sec.top_margin.pt), "bottom": float(sec.bottom_margin.pt)}
     except Exception:
         pass
+    try:
+        from docx.oxml.ns import qn
+        cols = d.sections[0]._sectPr.find(qn("w:cols"))
+        num = cols.get(qn("w:num")) if cols is not None else None
+        if num and int(num) > 1:
+            out.section_columns = int(num)
+    except Exception:
+        pass
     idx = 0
 
     for item in iter_block_items(d):
