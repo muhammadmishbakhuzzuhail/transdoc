@@ -221,6 +221,22 @@ def _render_table(d, table) -> None:
             ci = c2 + 1
 
 
+def _fill_hf(part, blocks) -> None:
+    """Write captured header/footer blocks (translated) into a section's header or footer part.
+    The default part has one empty paragraph; reuse it for the first block, add the rest."""
+    if not blocks:
+        return
+    part.is_linked_to_previous = False
+    existing = part.paragraphs
+    for i, b in enumerate(blocks):
+        p = existing[0] if (i == 0 and existing) else part.add_paragraph()
+        p.text = b.output_text.strip()
+        _style_runs(p, b.style)
+        align = _align(b.style)
+        if align is not None:
+            p.alignment = align
+
+
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from docx import Document as Docx
     from docx.shared import Inches
@@ -289,6 +305,14 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         if align is not None:
             p.alignment = align
         _apply_para_format(p, b.style)
+
+    if doc.headers or doc.footers:
+        try:
+            sec0 = d.sections[0]
+            _fill_hf(sec0.header, doc.headers)
+            _fill_hf(sec0.footer, doc.footers)
+        except Exception:
+            pass
 
     pm = doc.page_margins or {}
     if pm:

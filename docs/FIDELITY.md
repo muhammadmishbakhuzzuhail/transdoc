@@ -43,7 +43,7 @@ without rendering it is ◐, not ✓.
 | table of contents / bookmarks | ✓ | captured + titles translated + outline rebuilt in PDF #101 |
 | footnote / endnote + reference anchor | ◐ | kept as paragraph, link not preserved |
 | caption ↔ figure/table association | ✓ | bbox proximity bind + reading-order snap (pdf/structured); office paths no-op |
-| running header / footer (per-section, odd/even, first) | ◐ | detected + removed (PR #76); not section-aware |
+| running header / footer (per-section, odd/even, first) | ◐ | pdf: detected + removed (PR #76); docx: header/footer content captured + translated + re-emitted; odd/even/first + per-section variants pending |
 | section / column (structural) | ◐ | reading-order only (PR #78); not structural |
 | page / section breaks | ◐ | reconstruct keeps page geometry; docx manual page breaks captured + reproduced (pageBreakBefore + w:br type=page); section breaks not yet |
 

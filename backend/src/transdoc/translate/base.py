@@ -81,6 +81,12 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
                 if r.text.strip():
                     items.append((r.text, r))
 
+    # DOCX section header/footer paragraphs translate too (kept off `blocks` so they render into
+    # the output section's header/footer, not the body).
+    for b in (*doc.headers, *doc.footers):
+        if b.is_translatable:
+            items.append((b.text, b))
+
     # PDF outline / bookmark titles translate too, so the navigable outline is in target lang.
     for e in doc.toc:
         if e.title.strip():
