@@ -61,3 +61,26 @@ def capture(page) -> list[dict]:
                 out.append({"kind": "rect", "x0": r.x0, "y0": r.y0, "x1": r.x1, "y1": r.y1,
                             "color": color, "width": width, "fill": fill})
     return out
+
+
+def page_background(page) -> str | None:
+    """Hex fill of a near-full-page background panel, if the page has one (a coloured page,
+    not white). These are skipped by capture() as line-art; reconstruct paints this first so a
+    coloured page survives. None when the page is plain white."""
+    try:
+        drawings = page.get_drawings()
+    except Exception:
+        return None
+    pw, ph = page.rect.width, page.rect.height
+    best = None
+    for d in drawings:
+        fill = _rgb(d.get("fill"))
+        if not fill or fill.lower() in ("#ffffff", "#fff"):
+            continue
+        for item in d.get("items", []):
+            if item[0] != "re":
+                continue
+            r = item[1]
+            if r.width >= pw * 0.95 and r.height >= ph * 0.95:
+                best = fill        # last (top-most) full-page fill wins
+    return best

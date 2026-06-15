@@ -279,10 +279,14 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
             out.blocks.append(ob)
 
     from .vectors import capture as _capture_vectors
+    from .vectors import page_background as _page_bg
 
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
         out.page_drawings[pno] = _capture_vectors(page)
+        bg = _page_bg(page)
+        if bg:
+            out.page_background[pno] = bg
         rot = int(getattr(page, "rotation", 0) or 0)
         if rot:
             out.page_rotation[pno] = rot
