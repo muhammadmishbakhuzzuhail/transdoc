@@ -484,6 +484,8 @@ def _char_css(s) -> list[str]:
     css = []
     if s.small_caps:
         css.append("font-variant:small-caps")
+    if s.all_caps:
+        css.append("text-transform:uppercase")
     hl = _hl_css(s.highlight)
     if hl:
         css.append(f"background-color:{hl}")

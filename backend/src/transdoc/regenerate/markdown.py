@@ -27,6 +27,8 @@ def _md_run(run) -> str:
         core = f"~~{core}~~"
     if s.underline:
         core = f"<u>{core}</u>"
+    if s.all_caps:
+        core = core.upper()
     if s.small_caps:
         core = f'<span style="font-variant:small-caps">{core}</span>'
     if s.highlight:

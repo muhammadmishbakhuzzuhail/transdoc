@@ -19,7 +19,7 @@ without rendering it is ◐, not ✓.
 | strikethrough | ✓ | docx capture (run.font.strike) + rendered md/docx/pdf, block+inline #93 |
 | highlight / background colour | ✓ | run highlight captured (docx) + rendered md/docx/pdf #97 |
 | superscript / subscript | ✓ | inline-runs: captured (docx+pdf) + rendered (md/docx/pdf) #91/#92 |
-| small-caps | ✓ | docx capture + md/docx/pdf #97 (all-caps ◐) |
+| small-caps / all-caps | ✓ | docx capture + md/docx/pdf #97/#98 |
 | letter-spacing / word-spacing / kerning / baseline-shift | ✗ | rawdict has per-glyph positions |
 | hyperlink (URI) | ✓ | captured (PDF get_links + DOCX rels) + rendered (md/docx/pdf) PR #83 |
 | character rotation / vertical text | ◐ | detected + skipped in overlay, not preserved |
