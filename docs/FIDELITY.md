@@ -60,7 +60,7 @@ without rendering it is ◐, not ✓.
 |---|---|---|
 | page size / orientation | ✓ | reconstruct keeps source size |
 | margins | ✓ | docx section margins captured + applied #102 |
-| page rotation (/Rotate) applied | ◐ | captured (#74), not applied to placement |
+| page rotation (/Rotate) applied | ✓ | PyMuPDF reports visual coords; reconstruct bakes rotation into an upright page, overlay keeps native /Rotate (verified test_rotation) |
 | page-number regeneration | ✗ | removed as furniture, not re-emitted |
 | background colour / watermark | ✗ | |
 | document metadata written to output | ✓ | captured + written to PDF + DOCX #94 |
