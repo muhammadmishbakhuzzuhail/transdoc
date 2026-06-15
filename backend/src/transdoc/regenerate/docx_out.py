@@ -42,6 +42,8 @@ def _style_runs(para, style: Style) -> None:
             f.underline = True
         if style.strike:
             f.strike = True
+        if style.small_caps:
+            f.small_caps = True
         if style.font:
             f.name = style.font
         if style.size and style.size > 0:
@@ -107,6 +109,14 @@ def _add_run(p, run) -> None:
     f.italic = s.italic or None
     f.underline = s.underline or None
     f.strike = s.strike or None
+    if s.small_caps:
+        f.small_caps = True
+    if s.highlight:
+        try:
+            from docx.enum.text import WD_COLOR_INDEX
+            f.highlight_color = WD_COLOR_INDEX[s.highlight.upper()]
+        except Exception:
+            pass
     if s.superscript:
         f.superscript = True
     if s.subscript:
