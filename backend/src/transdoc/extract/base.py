@@ -73,6 +73,42 @@ def column_reading_order(doc: Document) -> None:
             order += 1
 
 
+def associate_captions(doc: Document) -> None:
+    """Bind each CAPTION to the nearest figure/table it describes and snap reading order so the
+    two stay adjacent. A caption that the layout model floated (or a bbox sort that slotted a
+    body paragraph between a figure and its caption) would otherwise separate them. Convention:
+    a caption below its media renders after it, a caption above (typical for tables) before it.
+    bbox-only — the office paths produce no positioned figures and are unaffected."""
+    from ..ir import BlockType
+    media = [b for b in doc.blocks if b.type in (BlockType.FIGURE, BlockType.TABLE) and b.bbox]
+    caps = [b for b in doc.blocks if b.type == BlockType.CAPTION and b.bbox]
+    if not media or not caps:
+        return
+    nudged: dict[str, float] = {}
+    for cap in caps:
+        best, best_gap = None, None
+        for m in media:
+            if m.page != cap.page:
+                continue
+            overlap = min(cap.bbox.x1, m.bbox.x1) - max(cap.bbox.x0, m.bbox.x0)
+            if overlap <= 0:                      # not in the same column band
+                continue
+            gap = max(cap.bbox.y0 - m.bbox.y1, m.bbox.y0 - cap.bbox.y1, 0.0)
+            if best_gap is None or gap < best_gap:
+                best, best_gap = m, gap
+        if best is None:
+            continue
+        cap.anchor_id = best.id
+        below = cap.bbox.y0 >= best.bbox.y0       # caption starts lower than its media
+        nudged[cap.id] = best.reading_order + (0.5 if below else -0.5)
+    if not nudged:
+        return
+    # renumber to dense integers, captions sitting next to their anchor via the fractional key
+    ordered = sorted(doc.blocks, key=lambda b: nudged.get(b.id, float(b.reading_order)))
+    for i, b in enumerate(ordered):
+        b.reading_order = i
+
+
 def _is_vertical(b: Block) -> bool:
     """A tall, very narrow box = rotated/vertical sidebar text (e.g. an arXiv ID)."""
     if not b.bbox:

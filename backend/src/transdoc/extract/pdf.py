@@ -456,6 +456,8 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
 
     doc.close()
     column_reading_order(out)   # multi-column-aware reading order (research)
+    from .base import associate_captions
+    associate_captions(out)     # keep each caption adjacent to its figure/table
     return out
 
 
