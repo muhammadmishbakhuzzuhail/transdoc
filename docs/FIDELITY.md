@@ -16,7 +16,7 @@ without rendering it is ◐, not ✓.
 |---|---|---|
 | font family / size / bold / italic / colour | ✓ | style capture (PR #70) |
 | underline | ✓ | DOCX capture + rendered md/docx/pdf (PR #86); PDF-extract n/a (no font flag, drawn as vector) |
-| strikethrough | ✗ | drawn as vector near text — needs detection |
+| strikethrough | ✓ | docx capture (run.font.strike) + rendered md/docx/pdf, block+inline #93 |
 | highlight / background colour | ✗ | |
 | superscript / subscript | ✓ | inline-runs: captured (docx+pdf) + rendered (md/docx/pdf) #91/#92 |
 | small-caps / all-caps | ✗ | |

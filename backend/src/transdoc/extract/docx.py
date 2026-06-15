@@ -49,8 +49,8 @@ def _run_color(font) -> str | None:
 
 
 def _same_style(a: Style, b: Style) -> bool:
-    return (a.bold, a.italic, a.underline, a.font, a.size, a.color, a.superscript,
-            a.subscript) == (b.bold, b.italic, b.underline, b.font, b.size, b.color,
+    return (a.bold, a.italic, a.underline, a.strike, a.font, a.size, a.color, a.superscript,
+            a.subscript) == (b.bold, b.italic, b.underline, b.strike, b.font, b.size, b.color,
                              b.superscript, b.subscript)
 
 
@@ -65,7 +65,8 @@ def _capture_runs(item) -> list[Run]:
             continue
         f = r.font
         st = Style(bold=bool(f.bold), italic=bool(f.italic), underline=bool(f.underline),
-                   font=f.name, size=float(f.size.pt) if f.size is not None else None,
+                   strike=bool(f.strike), font=f.name,
+                   size=float(f.size.pt) if f.size is not None else None,
                    color=_run_color(f), superscript=bool(f.superscript),
                    subscript=bool(f.subscript))
         if runs and _same_style(runs[-1].style, st):
@@ -102,7 +103,7 @@ def _para_style(item, level: int) -> Style:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     name = size = color = None
-    bold = italic = underline = False
+    bold = italic = underline = strike = False
     for r in (r for r in item.runs if r.text.strip()):
         f = r.font
         if name is None and f.name:
@@ -117,6 +118,7 @@ def _para_style(item, level: int) -> Style:
         bold = bold or bool(f.bold)
         italic = italic or bool(f.italic)
         underline = underline or bool(f.underline)
+        strike = strike or bool(f.strike)
     # inherit from the paragraph's named style when runs left things unset
     try:
         sf = item.style.font
@@ -130,7 +132,7 @@ def _para_style(item, level: int) -> Style:
              WD_ALIGN_PARAGRAPH.JUSTIFY: "justify", WD_ALIGN_PARAGRAPH.LEFT: "left"
              }.get(item.alignment) if item.alignment is not None else None
     return Style(font=name, size=size, bold=bold, italic=italic, underline=underline,
-                 color=color, align=align, heading_level=level)
+                 strike=strike, color=color, align=align, heading_level=level)
 
 
 def extract(path: str, cfg: Config) -> Document:
