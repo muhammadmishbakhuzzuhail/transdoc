@@ -465,6 +465,31 @@ def _grow_rect(r, obstacles, page_height):
     return fitz.Rect(r.x0, r.y0, r.x1, new_y1) if new_y1 > r.y1 + 1 else r
 
 
+_HIGHLIGHT_CSS = {
+    "yellow": "#ffff00", "bright_green": "#00ff00", "turquoise": "#40e0d0", "pink": "#ffc0cb",
+    "blue": "#0000ff", "red": "#ff0000", "dark_blue": "#000080", "teal": "#008080",
+    "green": "#008000", "violet": "#ee82ee", "dark_red": "#8b0000", "dark_yellow": "#808000",
+    "gray_50": "#808080", "gray_25": "#c0c0c0",
+}
+
+
+def _hl_css(name: str | None) -> str | None:
+    if not name:
+        return None
+    return name if name.startswith("#") else _HIGHLIGHT_CSS.get(name, "#ffff00")
+
+
+def _char_css(s) -> list[str]:
+    """Shared character-decoration CSS for a Style: super/sub, small-caps, highlight."""
+    css = []
+    if s.small_caps:
+        css.append("font-variant:small-caps")
+    hl = _hl_css(s.highlight)
+    if hl:
+        css.append(f"background-color:{hl}")
+    return css
+
+
 def _run_span(run) -> str:
     """One inline run -> styled <span> (bold/italic/underline/super/sub/colour/link)."""
     s = run.style
@@ -482,6 +507,7 @@ def _run_span(run) -> str:
         css.append("vertical-align:sub;font-size:smaller")
     if s.color and s.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{s.color}")
+    css += _char_css(s)
     inner = _esc(run.output_text)
     if s.link:
         inner = f'<a href="{_esc(s.link)}">{inner}</a>'
@@ -518,6 +544,7 @@ def _block_html(b):
         css.append("text-decoration:" + " ".join(_deco))
     if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{b.style.color}")
+    css += _char_css(b.style)
     if b.style.space_before:
         css.append(f"margin-top:{b.style.space_before:.0f}pt")
     if b.style.space_after:

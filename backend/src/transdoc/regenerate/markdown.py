@@ -27,6 +27,10 @@ def _md_run(run) -> str:
         core = f"~~{core}~~"
     if s.underline:
         core = f"<u>{core}</u>"
+    if s.small_caps:
+        core = f'<span style="font-variant:small-caps">{core}</span>'
+    if s.highlight:
+        core = f"<mark>{core}</mark>"
     if s.link:
         core = f"[{core}]({s.link})"
     return f"{lead}{core}{trail}"

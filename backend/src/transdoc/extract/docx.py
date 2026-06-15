@@ -48,10 +48,20 @@ def _run_color(font) -> str | None:
     return None
 
 
+def _run_highlight(font) -> str | None:
+    try:
+        hl = font.highlight_color
+        if hl is not None and getattr(hl, "name", None) and hl.name not in ("AUTO", "NONE"):
+            return hl.name.lower()
+    except Exception:
+        pass
+    return None
+
+
 def _same_style(a: Style, b: Style) -> bool:
-    return (a.bold, a.italic, a.underline, a.strike, a.font, a.size, a.color, a.superscript,
-            a.subscript) == (b.bold, b.italic, b.underline, b.strike, b.font, b.size, b.color,
-                             b.superscript, b.subscript)
+    keys = ("bold", "italic", "underline", "strike", "small_caps", "highlight", "font", "size",
+            "color", "superscript", "subscript")
+    return tuple(getattr(a, k) for k in keys) == tuple(getattr(b, k) for k in keys)
 
 
 def _capture_runs(item) -> list[Run]:
@@ -65,7 +75,8 @@ def _capture_runs(item) -> list[Run]:
             continue
         f = r.font
         st = Style(bold=bool(f.bold), italic=bool(f.italic), underline=bool(f.underline),
-                   strike=bool(f.strike), font=f.name,
+                   strike=bool(f.strike), small_caps=bool(f.small_caps),
+                   highlight=_run_highlight(f), font=f.name,
                    size=float(f.size.pt) if f.size is not None else None,
                    color=_run_color(f), superscript=bool(f.superscript),
                    subscript=bool(f.subscript))
