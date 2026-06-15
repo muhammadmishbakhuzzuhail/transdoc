@@ -126,6 +126,20 @@ class Table(BaseModel):
     col_widths: list[float] = Field(default_factory=list)   # column widths (pt), if known
 
 
+class TocEntry(BaseModel):
+    """A bookmark / table-of-contents outline entry. Title is translated; level + target page
+    are carried so the output keeps a navigable, translated outline."""
+
+    level: int = 1
+    title: str = ""
+    page: int = 1
+    translated: Optional[str] = None
+
+    @property
+    def output_text(self) -> str:
+        return self.translated if self.translated is not None else self.title
+
+
 class Run(BaseModel):
     """An inline span of a block with its own character style (a bold word, a superscript
     footnote ref, an inline hyperlink). A block carries runs only when its text is NOT
@@ -239,6 +253,8 @@ class Document(BaseModel):
     # Temp directories of intermediate crop images, cleaned by the pipeline after rendering
     # (they were leaking one dir per run under /tmp).
     tmp_dirs: list[str] = Field(default_factory=list)
+    # PDF outline / bookmarks (level, title, target page) — titles translated, outline rebuilt.
+    toc: list[TocEntry] = Field(default_factory=list)
 
     def ordered_blocks(self) -> list[Block]:
         return sorted(self.blocks, key=lambda b: (b.page, b.reading_order))

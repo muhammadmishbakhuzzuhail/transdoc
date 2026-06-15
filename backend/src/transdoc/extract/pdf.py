@@ -10,7 +10,7 @@ import re
 import unicodedata
 
 from ..config import Config, Fidelity
-from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Run, Style, Table
+from ..ir import BBox, Block, BlockType, Cell, Confidence, Document, Run, Style, Table, TocEntry
 from .base import block_id, column_reading_order
 
 # Some PDFs embed CID fonts with no ToUnicode CMap: get_text() then returns the raw glyph
@@ -232,6 +232,11 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         raise ValueError(f"unreadable or corrupt PDF: {e}") from e
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
     out.metadata = {k: v for k, v in (doc.metadata or {}).items() if v}
+    try:
+        out.toc = [TocEntry(level=int(lv), title=str(ti), page=int(pg))
+                   for lv, ti, pg in (doc.get_toc() or [])]
+    except Exception:
+        pass
 
     # Real cell-level table recovery (PyMuPDF find_tables) is only used for FLOW output
     # (->DOCX/MD/flow-PDF), where the renderer builds a grid from Table/Cell IR. The LAYOUT

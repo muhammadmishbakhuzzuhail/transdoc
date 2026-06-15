@@ -47,6 +47,20 @@ def _esc(s: str) -> str:
     return html.escape(s)
 
 
+def _apply_pdf_toc(pdf, doc) -> None:
+    """Rebuild the PDF outline/bookmarks with translated titles (clamped to page count)."""
+    if not getattr(doc, "toc", None):
+        return
+    n = pdf.page_count
+    toc = [[max(1, e.level), e.output_text, min(max(1, e.page), n)]
+           for e in doc.toc if e.output_text.strip()]
+    if toc:
+        try:
+            pdf.set_toc(toc)
+        except Exception:
+            pass
+
+
 def _apply_pdf_metadata(pdf, doc) -> None:
     """Carry the source document metadata (title/author/subject/keywords/creator) onto the
     output PDF — captured in extract but previously not written out."""
@@ -177,6 +191,7 @@ def render_overlay(doc: Document, cfg: Config, out_path: str) -> str:
         # are still untranslated original. Drop them so the output isn't a translated/source mix.
         _subset_pages(pdf, cfg)
         _apply_pdf_metadata(pdf, doc)
+        _apply_pdf_toc(pdf, doc)
         pdf.save(out_path, garbage=4, deflate=True)
     finally:
         pdf.close()
@@ -692,6 +707,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                     page.insert_textbox(r, b.output_text, fontsize=size, align=0)
         _subset_pages(out, cfg)
         _apply_pdf_metadata(out, doc)
+        _apply_pdf_toc(out, doc)
         out.save(out_path, garbage=4, deflate=True)
     finally:
         out.close()

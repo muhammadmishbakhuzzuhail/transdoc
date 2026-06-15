@@ -40,7 +40,7 @@ without rendering it is ◐, not ✓.
 | Variable | Status | Notes |
 |---|---|---|
 | heading / outline level | ✓ | |
-| table of contents / bookmarks | ✗ | `doc.get_toc()` available |
+| table of contents / bookmarks | ✓ | captured + titles translated + outline rebuilt in PDF #101 |
 | footnote / endnote + reference anchor | ◐ | kept as paragraph, link not preserved |
 | caption ↔ figure/table association | ✗ | |
 | running header / footer (per-section, odd/even, first) | ◐ | detected + removed (PR #76); not section-aware |

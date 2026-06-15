@@ -74,6 +74,11 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
                 if r.text.strip():
                     items.append((r.text, r))
 
+    # PDF outline / bookmark titles translate too, so the navigable outline is in target lang.
+    for e in doc.toc:
+        if e.title.strip():
+            items.append((e.title, e))
+
     if not items:
         return
 
