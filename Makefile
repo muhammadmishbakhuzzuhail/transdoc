@@ -19,7 +19,7 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        serve dev clean
+        eval-real eval-real-baseline serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -60,6 +60,23 @@ eval-baseline:
 	cd backend && .venv/bin/python -m transdoc.eval.fixtures src/transdoc/eval/samples
 	cd backend && .venv/bin/python -m transdoc.eval.harness src/transdoc/eval/samples \
 		--engine echo --out src/transdoc/eval/baseline.json
+
+# Structure-only regression gate over the REAL corpus (23 digital docs: arXiv, IRS forms, UDHR
+# in 16 languages incl. RTL, a PPTX) vs the committed baseline. Local/opt-in — the corpus is
+# git-ignored, so fetch it first: `cd backend && scripts/fetch_corpus.sh`. OCR-only dirs and
+# font-sensitive render metrics are excluded so the gate is reproducible (echo, no network).
+eval-real:
+	cd backend && TRANSDOC_LAYOUT_DISABLE=1 TRANSDOC_TM_DISABLE=1 .venv/bin/python \
+		-m transdoc.eval.harness corpus/real --engine echo \
+		--baseline corpus/baseline_real.json \
+		--exclude-dir full_image --exclude-dir scanned_pdf --structure-only
+
+# Rebuild the real-corpus baseline (after an intended extraction change; fetch the corpus first).
+eval-real-baseline:
+	cd backend && TRANSDOC_LAYOUT_DISABLE=1 TRANSDOC_TM_DISABLE=1 .venv/bin/python \
+		-m transdoc.eval.harness corpus/real --engine echo \
+		--exclude-dir full_image --exclude-dir scanned_pdf --structure-only \
+		--out corpus/baseline_real.json
 
 serve:
 	cd backend && .venv/bin/transdoc serve

@@ -1,0 +1,368 @@
+{
+  "engine": "echo",
+  "target_lang": "id",
+  "docs": {
+    "pdflatex_4pages.pdf": {
+      "file": "pdflatex_4pages.pdf",
+      "blocks": 8,
+      "by_type": {
+        "paragraph": 8
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 8,
+      "pages": 4,
+      "reading_order_monotonic": true
+    },
+    "pdflatex_image.pdf": {
+      "file": "pdflatex_image.pdf",
+      "blocks": 5,
+      "by_type": {
+        "figure": 1,
+        "title": 1,
+        "paragraph": 3
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 1,
+      "translatable": 4,
+      "pages": 1,
+      "reading_order_monotonic": false
+    },
+    "arxiv_attention_en.pdf": {
+      "file": "arxiv_attention_en.pdf",
+      "blocks": 474,
+      "by_type": {
+        "paragraph": 424,
+        "title": 1,
+        "heading": 26,
+        "caption": 3,
+        "figure": 3,
+        "formula": 4,
+        "list_item": 3,
+        "table": 10
+      },
+      "formulas": 4,
+      "tables": 10,
+      "table_cells": 0,
+      "figures": 3,
+      "translatable": 467,
+      "pages": 15,
+      "reading_order_monotonic": false
+    },
+    "arxiv_bert_en.pdf": {
+      "file": "arxiv_bert_en.pdf",
+      "blocks": 402,
+      "by_type": {
+        "heading": 38,
+        "paragraph": 304,
+        "caption": 2,
+        "list_item": 18,
+        "figure": 34,
+        "table": 6
+      },
+      "formulas": 0,
+      "tables": 6,
+      "table_cells": 0,
+      "figures": 34,
+      "translatable": 368,
+      "pages": 16,
+      "reading_order_monotonic": false
+    },
+    "irs_1040_form.pdf": {
+      "file": "irs_1040_form.pdf",
+      "blocks": 101,
+      "by_type": {
+        "paragraph": 86,
+        "title": 1,
+        "heading": 14
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 101,
+      "pages": 2,
+      "reading_order_monotonic": false
+    },
+    "irs_w9_form.pdf": {
+      "file": "irs_w9_form.pdf",
+      "blocks": 171,
+      "by_type": {
+        "title": 4,
+        "paragraph": 96,
+        "caption": 1,
+        "heading": 31,
+        "list_item": 39
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 171,
+      "pages": 6,
+      "reading_order_monotonic": false
+    },
+    "udhr_arabic.pdf": {
+      "file": "udhr_arabic.pdf",
+      "blocks": 229,
+      "by_type": {
+        "figure": 8,
+        "paragraph": 189,
+        "heading": 31,
+        "title": 1
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 8,
+      "translatable": 221,
+      "pages": 6,
+      "reading_order_monotonic": false
+    },
+    "udhr_bengali.pdf": {
+      "file": "udhr_bengali.pdf",
+      "blocks": 76,
+      "by_type": {
+        "paragraph": 76
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 76,
+      "pages": 10,
+      "reading_order_monotonic": true
+    },
+    "udhr_chinese.pdf": {
+      "file": "udhr_chinese.pdf",
+      "blocks": 160,
+      "by_type": {
+        "paragraph": 127,
+        "heading": 1,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 160,
+      "pages": 7,
+      "reading_order_monotonic": true
+    },
+    "udhr_english.pdf": {
+      "file": "udhr_english.pdf",
+      "blocks": 194,
+      "by_type": {
+        "paragraph": 162,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 194,
+      "pages": 8,
+      "reading_order_monotonic": true
+    },
+    "udhr_french.pdf": {
+      "file": "udhr_french.pdf",
+      "blocks": 199,
+      "by_type": {
+        "heading": 2,
+        "paragraph": 165,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 199,
+      "pages": 8,
+      "reading_order_monotonic": true
+    },
+    "udhr_german.pdf": {
+      "file": "udhr_german.pdf",
+      "blocks": 93,
+      "by_type": {
+        "paragraph": 60,
+        "heading": 1,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 93,
+      "pages": 6,
+      "reading_order_monotonic": true
+    },
+    "udhr_greek.pdf": {
+      "file": "udhr_greek.pdf",
+      "blocks": 228,
+      "by_type": {
+        "paragraph": 195,
+        "heading": 1,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 228,
+      "pages": 9,
+      "reading_order_monotonic": true
+    },
+    "udhr_hebrew.pdf": {
+      "file": "udhr_hebrew.pdf",
+      "blocks": 53,
+      "by_type": {
+        "paragraph": 53
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 53,
+      "pages": 4,
+      "reading_order_monotonic": true
+    },
+    "udhr_hindi.pdf": {
+      "file": "udhr_hindi.pdf",
+      "blocks": 159,
+      "by_type": {
+        "paragraph": 159
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 159,
+      "pages": 5,
+      "reading_order_monotonic": true
+    },
+    "udhr_japanese.pdf": {
+      "file": "udhr_japanese.pdf",
+      "blocks": 180,
+      "by_type": {
+        "paragraph": 148,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 180,
+      "pages": 9,
+      "reading_order_monotonic": true
+    },
+    "udhr_korean.pdf": {
+      "file": "udhr_korean.pdf",
+      "blocks": 168,
+      "by_type": {
+        "paragraph": 136,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 168,
+      "pages": 7,
+      "reading_order_monotonic": true
+    },
+    "udhr_portuguese.pdf": {
+      "file": "udhr_portuguese.pdf",
+      "blocks": 92,
+      "by_type": {
+        "heading": 1,
+        "paragraph": 91
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 92,
+      "pages": 7,
+      "reading_order_monotonic": true
+    },
+    "udhr_russian.pdf": {
+      "file": "udhr_russian.pdf",
+      "blocks": 240,
+      "by_type": {
+        "paragraph": 207,
+        "heading": 1,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 240,
+      "pages": 10,
+      "reading_order_monotonic": true
+    },
+    "udhr_spanish.pdf": {
+      "file": "udhr_spanish.pdf",
+      "blocks": 214,
+      "by_type": {
+        "paragraph": 181,
+        "heading": 1,
+        "list_item": 32
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 214,
+      "pages": 9,
+      "reading_order_monotonic": true
+    },
+    "udhr_thai.pdf": {
+      "file": "udhr_thai.pdf",
+      "blocks": 99,
+      "by_type": {
+        "paragraph": 99
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 99,
+      "pages": 6,
+      "reading_order_monotonic": false
+    },
+    "udhr_vietnamese.pdf": {
+      "file": "udhr_vietnamese.pdf",
+      "blocks": 61,
+      "by_type": {
+        "paragraph": 61
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 61,
+      "pages": 5,
+      "reading_order_monotonic": true
+    },
+    "sample.pptx": {
+      "file": "sample.pptx",
+      "blocks": 2,
+      "by_type": {
+        "paragraph": 2
+      },
+      "formulas": 0,
+      "tables": 0,
+      "table_cells": 0,
+      "figures": 0,
+      "translatable": 2,
+      "pages": 1,
+      "reading_order_monotonic": true
+    }
+  },
+  "structure_only": true
+}

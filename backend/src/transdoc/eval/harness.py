@@ -42,8 +42,13 @@ def _out_text(doc) -> str:
     return "\n".join(b.output_text for b in doc.ordered_blocks() if b.output_text.strip())
 
 
-def score_doc(path: Path, cfg: Config, workdir: Path) -> dict:
-    """Run the pipeline on one file and return its metric row."""
+def score_doc(path: Path, cfg: Config, workdir: Path, structure_only: bool = False) -> dict:
+    """Run the pipeline on one file and return its metric row.
+
+    structure_only omits the PDF render-fidelity metrics (overwrite/tiny/overflow). Those depend
+    on the rendering platform's fonts + PyMuPDF substitution, so they aren't byte-stable across
+    machines and would cause false regressions when a baseline is gated on a different OS than it
+    was generated on. Structure counts come straight from parsing and ARE reproducible."""
     from ..pipeline import run
 
     out = workdir / (path.stem + ".out.pdf")
@@ -51,11 +56,18 @@ def score_doc(path: Path, cfg: Config, workdir: Path) -> dict:
     doc = res.doc
     row: dict = {"file": path.name, **structure_metrics(doc)}
 
-    if out.exists() and out.suffix.lower() == ".pdf":
-        fid = pdf_fidelity(str(out))
-        row["overwrite"] = len(fid["overwrite"])
-        row["tiny"] = len(fid["tiny"])
-        row["overflow"] = len(fid["overflow"])
+    if structure_only:
+        # `flagged` counts blocks carrying ANY flag, but the renderer adds run-time flags
+        # (text_expansion / illegible / bidi_mixed) whose count isn't stable run-to-run — heavy
+        # text-expansion pages (e.g. Bengali) flip a few blocks in and out of the threshold. Drop
+        # it so the cross-OS gate only sees parse-deterministic structure.
+        row.pop("flagged", None)
+    else:
+        if out.exists() and out.suffix.lower() == ".pdf":
+            fid = pdf_fidelity(str(out))
+            row["overwrite"] = len(fid["overwrite"])
+            row["tiny"] = len(fid["tiny"])
+            row["overflow"] = len(fid["overflow"])
 
     gold = path.with_suffix(".gold.txt")
     if gold.exists():
@@ -76,20 +88,31 @@ def _is_sidecar(name: str) -> bool:
     return name.endswith(".gold.txt") or ".ref." in name or ".out." in name
 
 
-def run_corpus(corpus: Path, cfg: Config) -> dict:
+def run_corpus(corpus: Path, cfg: Config, exclude_dirs: tuple[str, ...] = (),
+               structure_only: bool = False) -> dict:
+    excluded = {d.strip("/") for d in exclude_dirs}
+
+    def _kept(p: Path) -> bool:
+        # skip any file whose path crosses an excluded directory name (e.g. OCR-only dirs whose
+        # metrics aren't byte-stable across tesseract versions, so they can't be a hard gate)
+        return excluded.isdisjoint(part for part in p.relative_to(corpus).parts)
+
     files = sorted(p for p in corpus.rglob("*")
                    if p.is_file() and p.suffix.lower() in _DOC_EXTS
-                   and not _is_sidecar(p.name))
+                   and not _is_sidecar(p.name) and _kept(p))
     rows: list[dict] = []
     with tempfile.TemporaryDirectory(prefix="transdoc_eval_") as td:
         wd = Path(td)
         for f in files:
             try:
-                rows.append(score_doc(f, cfg, wd))
+                rows.append(score_doc(f, cfg, wd, structure_only=structure_only))
             except Exception as e:  # one bad file shouldn't sink the whole scorecard
                 rows.append({"file": f.name, "error": f"{type(e).__name__}: {e}"})
-    return {"engine": cfg.engine.value, "target_lang": cfg.target_lang,
+    card = {"engine": cfg.engine.value, "target_lang": cfg.target_lang,
             "docs": {r["file"]: r for r in rows}}
+    if structure_only:
+        card["structure_only"] = True
+    return card
 
 
 def diff_baseline(baseline: dict, current: dict, chrf_tol: float = 1.0) -> list[str]:
@@ -138,11 +161,18 @@ def main() -> None:
     ap.add_argument("--target-lang", default="id")
     ap.add_argument("--out", help="write the scorecard JSON here")
     ap.add_argument("--baseline", help="diff against this scorecard JSON; exit 1 on regression")
+    ap.add_argument("--exclude-dir", action="append", default=[],
+                    help="directory name to skip (repeatable); e.g. OCR-only dirs whose metrics "
+                         "aren't byte-stable across tesseract versions")
+    ap.add_argument("--structure-only", action="store_true",
+                    help="gate parse-derived structure only (blocks/tables/cells/figures/reading "
+                         "order); skip font/platform-sensitive PDF render-fidelity metrics")
     args = ap.parse_args()
 
     cfg = Config(target_lang=args.target_lang, engine=Engine(args.engine),
                  output_format=OutputFormat.PDF)
-    card = run_corpus(Path(args.corpus), cfg)
+    card = run_corpus(Path(args.corpus), cfg, exclude_dirs=tuple(args.exclude_dir),
+                      structure_only=args.structure_only)
     _print_scorecard(card)
 
     if args.out:

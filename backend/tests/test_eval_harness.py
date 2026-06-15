@@ -94,3 +94,51 @@ def test_baseline_diff_flags_missing_and_new_error():
     joined = " | ".join(regress)
     assert "gone.pdf: missing" in joined
     assert "ok.pdf: now errors" in joined
+
+
+def test_exclude_dir_skips_matching_subdir(tmp_path):
+    """--exclude-dir drops files under a named subdir (used to keep OCR-only dirs out of the
+    deterministic gate)."""
+    _corpus(tmp_path)                                  # tmp_path/doc.pdf
+    sub = tmp_path / "scanned_pdf"
+    sub.mkdir()
+    d = fitz.open()
+    d.new_page(width=595, height=842).insert_text((42, 60), "scanned", fontsize=14)
+    d.save(str(sub / "scan.pdf"))
+    d.close()
+    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.PDF)
+    card = run_corpus(tmp_path, cfg, exclude_dirs=("scanned_pdf",))
+    assert set(card["docs"]) == {"doc.pdf"}            # scan.pdf excluded
+
+
+def test_structure_only_omits_render_fidelity(tmp_path):
+    """structure_only drops the font/platform-sensitive render metrics so a baseline gated on a
+    different OS doesn't false-positive; structure counts stay."""
+    corpus = _corpus(tmp_path)
+    cfg = Config(target_lang="id", engine=Engine.ECHO, output_format=OutputFormat.PDF)
+    card = run_corpus(corpus, cfg, structure_only=True)
+    assert card.get("structure_only") is True
+    row = card["docs"]["doc.pdf"]
+    assert "error" not in row
+    assert row["blocks"] >= 1                          # structure kept
+    assert "overwrite" not in row and "tiny" not in row and "overflow" not in row
+    assert "flagged" not in row                        # render-contaminated, dropped from gate
+
+
+def test_committed_real_baseline_is_structure_only_and_consistent():
+    """The committed real-corpus baseline must be a structure-only card whose docs carry no
+    render-fidelity keys (so the cross-OS CI gate stays reproducible)."""
+    import json
+    from pathlib import Path
+
+    p = Path(__file__).resolve().parent.parent / "corpus" / "baseline_real.json"
+    if not p.exists():
+        pytest.skip("real-corpus baseline not present")
+    base = json.loads(p.read_text(encoding="utf-8"))
+    assert base.get("structure_only") is True
+    for name, row in base["docs"].items():
+        if "error" in row:
+            continue
+        assert "overwrite" not in row, f"{name} carries render-fidelity metric in a structure-only baseline"
+        assert "flagged" not in row, f"{name} carries render-contaminated flagged count"
+        assert "blocks" in row
