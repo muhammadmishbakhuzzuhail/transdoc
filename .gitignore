@@ -36,5 +36,8 @@ out/
 **/flores200_dataset/
 **/flores200_dataset.tar.gz
 
+# local tessdata cache (downloaded language/script packs for OCR eval)
+**/.tessdata/
+
 # keep the manifest
 !**/corpus/README.md

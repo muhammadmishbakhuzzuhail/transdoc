@@ -9,6 +9,12 @@
 # Override the python or the paddle wheel:
 #   make setup PYTHON=python3.12
 #   make setup-layout PADDLE_PKG="paddlepaddle==3.3.1"   # pure-CPU wheel (no CUDA)
+#
+# OCR system deps (install via your package manager, not pip):
+#   tesseract-ocr                          base engine
+#   tesseract-ocr-script-latn              Latin script model — reads diacritics (ç/ã/é/...) the
+#                                          bare eng pack drops (portuguese CER 3% -> 0.04%)
+#   tesseract-ocr-{ell,ara,...}            per-script packs for non-Latin scans
 
 PYTHON     ?= python3.11
 VENV       := backend/.venv
