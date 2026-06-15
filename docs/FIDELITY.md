@@ -42,7 +42,7 @@ without rendering it is ◐, not ✓.
 | heading / outline level | ✓ | |
 | table of contents / bookmarks | ✓ | captured + titles translated + outline rebuilt in PDF #101 |
 | footnote / endnote + reference anchor | ◐ | kept as paragraph, link not preserved |
-| caption ↔ figure/table association | ✗ | |
+| caption ↔ figure/table association | ✓ | bbox proximity bind + reading-order snap (pdf/structured); office paths no-op |
 | running header / footer (per-section, odd/even, first) | ◐ | detected + removed (PR #76); not section-aware |
 | section / column (structural) | ◐ | reading-order only (PR #78); not structural |
 | page / section breaks | ◐ | page geometry kept in reconstruct |

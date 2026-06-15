@@ -197,6 +197,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
     # global reading order across pages
     for i, b in enumerate(sorted(out.blocks, key=lambda b: (b.page, b.reading_order))):
         b.reading_order = i
+    from .base import associate_captions
+    associate_captions(out)     # keep each caption adjacent to its figure/table
     out.blocks.sort(key=lambda b: b.reading_order)
     return out
 

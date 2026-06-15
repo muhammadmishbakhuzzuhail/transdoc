@@ -181,6 +181,8 @@ class Block(BaseModel):
 
     table: Optional[Table] = None        # only for BlockType.TABLE
     image_path: Optional[str] = None     # only for BlockType.FIGURE — extracted image file
+    anchor_id: Optional[str] = None      # CAPTION -> id of the figure/table it describes, so the
+                                         # caption stays adjacent to its media in reading order
     crop_region: bool = False            # layout-detected non-text region: render by cropping
                                          # the source page at bbox (verbatim figure/math/chart)
 
