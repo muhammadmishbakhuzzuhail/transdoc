@@ -155,6 +155,10 @@ def extract_structured(path: str, cfg: Config) -> Document:
                     id=f"p{pno}-r{r.order}", type=BlockType.FIGURE, page=pno,
                     reading_order=len(out.blocks), bbox=bbox, crop_region=True, image_path=str(fn),
                     confidence=Confidence(source="digital")))
+                # Optionally OCR text INSIDE the figure/chart (axis labels, callouts) so it gets
+                # translated too — emitted as OCR blocks positioned within the figure bbox.
+                if getattr(cfg, "ocr_figures", False) and r.label in ("image", "figure", "chart"):
+                    _ocr_figure_region(out, page, rect, pno, cfg)
                 continue
             if r.label == "formula":
                 # Keep the LaTeX (Markdown renders it as $$…$$) AND a verbatim crop so
@@ -212,6 +216,31 @@ def extract_structured(path: str, cfg: Config) -> Document:
     associate_captions(out)     # keep each caption adjacent to its figure/table
     out.blocks.sort(key=lambda b: b.reading_order)
     return out
+
+
+_PT_TO_300 = 300.0 / 72.0
+
+
+def _ocr_figure_region(out, page, rect, pno: int, cfg) -> None:
+    """OCR text inside a figure/chart crop (axis labels, callouts) and emit it as translatable
+    OCR blocks, bboxes mapped to the page in 300-dpi-pixel space (source='ocr' so the renderers
+    scale them back to points). Skips tiny regions (icons) not worth OCRing."""
+    page_area = abs(page.rect.width * page.rect.height) or 1.0
+    if abs(rect.width * rect.height) / page_area < 0.04:
+        return
+    try:
+        from ..ocr import get_ocr
+        pm = page.get_pixmap(clip=rect, dpi=300)
+        ox, oy = rect.x0 * _PT_TO_300, rect.y0 * _PT_TO_300
+        for ob in get_ocr(cfg).recognize_image_bytes(pm.tobytes("png"), cfg, page=pno):
+            if ob.bbox:
+                ob.bbox = BBox(x0=ob.bbox.x0 + ox, y0=ob.bbox.y0 + oy,
+                               x1=ob.bbox.x1 + ox, y1=ob.bbox.y1 + oy)
+            ob.reading_order = len(out.blocks)
+            ob.flags["in_figure"] = "OCR'd from inside a figure/chart"
+            out.blocks.append(ob)
+    except Exception:
+        pass
 
 
 def _region_runs(page, rect):

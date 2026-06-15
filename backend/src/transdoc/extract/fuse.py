@@ -77,7 +77,7 @@ def reconcile(blocks: list[Block]) -> list[Block]:
     nontext = [b for b in blocks if b.type in _NONTEXT and b.bbox]
     survivors: list[Block] = []
     for b in blocks:
-        if b.type in _TEXT and b.bbox:
+        if b.type in _TEXT and b.bbox and "in_figure" not in b.flags:
             cover = next((nt for nt in nontext if _contained(b.bbox, nt.bbox)), None)
             if cover is not None:
                 small = (len(_norm(b.text)) <= 200
