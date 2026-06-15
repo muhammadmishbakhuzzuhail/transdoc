@@ -88,6 +88,9 @@ class Config(BaseModel):
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
     bilingual: bool = False                     # emit source + translation together
     quality_check: bool = False                 # run reference-free QE, flag weak segments
+    verify: bool = False                        # re-extract the rendered output and diff its
+                                                # structure (block/table/figure counts, text
+                                                # length) against the source IR -> report warnings
     ocr_figures: bool = False                   # OCR text inside large embedded images
                                                 # (a scanned image sitting on a digital page)
     layout: str = "auto"                         # "auto" -> PP-StructureV3 structure path when
