@@ -27,6 +27,51 @@ _EXT_TO_FORMAT = {
 
 
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif")
+# Office sources we can render natively then convert to PDF via LibreOffice headless.
+_SOFFICE_EXTS = (".docx", ".pptx", ".xlsx", ".odt", ".epub")
+
+
+def _render_native(doc: Document, cfg: Config, out_path: str, ext: str) -> str:
+    """Render the translated doc to its native office format (the high-fidelity in-place/round-trip
+    renderer), so LibreOffice can then convert that to PDF."""
+    from importlib import import_module
+    if ext == ".docx":
+        src = (doc.source_path or "").lower()
+        mod = "docx_inplace" if (src.endswith(".docx") and not cfg.bilingual) else "docx_out"
+    else:
+        mod = {".pptx": "pptx_out", ".xlsx": "xlsx_out", ".odt": "odt_inplace",
+               ".epub": "epub_out"}[ext]
+    return import_module(f".{mod}", __package__).render(doc, cfg, out_path)
+
+
+def _office_to_pdf(doc: Document, cfg: Config, out_path: str) -> str | None:
+    """DOCX/PPTX/XLSX/ODT/EPUB source -> PDF the industry-standard way: render the translated
+    native file, then LibreOffice headless converts it (keeping the real page layout, far better
+    than reflowing to A4). Returns None when soffice or the source type is unavailable so the
+    caller falls back to the flow renderer."""
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    src = (doc.source_path or "").lower()
+    ext = next((e for e in _SOFFICE_EXTS if src.endswith(e)), None)
+    if not soffice or not ext:
+        return None
+    tmp = tempfile.mkdtemp(prefix="transdoc_soffice_")
+    doc.tmp_dirs.append(tmp)                       # pipeline cleans this after the run
+    native = os.path.join(tmp, "translated" + ext)
+    try:
+        _render_native(doc, cfg, native, ext)
+        subprocess.run([soffice, "--headless", "--convert-to", "pdf", "--outdir", tmp, native],
+                       capture_output=True, timeout=180, check=True)
+        produced = os.path.join(tmp, "translated.pdf")
+        if os.path.exists(produced):
+            shutil.move(produced, out_path)
+            return out_path
+    except Exception:
+        pass
+    return None
 
 
 def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
@@ -94,6 +139,11 @@ def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
         # size/count/positions. Needs source page geometry, so only for a PDF source.
         if fidelity == Fidelity.RECONSTRUCT and src_is_pdf and doc.page_sizes:
             return pdf_out.render_reconstruct(doc, cfg, out_path)
+        # Office source -> PDF: render the translated native file, then LibreOffice -> PDF (keeps
+        # the real layout). Falls back to the A4 flow renderer when soffice/source isn't available.
+        via = _office_to_pdf(doc, cfg, out_path)
+        if via:
+            return via
         return pdf_out.render_flow(doc, cfg, out_path)
 
     raise ValueError(f"unsupported output format: {fmt}")
