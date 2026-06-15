@@ -99,6 +99,13 @@ def extract_structured(path: str, cfg: Config) -> Document:
 
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
+    out.metadata = {k: v for k, v in (doc.metadata or {}).items() if v}
+    try:
+        from ..ir import TocEntry
+        out.toc = [TocEntry(level=int(lv), title=str(ti), page=int(pg))
+                   for lv, ti, pg in (doc.get_toc() or [])]
+    except Exception:
+        pass
     for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
 
