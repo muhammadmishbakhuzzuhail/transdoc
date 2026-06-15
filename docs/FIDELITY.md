@@ -70,7 +70,7 @@ without rendering it is ◐, not ✓.
 |---|---|---|
 | images (position / size) | ✓ | figure crop + placement |
 | vector graphics — lines / rects | ✓ | capture + redraw (PR #71) |
-| vector graphics — curves / beziers | ✓ | capture + redraw bezier #96; dashes ◐ |
+| vector graphics — curves / beziers | ✓ | capture + redraw bezier #96; dashed strokes captured + re-applied |
 | shapes / charts | ◐ | kept as figure crop |
 | AcroForm interactive fields (type/value/label) | ✗ | blank-form value is empty; revisit for filled forms |
 | annotations (comments / highlights / stamps) | ✗ | |
