@@ -129,6 +129,8 @@ class Table(BaseModel):
     rows: list[list[Cell]] = Field(default_factory=list)
     has_header_row: bool = True
     col_widths: list[float] = Field(default_factory=list)   # column widths (pt), if known
+    row_heights: list[float] = Field(default_factory=list)  # row heights (pt), if known
+    cell_margin: Optional[float] = None                     # uniform cell padding (pt), if known
 
 
 Cell.model_rebuild()   # resolve Cell.table -> Table forward reference

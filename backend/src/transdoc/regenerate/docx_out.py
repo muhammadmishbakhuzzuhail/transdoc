@@ -209,6 +209,12 @@ def _render_table(d, table) -> None:
             if w and w > 0 and i < ncols:
                 for cell in t.columns[i].cells:
                     cell.width = Pt(w)
+    if table.row_heights:
+        for i, h in enumerate(table.row_heights):
+            if h and h > 0 and i < len(t.rows):
+                t.rows[i].height = Pt(h)
+    if table.cell_margin and table.cell_margin > 0:
+        _set_table_cell_margin(t, table.cell_margin)
     occupied: set[tuple[int, int]] = set()
     for ri, row in enumerate(rows):
         ci = 0
@@ -247,6 +253,24 @@ def _render_table(d, table) -> None:
                 for cc in range(ci, c2 + 1):
                     occupied.add((rr, cc))
             ci = c2 + 1
+
+
+def _set_table_cell_margin(t, pt) -> None:
+    """Set a uniform tblCellMar (cell padding) on all four edges of the table."""
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        twips = str(int(pt * 20))
+        tblpr = t._tbl.tblPr
+        mar = OxmlElement("w:tblCellMar")
+        for edge in ("top", "left", "bottom", "right"):
+            e = OxmlElement(f"w:{edge}")
+            e.set(qn("w:w"), twips)
+            e.set(qn("w:type"), "dxa")
+            mar.append(e)
+        tblpr.append(mar)
+    except Exception:
+        pass
 
 
 def _fill_hf(part, blocks) -> None:
