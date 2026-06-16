@@ -17,6 +17,11 @@ ESCALATE_BELOW = 0.6
 # leave many weak lines (e.g. Tesseract on a non-Latin scan: most lines ok, a chunk garbled). A
 # stronger engine usually fixes the whole page, so don't settle for a good average with bad tails.
 LOW_FRACTION = 0.25
+# Minimum quality gain to PREFER a different engine's pass over the current best. Confidence is
+# not calibrated across engines — PaddleOCR routinely reports ~0.95 even on wrong recognitions,
+# so a tiny edge isn't evidence it's actually better. Require a real margin before swapping
+# engines, to avoid replacing a correct primary pass with a confident-but-wrong one (audit).
+ESCALATE_MARGIN = 0.1
 
 
 def _avg_conf(blocks: list[Block]) -> float:
@@ -66,11 +71,12 @@ def run_with_escalation(engines: list, img: bytes, cfg: Config, page: int = 0) -
     if not _needs_escalation(best):
         return best
 
-    # 2) escalate through the stronger engines; keep whichever pass is highest quality.
+    # 2) escalate through the stronger engines; swap only when a different engine beats the current
+    #    best by a real MARGIN (cross-engine confidence isn't comparable — see ESCALATE_MARGIN).
     for eng in engines[1:]:
         try:
             alt = eng.recognize_image_bytes(img, cfg, page)
-            if _quality(alt) > _quality(best):
+            if _quality(alt) > _quality(best) + ESCALATE_MARGIN:
                 best = alt
                 if not _needs_escalation(best):
                     break

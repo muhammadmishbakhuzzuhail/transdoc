@@ -52,6 +52,15 @@ def test_escalation_keeps_better_of_the_two():
     assert out[0].text.startswith("tess")
 
 
+def test_marginal_gain_does_not_swap_engines():
+    # tess is weak (escalates), but the stronger engine is only marginally "better" — cross-engine
+    # confidence isn't comparable, so a tiny edge must NOT swap (avoids confident-but-wrong paddle
+    # replacing a correct tesseract pass). 0.35 vs 0.30 is within ESCALATE_MARGIN.
+    e = _engine(tess_conf=0.30, strong_conf=0.35)
+    out = e.recognize_image_bytes(b"", CFG)
+    assert out[0].text.startswith("tess")
+
+
 def test_no_strong_engine_falls_back_to_tesseract():
     e = _engine(tess_conf=0.30, strong_conf=None)   # paddle not installed
     out = e.recognize_image_bytes(b"", CFG)
