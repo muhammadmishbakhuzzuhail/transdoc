@@ -7,6 +7,7 @@ source term maps to one target rendering everywhere.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Protocol
 
@@ -103,6 +104,18 @@ def _auto_glossary_terms(texts: list[str], min_count: int = 2,
     return sorted((term for term, n in c.items() if n >= min_count), key=len, reverse=True)
 
 
+def _ctx_hash(texts: list[str], i: int, w: int) -> str:
+    """Stable hash of segment i's SOURCE neighbour window (w before + w after, excluding i itself).
+    The cache key for context-aware LLM translation: same segment + same neighbours -> same key, so
+    a deterministic re-run hits the cache, while a different context translates afresh. '' when w=0."""
+    if w <= 0:
+        return ""
+    before = texts[max(0, i - w):i]
+    after = texts[i + 1:i + 1 + w]
+    raw = "\x00".join([*before, "\x01", *after])
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
 def _collect_cells(table, items: list) -> None:
     """Collect translatable cell texts, recursing into nested tables."""
     for row in table.rows:
@@ -173,21 +186,36 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
                 pass            # auto-glossary is best-effort; never block the main translation
 
     # doc-context engines (e.g. the Ollama LLM) translate the ORDERED segments with a sliding window
-    # of translated neighbours, so coherence + terminology hold across the document. No dedupe/TM
-    # here — each position is translated in its own context (PR-A1; context-hash caching is PR-A2).
-    # The engine HARD-FAILS on error (raises) rather than silently keeping the source.
+    # of translated neighbours, so coherence + terminology hold across the document. The engine
+    # HARD-FAILS on error (raises) rather than silently keeping the source. Caching is keyed by a
+    # hash of each segment's SOURCE neighbour window (context-hash, PR-A2): the same segment in a
+    # different context caches separately, and a re-run of the same document (deterministic, temp=0)
+    # is a full cache hit. Translation needs the neighbours, so when anything is missing the whole
+    # ordered list is (re)translated and every segment stored — partial mid-document reuse is skipped.
     if getattr(tr, "doc_context", False):
-        protector = Protector(extra=list(glossary.keys()))
-        protected, maps = [], []
-        for t in texts:
-            p, m = protector.protect(t)
-            protected.append(p)
-            maps.append(m)
-        seg = tr.translate_segments(protected, cfg, src=doc.source_lang)
-        if cfg.localize:
-            from .localize import localize_numbers
-            seg = [localize_numbers(t, target) for t in seg]
-        out = [protector.restore(t, m) for t, m in zip(seg, maps)]
+        src_lang = doc.source_lang or ""
+        ctx_domain = "" if cfg.domain in ("", "auto") else cfg.domain
+        w = max(0, cfg.llm_context_window)
+        ctxs = [_ctx_hash(texts, i, w) for i in range(len(texts))]
+        ptm = PersistentTM.get() if getattr(tr, "cacheable_context", True) else None
+        cached = ptm.get_segments(list(zip(texts, ctxs)), target, src_lang, ctx_domain) if ptm else {}
+        if all((texts[i], ctxs[i]) in cached for i in range(len(texts))):
+            out = [cached[(texts[i], ctxs[i])] for i in range(len(texts))]
+        else:
+            protector = Protector(extra=list(glossary.keys()))
+            protected, maps = [], []
+            for t in texts:
+                p, m = protector.protect(t)
+                protected.append(p)
+                maps.append(m)
+            seg = tr.translate_segments(protected, cfg, src=doc.source_lang)
+            if cfg.localize:
+                from .localize import localize_numbers
+                seg = [localize_numbers(t, target) for t in seg]
+            out = [protector.restore(t, m) for t, m in zip(seg, maps)]
+            if ptm:
+                ptm.put_segments([(texts[i], ctxs[i], out[i]) for i in range(len(texts))],
+                                 target, src_lang, ctx_domain)
     else:
         # 1a) dedupe identical segments via TM -> translate each unique string once
         tm = TranslationMemory()
