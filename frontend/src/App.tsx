@@ -1,9 +1,11 @@
-import { AlertCircle, ChevronDown, Languages, Loader2 } from "lucide-react"
+import { AlertCircle, Languages, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
 import { PreviewPanel } from "@/components/PreviewPanel"
+import { ReviewView } from "@/components/ReviewView"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   type Analysis, getAnalysis, getHealth, getJob, type Health, type JobStatus, startTranslate,
 } from "@/lib/api"
@@ -13,7 +15,6 @@ export default function App() {
   const [job, setJob] = useState<JobStatus | null>(null)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showDetails, setShowDetails] = useState(false)
   const poll = useRef<number | null>(null)
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export default function App() {
   const busy = job?.status === "queued" || job?.status === "running"
 
   async function submit(file: File, v: FormValues) {
-    setError(null); setAnalysis(null); setJob(null); setShowDetails(false)
+    setError(null); setAnalysis(null); setJob(null)
     const fd = new FormData()
     fd.append("file", file)
     Object.entries(v).forEach(([k, val]) => fd.append(k, String(val)))
@@ -96,20 +97,23 @@ export default function App() {
         </Card>
       )}
 
-      {/* DeepL-style result: before/after preview + Download is the whole beginner flow. */}
-      {analysis && job?.status === "done" && <PreviewPanel jid={job.job_id} />}
-
-      {/* Everything technical (flags, glossary, profile, repairs) is opt-in, not in a
-          beginner's face. */}
-      {analysis && job && (
-        <div>
-          <button type="button" onClick={() => setShowDetails((s) => !s)}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <ChevronDown className={`h-4 w-4 transition-transform ${showDetails ? "rotate-180" : ""}`} />
-            {showDetails ? "Hide details" : "Show details & analysis"}
-          </button>
-          {showDetails && <div className="mt-4"><AnalysisView jid={job.job_id} a={analysis} /></div>}
-        </div>
+      {/* Review-first: once a job is done, the CAT-grade segment review is the default screen;
+          before/after preview, analysis and download live behind secondary tabs. */}
+      {job?.status === "done" && (
+        <Tabs defaultValue="review" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="review">Review</TabsTrigger>
+            <TabsTrigger value="preview">Before & after</TabsTrigger>
+            <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          </TabsList>
+          <TabsContent value="review"><ReviewView jid={job.job_id} /></TabsContent>
+          <TabsContent value="preview"><PreviewPanel jid={job.job_id} /></TabsContent>
+          <TabsContent value="analysis">
+            {analysis
+              ? <AnalysisView jid={job.job_id} a={analysis} />
+              : <p className="py-6 text-sm text-muted-foreground">Analysis unavailable.</p>}
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   )
