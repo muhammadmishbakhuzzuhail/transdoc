@@ -25,7 +25,7 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table \
+        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency \
         serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
@@ -97,6 +97,12 @@ eval-preserve:
 #   make eval-table ARGS="path/to/doc.pdf"
 eval-table:
 	cd backend && .venv/bin/python -m scripts.eval_table $(ARGS)
+
+# Terminology consistency: does a repeated term get the same target rendering across contexts?
+# (1.0 = consistent.) Measure-before-build for glossary auto-extraction. Online. Pass langs via ARGS.
+#   make eval-consistency ARGS="fr de id"
+eval-consistency:
+	cd backend && .venv/bin/python -m scripts.eval_consistency $(ARGS)
 
 # LLM-as-judge: Claude vision scores extraction vs the source image (automates the manual
 # vision-QA audit). Needs ANTHROPIC_API_KEY + the [llm] extra. Online + costs tokens.
