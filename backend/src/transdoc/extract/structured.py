@@ -47,25 +47,57 @@ _LABEL = {
 _CROP = {"image", "figure", "chart", "seal", "stamp"}
 
 
+def _cell_align(style: str | None) -> str | None:
+    m = re.search(r"text-align\s*:\s*(left|right|center)", style or "", re.I)
+    return m.group(1).lower() if m else None
+
+
+def _table_from_soup(tbl) -> Table | None:
+    """Build an IR Table from a bs4 <table>, scoped to THIS table's own rows/cells (so a nested
+    table's rows aren't double-counted), recovering merged spans, header rows (<th>/<thead>), and
+    nested tables (<table> inside a <td>) instead of flattening them to text."""
+    rows: list[list[Cell]] = []
+    header_first = False
+    for tr in tbl.find_all("tr"):
+        if tr.find_parent("table") is not tbl:        # belongs to a nested table
+            continue
+        cells: list[Cell] = []
+        ths = 0
+        for c in tr.find_all(["td", "th"]):
+            if c.find_parent("table") is not tbl:     # cell of a nested table
+                continue
+            inner = c.find("table")
+            nested = _table_from_soup(inner) if inner else None
+            is_th = c.name == "th"
+            ths += is_th
+            cells.append(Cell(
+                text="" if nested else c.get_text(" ", strip=True),
+                rowspan=int(c.get("rowspan", 1) or 1),
+                colspan=int(c.get("colspan", 1) or 1),
+                bold=is_th or bool(c.find(["b", "strong"])),
+                align=c.get("align") or _cell_align(c.get("style")),
+                table=nested,
+            ))
+        if cells:
+            if not rows and ths == len(cells):        # first row is all <th> -> header row
+                header_first = True
+            rows.append(cells)
+    if not rows:
+        return None
+    return Table(rows=rows, has_header_row=header_first or tbl.find("thead") is not None)
+
+
 def _parse_table_html(html: str) -> Table | None:
-    """PP-StructureV3 emits each table as HTML; turn it into IR rows of Cells (translatable,
-    grid preserved). Returns None if it can't be parsed (caller then crops the region)."""
+    """PP-StructureV3 emits each table as HTML; turn it into IR rows of Cells (translatable, grid +
+    spans + header + nested tables preserved). Returns None if unparseable (caller then crops)."""
     if not html or "<" not in html:
         return None
     try:
         from bs4 import BeautifulSoup
     except ImportError:
         return None
-    soup = BeautifulSoup(html, "html.parser")
-    rows: list[list[Cell]] = []
-    for tr in soup.find_all("tr"):
-        cells = [Cell(text=td.get_text(" ", strip=True),
-                      rowspan=int(td.get("rowspan", 1) or 1),
-                      colspan=int(td.get("colspan", 1) or 1))
-                 for td in tr.find_all(["td", "th"])]
-        if cells:
-            rows.append(cells)
-    return Table(rows=rows) if rows else None
+    tbl = BeautifulSoup(html, "html.parser").find("table")
+    return _table_from_soup(tbl) if tbl is not None else None
 # Page furniture we drop from a clean reflow.
 _SKIP = {"header", "footer", "number", "page_number", "formula_number", "header_image",
          "aside_text"}

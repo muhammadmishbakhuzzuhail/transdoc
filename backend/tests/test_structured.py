@@ -82,6 +82,30 @@ def test_table_html_parsed_to_cells(monkeypatch, tmp_path):
     assert [c.text for c in rows[1]] == ["a", "1", "2"]
 
 
+def test_parse_table_header_span_nested():
+    pytest.importorskip("bs4")
+    from transdoc.extract.structured import _parse_table_html
+
+    # <th> first row -> header + bold; colspan preserved
+    t = _parse_table_html(
+        "<table><tr><th>Name</th><th>Val</th></tr><tr><td colspan=2>merged</td></tr></table>")
+    assert t.has_header_row is True
+    assert all(c.bold for c in t.rows[0])
+    assert t.rows[1][0].colspan == 2
+
+    # nested <table> inside a cell -> Cell.table populated, NOT flattened, rows not double-counted
+    n = _parse_table_html(
+        "<table><tr><td>outer</td>"
+        "<td><table><tr><td>i1</td><td>i2</td></tr></table></td></tr></table>")
+    assert len(n.rows) == 1 and len(n.rows[0]) == 2          # outer not inflated by inner row
+    assert n.rows[0][1].table is not None
+    assert len(n.rows[0][1].table.rows[0]) == 2
+
+    # plain table (no <th>) -> header flag is False (was hard-coded True before)
+    p = _parse_table_html("<table><tr><td>a</td><td>b</td></tr></table>")
+    assert p.has_header_row is False
+
+
 class _InlineMathExtractor:
     def extract_pages(self, fdoc, pnos):
         # bbox in an empty area (no digital text there) so we test content selection
