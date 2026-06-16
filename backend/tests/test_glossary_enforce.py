@@ -34,6 +34,22 @@ def test_auto_glossary_terms_mining():
     assert _auto_glossary_terms(["The quick brown fox.", "A lazy dog."]) == []
 
 
+def test_auto_glossary_skips_capitalized_words_for_noun_capitalizing_langs():
+    """German capitalizes EVERY common noun, so an initial capital is not a proper-noun signal.
+    The single-Capitalized-word pass would mine ordinary nouns ("Mark", "Posten") and pin a wrong
+    standalone rendering; it must be skipped for German/Luxembourgish. Acronyms still mine (the
+    all-caps shape is language-independent)."""
+    from transdoc.translate.base import _auto_glossary_terms
+    texts = ["1 Mark 50 Pfennig", "4 Mark 80 Pfennig",        # currency nouns -> must NOT mine
+             "Front bei Arras", "An der Front",                # ordinary noun -> must NOT mine
+             "Bericht der NATO", "NATO meldet"]                # acronym -> still mines
+    de = _auto_glossary_terms(texts, src="de")
+    assert de == ["NATO"]                                      # only the acronym
+    # English (proper-noun-signalling): the same shape still mines capitalized words
+    en = _auto_glossary_terms(["Mark arrived", "Mark left", "NATO meldet", "NATO again"], src="en")
+    assert "Mark" in en and "NATO" in en
+
+
 class _DriftEngine:
     """Real-ish engine: keeps the proper noun verbatim in prose, and renders it canonically when
     asked in isolation — so only the auto-glossary can enforce one rendering everywhere."""

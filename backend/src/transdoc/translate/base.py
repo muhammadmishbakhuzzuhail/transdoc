@@ -60,19 +60,32 @@ _CAP_STOP = {
     "Both", "Such", "They", "Their", "His", "Her", "Our", "Your", "Its", "It", "If", "In", "On",
     "At", "As", "An", "Article", "Everyone", "No", "One",
 }
+# Languages that capitalize EVERY common noun (not just proper nouns). There, an initial capital
+# carries no proper-noun signal, so the single-Capitalized-word heuristic below would mine ordinary
+# nouns ("Mark", "Posten", "Zeitung") and pin a wrong standalone rendering that overrides their
+# correct in-context translation. Skip that heuristic for these source languages — only the
+# language-independent ALL-CAPS acronym pass runs. (German-noun-capitalization audit)
+_NOUN_CAPS_LANGS = {"de", "lb"}        # German, Luxembourgish (historically also Danish pre-1948)
 
 
-def _auto_glossary_terms(texts: list[str], min_count: int = 2) -> list[str]:
+def _auto_glossary_terms(texts: list[str], min_count: int = 2,
+                         src: str | None = None) -> list[str]:
     """Mine recurring (>= min_count) proper nouns whose rendering is safe to pin document-wide:
     ALL-CAPS acronyms, and single Capitalized words that are NEVER seen lowercased ("Transdoc",
     "Photoshop"). Deliberately conservative — excluded: sentence-start stopwords; any word that
     also appears lowercase (common nouns inflect legitimately); and any word that sits inside a
     multi-word Capitalized run (pinning one word of a name in isolation could mistranslate it,
-    e.g. "Face" -> "Visage" inside "Hugging Face"). Multi-word names are left to the user glossary."""
+    e.g. "Face" -> "Visage" inside "Hugging Face"). Multi-word names are left to the user glossary.
+
+    The single-Capitalized-word pass assumes an initial capital signals a proper noun — true for
+    English/French/Spanish/Indonesian/... but FALSE for German/Luxembourgish, which capitalize every
+    common noun. For those source languages it is skipped (it would pin ordinary nouns to a wrong
+    standalone rendering); only the language-independent acronym pass runs there."""
     from collections import Counter
     c: Counter = Counter()
     lowered: set[str] = set()
     run_words: set[str] = set()
+    cap_words_signal_proper = (src or "").split("-")[0].lower() not in _NOUN_CAPS_LANGS
     for t in texts:
         for m in _WORD.findall(t):
             if m.islower():
@@ -82,6 +95,8 @@ def _auto_glossary_terms(texts: list[str], min_count: int = 2) -> list[str]:
     for t in texts:
         for m in _ACRONYM.findall(t):
             c[m] += 1
+        if not cap_words_signal_proper:
+            continue
         for m in _CAP_WORD.findall(t):
             if m not in _CAP_STOP and m.lower() not in lowered and m not in run_words:
                 c[m] += 1
@@ -147,7 +162,7 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     #    legitimate), only when the engine is real (echo is non-cacheable), and only when the
     #    canonical rendering actually differs from the source. User glossary entries always win.
     if getattr(cfg, "auto_glossary", True) and getattr(tr, "cacheable", True):
-        auto = [t for t in _auto_glossary_terms(texts) if t not in glossary]
+        auto = [t for t in _auto_glossary_terms(texts, src=doc.source_lang) if t not in glossary]
         if auto:
             try:
                 for term, ren in zip(auto, tr.translate_batch(auto, cfg, src=doc.source_lang)):

@@ -86,7 +86,14 @@ class TesseractOCR:
         avail = set(_avail_langs())
         wanted: list[str] = []
         if cfg.source_lang and cfg.source_lang != "auto":
-            wanted.append(TESS_LANG.get(cfg.source_lang, cfg.source_lang))
+            pack = TESS_LANG.get(cfg.source_lang, cfg.source_lang)
+            wanted.append(pack)
+            # German historical print is often Fraktur (blackletter). The antiqua `deu` model
+            # garbles it — ß->B, long-s->f, dropped ligatures — which then cascades into
+            # mistranslation ("Zeitung"->"Zeltung"->tent). The deu_frak model reads blackletter;
+            # run both so tesseract picks the better per line. (newspaper_scan Fraktur audit)
+            if pack == "deu" and "deu_frak" in avail:
+                wanted.append("deu_frak")
         elif detected:                       # auto source -> OSD-detected script pack
             wanted.append(detected)
         # Add English only as a genuine fallback (Latin / unknown). Adding "eng" to a non-Latin
