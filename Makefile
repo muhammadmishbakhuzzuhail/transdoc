@@ -12,9 +12,10 @@
 #
 # OCR system deps (install via your package manager, not pip):
 #   tesseract-ocr                          base engine
-#   tesseract-ocr-script-latn              Latin script model — reads diacritics (ç/ã/é/...) the
-#                                          bare eng pack drops (portuguese CER 3% -> 0.04%)
-#   tesseract-ocr-{ell,ara,...}            per-script packs for non-Latin scans
+#   tesseract-ocr-script-{latn,grek,cyrl}  per-script models — read every language of a script,
+#                                          far better than the lang packs (portuguese 3->0.04,
+#                                          greek 2.7->1.5, russian 0.5->0.25 CER). Auto-preferred.
+#   tesseract-ocr-{ell,ara,hin,...}        language-pack fallback when a script model isn't present
 
 PYTHON     ?= python3.11
 VENV       := backend/.venv
