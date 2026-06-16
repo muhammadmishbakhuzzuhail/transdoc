@@ -42,7 +42,12 @@ class OllamaTranslator:
     _BACKOFF = 1.5              # seconds, multiplied per attempt
 
     def _host(self, cfg: Config) -> str:
-        return (os.environ.get("OLLAMA_HOST") or cfg.ollama_host).rstrip("/")
+        # OLLAMA_HOST (Ollama's own convention) is often scheme-less "host:port"; urllib needs a
+        # scheme, so default to http:// when none is given.
+        h = (os.environ.get("OLLAMA_HOST") or cfg.ollama_host).rstrip("/")
+        if not h.startswith(("http://", "https://")):
+            h = "http://" + h
+        return h
 
     def _system(self, cfg: Config, src: str | None) -> str:
         gl = ""
@@ -105,60 +110,69 @@ class OllamaTranslator:
             out.append(str(table[i]))
         return out
 
-    def _translate_chunk(self, cfg: Config, src: str | None, chunk: list[tuple[str, str]],
-                         prev_pairs: list[tuple[str, str]], following: list[str]) -> list[str]:
-        """chunk: [(id, source)]; prev_pairs: [(source, translation)] carried context; following:
-        next source segments (read-only). Returns translations in chunk order; retries then fails."""
+    def _translate_once(self, cfg: Config, src: str | None, chunk: list[tuple[str, str]],
+                        prev_pairs: list[tuple[str, str]], following: list[str]) -> list[str]:
+        """One model call for a chunk. chunk: [(id, source)]; prev_pairs: [(source, translation)]
+        carried context; following: next source segments (read-only). Returns translations in chunk
+        order, or raises OllamaError if the response can't be aligned 1:1 to the requested ids."""
         user = json.dumps({
             "context_before": [{"source": s, "translation": t} for s, t in prev_pairs],
             "items": [{"id": i, "text": s} for i, s in chunk],
             "context_after": following,
         }, ensure_ascii=False)
-        system = self._system(cfg, src)
-        ids = [i for i, _ in chunk]
-        last: Exception | None = None
-        for attempt in range(self._RETRIES + 1):
-            content = self._call(cfg, system, user)        # _call has its own transport retries
-            try:
-                return self._parse(content, ids)
-            except (OllamaError, json.JSONDecodeError, ValueError) as e:
-                last = e
-                if attempt < self._RETRIES:
-                    time.sleep(self._BACKOFF * (attempt + 1))
-        raise OllamaError(f"alignment failed after retries: {last}")
+        content = self._call(cfg, self._system(cfg, src), user)
+        try:
+            return self._parse(content, [i for i, _ in chunk])
+        except (OllamaError, json.JSONDecodeError, ValueError) as e:
+            raise OllamaError(str(e)) from e
+
+    def _translate_span(self, cfg: Config, src: str | None, texts: list[str],
+                        results: list[str | None], lo: int, hi: int) -> None:
+        """Translate texts[lo:hi] in place into `results`, carrying translated neighbours as context.
+        On an alignment failure the span is SPLIT and each half retried (retrying the same prompt at
+        temperature 0 would just reproduce the failure); a single segment that still fails to align
+        hard-fails (no silent fallback). This keeps one dropped id from sinking the whole document."""
+        w = max(0, cfg.llm_context_window)
+        chunk = [(str(i), texts[i]) for i in range(lo, hi)]
+        prev_pairs = [(texts[j], results[j]) for j in range(max(0, lo - w), lo)
+                      if results[j] is not None]
+        following = texts[hi:hi + w]
+        try:
+            out = self._translate_once(cfg, src, chunk, prev_pairs, following)
+            for i, t in zip(range(lo, hi), out):
+                results[i] = t
+        except OllamaError:
+            if hi - lo <= 1:
+                raise
+            mid = (lo + hi) // 2
+            self._translate_span(cfg, src, texts, results, lo, mid)
+            self._translate_span(cfg, src, texts, results, mid, hi)
 
     def translate_segments(self, texts: list[str], cfg: Config,
                            src: str | None = None) -> list[str]:
-        """Context-aware path: translate ORDERED document segments, carrying translated neighbours."""
+        """Context-aware path: translate ORDERED document segments, carrying translated neighbours.
+        Packs segments into token-budget chunks; a chunk that fails id-alignment is split + retried."""
         if not texts:
             return []
-        w = max(0, cfg.llm_context_window)
         char_budget = max(2000, cfg.ollama_num_ctx * 2)     # rough: ~2 chars/token of input room
-        results: list[str] = []
+        results: list[str | None] = [None] * len(texts)
         i = 0
         while i < len(texts):
-            # pack a chunk under the char budget (at least one segment)
-            chunk: list[tuple[str, str]] = []
-            size = 0
-            while i + len(chunk) < len(texts):
-                s = texts[i + len(chunk)]
-                if chunk and size + len(s) > char_budget:
-                    break
-                chunk.append((str(i + len(chunk)), s))
-                size += len(s)
-            start = i
-            end = start + len(chunk)
-            prev_pairs = [(texts[j], results[j]) for j in range(max(0, start - w), start)]
-            following = texts[end:end + w]
-            results.extend(self._translate_chunk(cfg, src, chunk, prev_pairs, following))
+            end = i + 1
+            size = len(texts[i])
+            while end < len(texts) and size + len(texts[end]) <= char_budget:
+                size += len(texts[end])
+                end += 1
+            self._translate_span(cfg, src, texts, results, i, end)
             i = end
-        return results
+        return [r if r is not None else "" for r in results]
 
     def translate_batch(self, texts: list[str], cfg: Config,
                         src: str | None = None) -> list[str]:
         """Segment-independent path (used for auto-glossary term renderings + as a generic API).
-        No carried context; still id-aligned JSON."""
+        No carried context; still id-aligned JSON, split-on-misalignment."""
         if not texts:
             return []
-        chunk = [(str(n), t) for n, t in enumerate(texts)]
-        return self._translate_chunk(cfg, src, chunk, [], [])
+        results: list[str | None] = [None] * len(texts)
+        self._translate_span(cfg, src, texts, results, 0, len(texts))
+        return [r if r is not None else t for r, t in zip(results, texts)]

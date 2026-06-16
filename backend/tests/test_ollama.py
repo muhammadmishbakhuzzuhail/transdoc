@@ -68,19 +68,28 @@ def test_sliding_window_carries_previous_translations(monkeypatch):
     assert record[0]["context_after"] and record[0]["context_after"][0] == texts[1]
 
 
-def test_alignment_mismatch_hard_fails(monkeypatch):
-    calls = {"n": 0}
-    base = _fake_call_factory(drop_id="1")
-
-    def counting(self, cfg, system, user):
-        calls["n"] += 1
-        return base(self, cfg, system, user)
-
-    monkeypatch.setattr(OllamaTranslator, "_call", counting)
+def test_alignment_mismatch_single_segment_hard_fails(monkeypatch):
+    # id "1" is ALWAYS dropped, even alone -> splitting can't recover -> hard-fail (no silent fallback)
+    monkeypatch.setattr(OllamaTranslator, "_call", _fake_call_factory(drop_id="1"))
     monkeypatch.setattr("time.sleep", lambda *_: None)
     with pytest.raises(OllamaError):
         OllamaTranslator().translate_segments(["a", "b", "c"], Config(target_lang="id"))
-    assert calls["n"] == OllamaTranslator._RETRIES + 1            # retried then hard-failed
+
+
+def test_alignment_failure_recovers_by_splitting(monkeypatch):
+    # the model drops an id only in MULTI-item batches; splitting down to singles recovers all.
+    def _call(self, cfg, system, user):
+        items = json.loads(user)["items"]
+        out = {}
+        for it in items:
+            if it["id"] == "1" and len(items) > 1:      # flaky only in a batch
+                continue
+            out[it["id"]] = "T:" + it["text"]
+        return json.dumps({"translations": out})
+
+    monkeypatch.setattr(OllamaTranslator, "_call", _call)
+    out = OllamaTranslator().translate_segments(["a", "b", "c"], Config(target_lang="id"))
+    assert out == ["T:a", "T:b", "T:c"]                 # split recovered the dropped segment
 
 
 def test_doc_context_path_through_translate_document(monkeypatch):
