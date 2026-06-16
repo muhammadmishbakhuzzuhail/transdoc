@@ -25,3 +25,22 @@ def test_diagnose_only_produces_no_output(tmp_path):
     res = run(str(src), Config(target_lang="id", engine=Engine.ECHO, mode=Mode.DIAGNOSE))
     assert res.output_path is None
     assert res.report_text
+
+
+def test_run_records_per_stage_timings(tmp_path):
+    src = tmp_path / "in.txt"
+    src.write_text("Hello world.\n\nSecond paragraph.\n", encoding="utf-8")
+    res = run(str(src), Config(target_lang="id", engine=Engine.ECHO,
+                               output_format=OutputFormat.MARKDOWN), str(tmp_path / "o.md"))
+    # observability: each pipeline stage is timed and surfaced in the report
+    assert {"detect", "extract", "translate", "regenerate"} <= set(res.timings)
+    assert all(v >= 0 for v in res.timings.values())
+    assert "## Timing" in res.report_text
+
+
+def test_diagnose_mode_also_timed(tmp_path):
+    src = tmp_path / "in.txt"
+    src.write_text("Hello world.\n", encoding="utf-8")
+    res = run(str(src), Config(target_lang="id", engine=Engine.ECHO, mode=Mode.DIAGNOSE))
+    assert "detect" in res.timings and "extract" in res.timings
+    assert "## Timing" in res.report_text

@@ -6,7 +6,10 @@ gated by MODE (full / reconstruct-only / translate-only / diagnose-only).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import contextlib
+import logging
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .config import Config, Fidelity, Mode, OutputFormat
@@ -17,6 +20,8 @@ from .ir import Document
 from .regenerate import regenerate
 from .report import build_report
 
+log = logging.getLogger("transdoc.pipeline")
+
 
 @dataclass
 class Result:
@@ -24,6 +29,27 @@ class Result:
     output_path: str | None
     report_path: str | None
     report_text: str
+    timings: dict[str, float] = field(default_factory=dict)   # per-stage wall-clock (seconds)
+
+
+@contextlib.contextmanager
+def _stage(timings: dict[str, float], name: str):
+    """Time a pipeline stage: record wall-clock into `timings` and emit a structured log line.
+    Observability — lets a slow/failing run be attributed to a specific stage without a profiler."""
+    t0 = time.perf_counter()
+    try:
+        yield
+    finally:
+        dt = time.perf_counter() - t0
+        timings[name] = timings.get(name, 0.0) + dt
+        log.info("stage=%s seconds=%.3f", name, dt)
+
+
+def _timing_report(timings: dict[str, float]) -> str:
+    if not timings:
+        return ""
+    rows = "\n".join(f"- {k}: {v:.3f}s" for k, v in timings.items())
+    return f"\n\n## Timing\n{rows}\n- **total: {sum(timings.values()):.3f}s**"
 
 
 _ZIP_KINDS = {"docx", "xlsx", "pptx", "epub", "odt"}
@@ -34,9 +60,11 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     from .limits import apply_pil_cap, check_file_size, check_pages, check_zip_bomb
     apply_pil_cap()
     check_file_size(input_path)
+    timings: dict[str, float] = {}
 
     # --- Ingest + detect ---
-    det = detect(input_path)
+    with _stage(timings, "detect"):
+        det = detect(input_path)
 
     if det.mime == "application/pdf":
         import fitz
@@ -58,26 +86,28 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
             cfg.layout = "off"                  # standard extract -> bboxes match for redaction
 
     # --- Extract -> IR ---
-    doc = extract_ir(det, cfg)
+    with _stage(timings, "extract"):
+        doc = extract_ir(det, cfg)
 
     # Normalize extracted text: de-hyphenate line breaks, fold ligatures, NFC. PyMuPDF leaves
     # words split across line breaks ("inter-\nnational") and most ligatures intact, which
     # degrade both fidelity and translation. (research 2026-06-15)
-    from .extract.textnorm import normalize_doc
-    normalize_doc(doc)
-
     # Drop running headers/footers/page-numbers detected by cross-page repetition in the
     # margins — noise on a reflow + wasted translation calls. (research 2026-06-15)
-    from .extract.furniture import drop_repeated
-    drop_repeated(doc)
+    with _stage(timings, "normalize"):
+        from .extract.furniture import drop_repeated
+        from .extract.textnorm import normalize_doc
+        normalize_doc(doc)
+        drop_repeated(doc)
 
     # --- Phase 1: Diagnose ---
-    diagnose(doc, det, cfg)
+    with _stage(timings, "diagnose"):
+        diagnose(doc, det, cfg)
 
     if cfg.mode == Mode.DIAGNOSE:
-        report = build_report(doc, cfg)
+        report = build_report(doc, cfg) + _timing_report(timings)
         _cleanup_tmp(doc)
-        return Result(doc, None, None, report)
+        return Result(doc, None, None, report, timings)
 
     # --- Phase 2: Reconstruct (OCR repair) — applied inline in extractors today;
     #     dedicated repair pass is a TODO hook here. ---
@@ -87,10 +117,11 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         # render source text by treating source as output
         for b in doc.blocks:
             b.translated = None  # ensure source text is rendered
-        regenerate(doc, cfg, outp)
-        report = build_report(doc, cfg)
+        with _stage(timings, "regenerate"):
+            regenerate(doc, cfg, outp)
+        report = build_report(doc, cfg) + _timing_report(timings)
         _cleanup_tmp(doc)
-        return Result(doc, outp, None, report)
+        return Result(doc, outp, None, report, timings)
 
     # --- Phases 3-5: Terminology + Translate + Self-review ---
     cfg.require_target()
@@ -107,40 +138,42 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     from .translate import get_translator, translate_document
 
     tr = get_translator(cfg)
-    translate_document(doc, tr, cfg)
-
-    # Phase 5a: recompute text direction from the TRANSLATED text. An LTR source translated into
-    # an RTL target (Arabic/Hebrew/...) must now flow right-to-left, so set Style.rtl from the
-    # output before rendering (the renderers already honour style.rtl).
-    from .textdir import apply_text_direction
-
-    apply_text_direction(doc, cfg)
+    with _stage(timings, "translate"):
+        translate_document(doc, tr, cfg)
+        # Phase 5a: recompute text direction from the TRANSLATED text. An LTR source translated
+        # into an RTL target (Arabic/Hebrew/...) must now flow right-to-left — set Style.rtl from
+        # the output before rendering (the renderers already honour style.rtl).
+        from .textdir import apply_text_direction
+        apply_text_direction(doc, cfg)
 
     # Phase 5b: optional reference-free quality estimation -> flag weak segments
     if cfg.quality_check:
-        from .translate.quality import annotate_quality
-
-        annotate_quality(doc, cfg)
+        with _stage(timings, "quality_check"):
+            from .translate.quality import annotate_quality
+            annotate_quality(doc, cfg)
 
     # --- Phase 6: Regenerate + Report ---
     outp = _resolve_out(input_path, cfg, out_path)
-    regenerate(doc, cfg, outp)
+    with _stage(timings, "regenerate"):
+        regenerate(doc, cfg, outp)
 
     # Phase 6b: optional post-render verification — re-extract the output and diff its structure
     # against the source IR, surfacing content-loss warnings in the report.
     verify_warnings: list[str] = []
     if getattr(cfg, "verify", False):
-        from .verify import verify_output
-        verify_warnings = verify_output(doc, outp, cfg)
+        with _stage(timings, "verify"):
+            from .verify import verify_output
+            verify_warnings = verify_output(doc, outp, cfg)
 
     report = build_report(doc, cfg)
     if verify_warnings:
         report += "\n\n## Post-render verification\n" + "\n".join(
             f"- {w}" for w in verify_warnings)
+    report += _timing_report(timings)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
     Path(report_path).write_text(report, encoding="utf-8")
     _cleanup_tmp(doc)
-    return Result(doc, outp, report_path, report)
+    return Result(doc, outp, report_path, report, timings)
 
 
 def _cleanup_tmp(doc) -> None:
