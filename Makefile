@@ -25,7 +25,7 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve \
+        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table \
         serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
@@ -91,6 +91,12 @@ eval-translate:
 #   make eval-preserve ARGS="--show fr ar ja"
 eval-preserve:
 	cd backend && .venv/bin/python -m scripts.eval_preserve $(ARGS)
+
+# Table-structure accuracy (TEDS-Struct) vs <stem>.tables.html reference sidecars — scores the
+# extracted grid (rows/cells/spans), which the cell-count gate can't. Bring your own references.
+#   make eval-table ARGS="path/to/doc.pdf"
+eval-table:
+	cd backend && .venv/bin/python -m scripts.eval_table $(ARGS)
 
 # LLM-as-judge: Claude vision scores extraction vs the source image (automates the manual
 # vision-QA audit). Needs ANTHROPIC_API_KEY + the [llm] extra. Online + costs tokens.

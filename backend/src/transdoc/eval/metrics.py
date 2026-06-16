@@ -80,6 +80,47 @@ def wer(ref: str, hyp: str) -> float:
     return edit_distance(rw, hw) / len(rw)
 
 
+# --------------------------------------------------------------------------- tables
+
+
+def _ir_table_tokens(table) -> list[str]:
+    """IR Table -> ordered structural tokens (row markers + per-cell span signature). Captures
+    grid shape + merged-cell spans, ignores cell text (this is TEDS-Struct)."""
+    toks: list[str] = []
+    for row in table.rows:
+        toks.append("<tr>")
+        for c in row:
+            toks.append(f"<c r{getattr(c, 'rowspan', 1)} c{getattr(c, 'colspan', 1)}>")
+    return toks
+
+
+def _html_table_tokens(html: str) -> list[str]:
+    """Reference HTML table -> the same structural token sequence."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html or "", "html.parser")
+    toks: list[str] = []
+    for tr in soup.find_all("tr"):
+        toks.append("<tr>")
+        for cell in tr.find_all(["td", "th"]):
+            r = int(cell.get("rowspan", 1) or 1)
+            c = int(cell.get("colspan", 1) or 1)
+            toks.append(f"<c r{r} c{c}>")
+    return toks
+
+
+def table_teds(ref_html: str, hyp_table) -> float:
+    """Table-structure similarity (0..1, 1 = identical grid), a dependency-free TEDS-Struct
+    approximation: sequence edit distance over the row/cell/span token streams of the reference
+    HTML table and the extracted IR Table. Catches dropped/added cells & rows and wrong
+    row/colspans — which cell-counts alone miss. (True TEDS uses tree-edit; for the mostly-ordered
+    row/cell structure of tables this sequence-edit tracks the same errors without an APTED dep.)"""
+    ref = _html_table_tokens(ref_html)
+    hyp = _ir_table_tokens(hyp_table) if hyp_table is not None else []
+    if not ref and not hyp:
+        return 1.0
+    return 1.0 - edit_distance(ref, hyp) / max(len(ref), len(hyp), 1)
+
+
 # --------------------------------------------------------------------------- structure
 
 
