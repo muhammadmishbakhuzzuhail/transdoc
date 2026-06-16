@@ -12,14 +12,20 @@ from ..ir import Document
 
 
 def build_review(doc: Document) -> dict:
-    """Flatten the translated document into a review payload: ordered segments + run suggestions."""
+    """Flatten the translated document into a review payload: ordered segments + run suggestions.
+
+    Segments carry their source bbox (PDF points) + the page size, so the review UI can map a
+    clicked segment onto the rasterised page preview (PNG at a known dpi) — divide the page-point
+    size by the PNG's natural pixel width to get the scale."""
     segments = []
-    for b in doc.blocks:
+    for b in doc.ordered_blocks():
         if not (b.is_translatable and b.translated):
             continue
+        bbox = ([b.bbox.x0, b.bbox.y0, b.bbox.x1, b.bbox.y1] if b.bbox else None)
         segments.append({
             "block_id": b.id,
             "page": b.page,
+            "bbox": bbox,
             "source": b.text,
             "translation": b.translated,
             "flags": sorted(b.flags.keys()),
@@ -27,6 +33,7 @@ def build_review(doc: Document) -> dict:
     return {
         "src_lang": doc.source_lang or "",
         "tgt_lang": doc.target_lang or "",
+        "page_sizes": {str(p): [w, h] for p, (w, h) in (doc.page_sizes or {}).items()},
         "segments": segments,
         "glossary_suggestions": [
             {"term": t, "rendering": r, "kind": k}
