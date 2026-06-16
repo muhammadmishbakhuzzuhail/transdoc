@@ -106,6 +106,22 @@ def test_parse_table_header_span_nested():
     assert p.has_header_row is False
 
 
+def test_pick_text_falls_back_when_digital_is_garbage():
+    from transdoc.extract.structured import _pick_text
+
+    # clean digital layer wins
+    assert _pick_text("Real clean paragraph long enough to judge", "ocr") == (
+        "Real clean paragraph long enough to judge", True)
+    # CID/subset garbage digital -> use the OCR content instead (audit P9)
+    text, ok = _pick_text("GLYPH<c=1>" * 5, "clean OCR fallback")
+    assert text == "clean OCR fallback" and ok is False
+    # empty digital -> OCR content
+    assert _pick_text("", "ocr only") == ("ocr only", False)
+    # inline-math content preferred over the flattened digital layer
+    _, ok = _pick_text("flattened dk", "value $d_k$ holds")
+    assert ok is False
+
+
 class _InlineMathExtractor:
     def extract_pages(self, fdoc, pnos):
         # bbox in an empty area (no digital text there) so we test content selection

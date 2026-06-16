@@ -124,6 +124,20 @@ def _ordered_regions(regs: list) -> list:
     return sorted(regs, key=key)
 
 
+def _pick_text(digital: str, content: str) -> tuple[str, bool]:
+    """Choose a region's text + whether the digital layer was usable. Prefer the digital text
+    layer (perfect) — BUT only when it's real text: a subsetted/CID region with no ToUnicode emits
+    "GLYPH<>"/replacement-char garbage, which the heuristic path OCRs but structured used to trust
+    blindly. Fall back to the PP-OCR content when the digital layer is garbage or empty (audit P9).
+    Also prefer OCR content when it carries inline-math LaTeX ($d_k$); the digital layer flattens
+    it ("dk") and protect.py keeps the $...$ intact through translation."""
+    from .pdf import _looks_garbage
+    if "$" in content:
+        return _INLINE_MATH.sub(lambda m: _clean_latex(m.group()), content), False
+    digital_ok = bool(digital) and not _looks_garbage(digital)
+    return (digital if digital_ok else content), digital_ok
+
+
 def extract_structured(path: str, cfg: Config) -> Document:
     import fitz
 
@@ -208,17 +222,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
                     reading_order=len(out.blocks), bbox=bbox, text=_clean_latex(r.content.strip()),
                     image_path=fpath, confidence=Confidence(source="digital")))  # never translated
                 continue
-            # text-like: prefer the digital text layer (perfect); fall back to OCR content
             digital = page.get_textbox(fitz.Rect(r.x0, r.y0, r.x1, r.y1)).strip()
-            content = r.content.strip()
-            # Prefer the OCR content when it carries inline math LaTeX ($d_k$ etc.) — the
-            # digital text layer flattens it ("dk"). protect.py masks $...$ during translation
-            # so the MT engine leaves it intact. Plain prose uses the clean digital layer.
-            if "$" in content:
-                # clean letter-spacing only inside the inline-math spans; leave prose untouched
-                text = _INLINE_MATH.sub(lambda m: _clean_latex(m.group()), content)
-            else:
-                text = digital or content
+            text, digital_ok = _pick_text(digital, r.content.strip())
             if not text:
                 continue
             # bbox is always in PDF points here (parse_regions scales the 150-dpi render to
@@ -229,10 +234,10 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 id=f"p{pno}-r{r.order}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
                 page=pno, reading_order=len(out.blocks), bbox=bbox, text=text,
                 style=_region_style(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)),
-                runs=_region_runs(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)) if digital else [],
+                runs=_region_runs(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)) if digital_ok else [],
                 confidence=Confidence(source="digital"))
-            if not digital:
-                blk.flags["ocr_text"] = "text from PP-OCR (no digital layer in this region)"
+            if not digital_ok:
+                blk.flags["ocr_text"] = "text from PP-OCR (digital layer garbage/absent here)"
             out.blocks.append(blk)
     from .links import attach_pdf_links
     for pno in pnos:
