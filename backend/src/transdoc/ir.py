@@ -271,6 +271,10 @@ class Document(BaseModel):
     # run for consistency but not persisted as applied entries — surfaced in the report for the user
     # to confirm (PR-2). source_kind is 'auto' (mining) or, later, 'fuzzy'.
     glossary_suggestions: list[tuple[str, str, str]] = Field(default_factory=list)
+    # Fuzzy-TM suggestions from this run: (source, matched_past_source, matched_past_translation,
+    # score). The engine still translated these segments; the close past match is surfaced for the
+    # user to review (PR-4). 0.75 <= score < auto-threshold.
+    fuzzy_suggestions: list[tuple[str, str, str, float]] = Field(default_factory=list)
     # PDF outline / bookmarks (level, title, target page) — titles translated, outline rebuilt.
     toc: list[TocEntry] = Field(default_factory=list)
     # Page margins (pt): {left,right,top,bottom}. Carried to the rebuilt document.

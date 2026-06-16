@@ -197,6 +197,7 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     from .translate.qa import qa_report
     report += qa_report(qa_findings)
     report += _glossary_suggestions_report(doc)
+    report += _fuzzy_suggestions_report(doc)
     report += _timing_report(timings)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
     Path(report_path).write_text(report, encoding="utf-8")
@@ -215,6 +216,19 @@ def _glossary_suggestions_report(doc) -> str:
     return ("\n\n## Glossary suggestions\n"
             f"Auto-detected recurring terms (applied this run, not yet persisted). Confirm with "
             f"`transdoc glossary add <term> <rendering> -s {src} -t {tgt}`:\n{rows}")
+
+
+def _fuzzy_suggestions_report(doc) -> str:
+    """Surface fuzzy-TM matches (75–95%) the engine did NOT auto-apply, so the user can review
+    whether the close past translation should have been reused (PR-4)."""
+    sug = getattr(doc, "fuzzy_suggestions", None)
+    if not sug:
+        return ""
+    rows = "\n".join(f"- ({int(score * 100)}%) `{src}`\n  - past: `{msrc}` → `{mtgt}`"
+                     for src, msrc, mtgt, score in sug)
+    return ("\n\n## Fuzzy TM suggestions\n"
+            "Similar past translations exist for these segments (engine-translated this run):\n"
+            f"{rows}")
 
 
 def _cleanup_tmp(doc) -> None:

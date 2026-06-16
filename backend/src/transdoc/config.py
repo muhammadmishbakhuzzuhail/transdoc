@@ -85,6 +85,14 @@ class Config(BaseModel):
     fidelity: Fidelity = Fidelity.AUTO         # how faithfully output mirrors source
     localize: bool = False                     # convert dates/numbers/units/currency
     auto_glossary: bool = True                  # pin one rendering for repeated proper nouns
+    fuzzy_tm: bool = True                        # reuse near-identical past translations from the TM
+    fuzzy_auto_threshold: float = 0.95          # >= this AND near-identical text AND same protected
+                                                # tokens -> auto-apply the past translation (skip engine)
+    fuzzy_suggest_threshold: float = 0.75       # >= this (below auto) -> surface as a review suggestion;
+                                                # the engine still translates the segment
+    embed_model: str | None = "paraphrase-multilingual-MiniLM-L12-v2"   # sentence-transformer for
+                                                # semantic fuzzy rerank; None or unavailable -> lexical
+                                                # similarity only (graceful degradation)
                                                 # (acronyms/multi-word names) across the document
     register: Register = Register.AUTO
     mode: Mode = Mode.FULL

@@ -20,6 +20,17 @@ def _norm(text: str) -> str:
     return " ".join((text or "").strip().split()).lower()
 
 
+def lexical_ratio(a: str, b: str) -> float:
+    """Character-level similarity (0..1) of two normalized strings. Used both as the fallback fuzzy
+    score (no embedder) and as the auto-apply safety gate: a near-1.0 ratio means the strings differ
+    only by a few characters, so reusing the past translation is safe once protected tokens match."""
+    from difflib import SequenceMatcher
+    na, nb = _norm(a), _norm(b)
+    if not na or not nb:
+        return 0.0
+    return SequenceMatcher(None, na, nb).ratio()
+
+
 class TMStore:
     """SQLite exact-match TM shared across runs. Engine-agnostic (maximizes reuse). Disable with
     ``TRANSDOC_TM_DISABLE=1``. Thread-safe (WAL + one shared connection guarded by a lock)."""
@@ -150,6 +161,48 @@ class TMStore:
             cur = self._conn.execute(f"DELETE FROM tm{clause}", params)
             self._conn.commit()
             return cur.rowcount
+
+    def fuzzy_search(self, source: str, target: str, src_lang: str = "", domain: str = "",
+                     embedder=None, limit: int = 5, min_score: float = 0.5,
+                     candidate_cap: int = 500) -> list[tuple[str, str, float]]:
+        """Find past translations whose SOURCE is similar to ``source`` (monolingual). Returns
+        ``[(src_text, tgt_text, score)]`` sorted by score desc. Scope: same (target, src_lang,
+        domain) — plus global ('') when a domain is given. Scoring: cosine via ``embedder`` if
+        provided, else :func:`lexical_ratio`. Candidates are token-prefiltered then capped to bound
+        the work on a large TM (personal-scale: a linear scan over the scoped rows)."""
+        if not source or not source.strip():
+            return []
+        # src_lang/domain wildcard '': engine rows are stored unscoped (src_lang='', domain=''),
+        # corrections carry the real language — match both so fuzzy reuses either.
+        langs = {src_lang, ""}
+        domains = {domain, ""} if domain else {""}
+        lq = ",".join("?" * len(langs))
+        dq = ",".join("?" * len(domains))
+        with self._lock:
+            cur = self._conn.execute(
+                f"SELECT src_text, tgt_text FROM tm "
+                f"WHERE tgt_lang=? AND src_lang IN ({lq}) AND domain IN ({dq}) AND tgt_text<>''",
+                [target, *langs, *domains],
+            )
+            rows = cur.fetchall()
+        if not rows:
+            return []
+        # Token-overlap prefilter: keep rows sharing at least one token with the query (cheap, drops
+        # obviously-unrelated rows), then cap so scoring stays bounded.
+        q_tokens = set(_norm(source).split())
+        prefiltered = [(s, t) for s, t in rows
+                       if s != source and q_tokens & set(_norm(s).split())]
+        if not prefiltered:
+            return []
+        prefiltered = prefiltered[:candidate_cap]
+        srcs = [s for s, _ in prefiltered]
+        if embedder is not None:
+            scores = embedder.similarity(source, srcs)
+        else:
+            scores = [lexical_ratio(source, s) for s in srcs]
+        scored = [(s, t, sc) for (s, t), sc in zip(prefiltered, scores) if sc >= min_score]
+        scored.sort(key=lambda r: r[2], reverse=True)
+        return scored[:limit]
 
     def _upsert(self, rows: list[tuple]) -> None:
         if not rows:
