@@ -83,6 +83,8 @@ class Config(BaseModel):
     output_format: OutputFormat = OutputFormat.MARKDOWN
     fidelity: Fidelity = Fidelity.AUTO         # how faithfully output mirrors source
     localize: bool = False                     # convert dates/numbers/units/currency
+    auto_glossary: bool = True                  # pin one rendering for repeated proper nouns
+                                                # (acronyms/multi-word names) across the document
     register: Register = Register.AUTO
     mode: Mode = Mode.FULL
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
