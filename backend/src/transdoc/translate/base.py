@@ -172,55 +172,72 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
             except Exception:
                 pass            # auto-glossary is best-effort; never block the main translation
 
-    # 1a) dedupe identical segments via TM -> translate each unique string once
-    tm = TranslationMemory()
-    unique, idx_map = tm.dedupe(texts)
-
-    # 1b) cross-run cache: skip segments already translated for this target in any prior run.
-    #     This is what keeps a free Google-web-endpoint service under the rate limit.
-    ptm = PersistentTM.get()
-    cached = ptm.get_many(unique, target) if ptm else {}
-    todo = [u for u in unique if u not in cached]
-
-    # 1c) protect verbatim tokens (urls/emails/numbers/dates/codes) on cache MISSES only
-    protector = Protector(extra=list(glossary.keys()))
-    protected, maps = [], []
-    for u in todo:
-        p, m = protector.protect(u)
-        protected.append(p)
-        maps.append(m)
-
-    # 2) translate the protected misses, restore tokens, then fold cache hits back in.
-    #    If the batch fails (one segment that every engine rejects/throttles would otherwise
-    #    sink the whole document), degrade to per-segment: keep the source for the segments
-    #    that still fail so they're flagged untranslated, not lost — the rest translate.
-    if not protected:
-        fresh = []
+    # doc-context engines (e.g. the Ollama LLM) translate the ORDERED segments with a sliding window
+    # of translated neighbours, so coherence + terminology hold across the document. No dedupe/TM
+    # here — each position is translated in its own context (PR-A1; context-hash caching is PR-A2).
+    # The engine HARD-FAILS on error (raises) rather than silently keeping the source.
+    if getattr(tr, "doc_context", False):
+        protector = Protector(extra=list(glossary.keys()))
+        protected, maps = [], []
+        for t in texts:
+            p, m = protector.protect(t)
+            protected.append(p)
+            maps.append(m)
+        seg = tr.translate_segments(protected, cfg, src=doc.source_lang)
+        if cfg.localize:
+            from .localize import localize_numbers
+            seg = [localize_numbers(t, target) for t in seg]
+        out = [protector.restore(t, m) for t, m in zip(seg, maps)]
     else:
-        try:
-            fresh = tr.translate_batch(protected, cfg, src=doc.source_lang)
-        except Exception:
-            fresh = []
-            for p in protected:
-                try:
-                    fresh.append(tr.translate_batch([p], cfg, src=doc.source_lang)[0])
-                except Exception:
-                    fresh.append(p)        # keep source -> flagged 'untranslated' downstream
-    if cfg.localize:
-        # Reformat numbers to the target locale while protected tokens are still [PH] tags,
-        # so verbatim currency/dates/codes are not touched.
-        from .localize import localize_numbers
-        fresh = [localize_numbers(t, target) for t in fresh]
-    fresh = [protector.restore(t, m) for t, m in zip(fresh, maps)]
-    fresh_map = dict(zip(todo, fresh))
-    # Only persist real translations. A no-op engine (echo) marks itself non-cacheable so its
-    # "[id] ..." placeholder output never poisons the cross-run TM for later real runs.
-    if ptm and fresh_map and getattr(tr, "cacheable", True):
-        ptm.put_many(fresh_map, target)
-    translated_unique = [cached.get(u) or fresh_map.get(u, u) for u in unique]
+        # 1a) dedupe identical segments via TM -> translate each unique string once
+        tm = TranslationMemory()
+        unique, idx_map = tm.dedupe(texts)
 
-    # 3) scatter unique results back to every original position
-    out = [translated_unique[idx_map[i]] for i in range(len(texts))]
+        # 1b) cross-run cache: skip segments already translated for this target in any prior run.
+        #     This is what keeps a free Google-web-endpoint service under the rate limit.
+        ptm = PersistentTM.get()
+        cached = ptm.get_many(unique, target) if ptm else {}
+        todo = [u for u in unique if u not in cached]
+
+        # 1c) protect verbatim tokens (urls/emails/numbers/dates/codes) on cache MISSES only
+        protector = Protector(extra=list(glossary.keys()))
+        protected, maps = [], []
+        for u in todo:
+            p, m = protector.protect(u)
+            protected.append(p)
+            maps.append(m)
+
+        # 2) translate the protected misses, restore tokens, then fold cache hits back in.
+        #    If the batch fails (one segment that every engine rejects/throttles would otherwise
+        #    sink the whole document), degrade to per-segment: keep the source for the segments
+        #    that still fail so they're flagged untranslated, not lost — the rest translate.
+        if not protected:
+            fresh = []
+        else:
+            try:
+                fresh = tr.translate_batch(protected, cfg, src=doc.source_lang)
+            except Exception:
+                fresh = []
+                for p in protected:
+                    try:
+                        fresh.append(tr.translate_batch([p], cfg, src=doc.source_lang)[0])
+                    except Exception:
+                        fresh.append(p)    # keep source -> flagged 'untranslated' downstream
+        if cfg.localize:
+            # Reformat numbers to the target locale while protected tokens are still [PH] tags,
+            # so verbatim currency/dates/codes are not touched.
+            from .localize import localize_numbers
+            fresh = [localize_numbers(t, target) for t in fresh]
+        fresh = [protector.restore(t, m) for t, m in zip(fresh, maps)]
+        fresh_map = dict(zip(todo, fresh))
+        # Only persist real translations. A no-op engine (echo) marks itself non-cacheable so its
+        # "[id] ..." placeholder output never poisons the cross-run TM for later real runs.
+        if ptm and fresh_map and getattr(tr, "cacheable", True):
+            ptm.put_many(fresh_map, target)
+        translated_unique = [cached.get(u) or fresh_map.get(u, u) for u in unique]
+
+        # 3) scatter unique results back to every original position
+        out = [translated_unique[idx_map[i]] for i in range(len(texts))]
 
     # 4) write back + glossary enforcement
     for (src_text, sink), translated in zip(items, out):

@@ -1,0 +1,93 @@
+"""Ollama doc-context translator: id-alignment, sliding-window carry, retry -> hard-fail.
+
+No real HTTP — OllamaTranslator._call is stubbed to parse the request payload and return a canned
+JSON response, so we test the windowing/alignment/parse/retry logic deterministically.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from transdoc.config import Config
+from transdoc.ir import Block, BlockType, Confidence, Document
+from transdoc.translate.base import translate_document
+from transdoc.translate.ollama import OllamaError, OllamaTranslator
+
+
+def _fake_call_factory(record=None, drop_id=None):
+    """Return a _call(self, cfg, system, user) that translates each item to 'T:'+text, optionally
+    recording payloads and optionally dropping one id (to trigger an alignment failure)."""
+    def _call(self, cfg, system, user):
+        payload = json.loads(user)
+        if record is not None:
+            record.append(payload)
+        out = {}
+        for it in payload["items"]:
+            if drop_id is not None and it["id"] == drop_id:
+                continue
+            out[it["id"]] = "T:" + it["text"]
+        return json.dumps({"translations": out})
+    return _call
+
+
+def test_translate_segments_aligned(monkeypatch):
+    monkeypatch.setattr(OllamaTranslator, "_call", _fake_call_factory())
+    cfg = Config(target_lang="id")
+    out = OllamaTranslator().translate_segments(["Alpha", "Beta", "Gamma"], cfg, src="en")
+    assert out == ["T:Alpha", "T:Beta", "T:Gamma"]
+
+
+def test_sliding_window_carries_previous_translations(monkeypatch):
+    record: list = []
+    monkeypatch.setattr(OllamaTranslator, "_call", _fake_call_factory(record=record))
+    cfg = Config(target_lang="id", ollama_num_ctx=1, llm_context_window=2)  # tiny budget -> chunking
+    texts = ["x" * 1500, "y" * 1500, "z" * 1500]                           # each forces its own chunk
+    out = OllamaTranslator().translate_segments(texts, cfg, src="en")
+    assert out == ["T:" + t for t in texts]
+    # 3 chunks; chunk 2's context_before carries the TRANSLATED neighbours (not raw source)
+    assert len(record) == 3
+    ctx_before_3rd = record[2]["context_before"]
+    assert ctx_before_3rd and ctx_before_3rd[-1]["translation"] == "T:" + texts[1]
+    # following context is the next source segment(s), read-only
+    assert record[0]["context_after"] and record[0]["context_after"][0] == texts[1]
+
+
+def test_alignment_mismatch_hard_fails(monkeypatch):
+    calls = {"n": 0}
+    base = _fake_call_factory(drop_id="1")
+
+    def counting(self, cfg, system, user):
+        calls["n"] += 1
+        return base(self, cfg, system, user)
+
+    monkeypatch.setattr(OllamaTranslator, "_call", counting)
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    with pytest.raises(OllamaError):
+        OllamaTranslator().translate_segments(["a", "b", "c"], Config(target_lang="id"))
+    assert calls["n"] == OllamaTranslator._RETRIES + 1            # retried then hard-failed
+
+
+def test_doc_context_path_through_translate_document(monkeypatch):
+    monkeypatch.setattr(OllamaTranslator, "_call", _fake_call_factory())
+    doc = Document(source_path="x.txt", mime="text/plain")
+    doc.blocks = [Block(id="b0", type=BlockType.PARAGRAPH, page=0, text="Hello world.",
+                        confidence=Confidence(source="digital")),
+                  Block(id="b1", type=BlockType.PARAGRAPH, page=0, text="Second line.",
+                        confidence=Confidence(source="digital"))]
+    translate_document(doc, OllamaTranslator(), Config(target_lang="id", auto_glossary=False))
+    assert doc.blocks[0].translated == "T:Hello world."
+    assert doc.blocks[1].translated == "T:Second line."
+
+
+def test_protect_placeholder_preserved_under_llm(monkeypatch):
+    # numbers/urls are protected to [PH..] before the engine; the stub keeps them, restore brings
+    # them back verbatim — so the digits survive the LLM path.
+    monkeypatch.setattr(OllamaTranslator, "_call", _fake_call_factory())
+    doc = Document(source_path="x.txt", mime="text/plain")
+    doc.blocks = [Block(id="b0", type=BlockType.PARAGRAPH, page=0,
+                        text="Pay 1500 at https://x.io now.",
+                        confidence=Confidence(source="digital"))]
+    translate_document(doc, OllamaTranslator(), Config(target_lang="id", auto_glossary=False))
+    assert "1500" in doc.blocks[0].translated and "https://x.io" in doc.blocks[0].translated
