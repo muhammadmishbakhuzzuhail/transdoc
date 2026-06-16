@@ -37,6 +37,7 @@ class BlockType(str, Enum):
     SIGNATURE = "signature"  # flagged, not translated
     FIGURE = "figure"        # image region; no text
     HANDWRITING = "handwriting"
+    ASIDE = "aside"          # marginalia / side note in the outer margin (translated, kept)
     OTHER = "other"
 
 
