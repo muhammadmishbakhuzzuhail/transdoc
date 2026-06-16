@@ -2,6 +2,7 @@ import { AlertCircle, Languages, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
 import { BatchView } from "@/components/BatchView"
+import { GlossaryView } from "@/components/GlossaryView"
 import { PreviewPanel } from "@/components/PreviewPanel"
 import { ReviewView } from "@/components/ReviewView"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
@@ -18,6 +19,7 @@ export default function App() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [batchId, setBatchId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<"translate" | "glossary">("translate")
   const poll = useRef<number | null>(null)
 
   useEffect(() => {
@@ -72,20 +74,18 @@ export default function App() {
             Layout-faithful document translation — CPU-friendly, free.
           </p>
         </div>
+        <nav className="ml-auto flex gap-1">
+          {(["translate", "glossary"] as const).map((tab) => (
+            <button key={tab} type="button" onClick={() => setView(tab)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
+                view === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              {tab}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {[
-          ["Free, no limits", "No page, size or watermark caps."],
-          ["Handles hard docs", "Scans (OCR), math, diagrams & tables kept verbatim."],
-          ["Transparent", "Flags uncertain parts; preview source vs result."],
-        ].map(([t, d]) => (
-          <div key={t} className="rounded-lg border bg-card p-3">
-            <div className="text-sm font-semibold">{t}</div>
-            <div className="text-xs text-muted-foreground">{d}</div>
-          </div>
-        ))}
-      </div>
+      {view === "glossary" ? <GlossaryView /> : <>
 
       <TranslateForm health={health} busy={busy} onSubmit={submit} />
 
@@ -131,6 +131,7 @@ export default function App() {
           </TabsContent>
         </Tabs>
       )}
+      </>}
     </div>
   )
 }

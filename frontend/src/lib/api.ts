@@ -180,3 +180,63 @@ export async function acceptGlossarySuggestion(body: {
   if (!r.ok) throw new Error((await r.text()) || `accept failed (${r.status})`)
   return r.json()
 }
+
+// --- glossary management (PR: glossary manager UI) ------------------------------------------
+
+export interface GlossaryEntry {
+  src_lang: string
+  tgt_lang: string
+  domain: string
+  term: string
+  rendering: string
+  origin: string          // user | confirmed | auto | locked
+  locked: number          // 0 | 1
+}
+
+export async function listGlossary(filter?: {
+  src_lang?: string; tgt_lang?: string; domain?: string
+}): Promise<GlossaryEntry[]> {
+  const q = new URLSearchParams()
+  if (filter?.src_lang) q.set("src_lang", filter.src_lang)
+  if (filter?.tgt_lang) q.set("tgt_lang", filter.tgt_lang)
+  if (filter?.domain) q.set("domain", filter.domain)
+  const r = await fetch(`${BASE}/api/glossary?${q}`)
+  if (!r.ok) throw new Error("glossary list failed")
+  return (await r.json()).entries
+}
+
+export async function addGlossary(body: {
+  term: string; rendering: string; src_lang: string; tgt_lang: string
+  domain?: string; locked?: boolean
+}): Promise<{ ok: boolean }> {
+  const r = await fetch(`${BASE}/api/glossary`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  })
+  if (!r.ok) throw new Error((await r.text()) || `add failed (${r.status})`)
+  return r.json()
+}
+
+export async function removeGlossary(body: {
+  term: string; src_lang: string; tgt_lang: string; domain?: string
+}): Promise<{ removed: number }> {
+  const r = await fetch(`${BASE}/api/glossary`, {
+    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  })
+  if (!r.ok) throw new Error("remove failed")
+  return r.json()
+}
+
+export interface GlossarySuggestionRow {
+  src_lang: string
+  tgt_lang: string
+  domain: string
+  term: string
+  rendering: string
+  source_kind: string
+}
+
+export async function listGlossarySuggestions(): Promise<GlossarySuggestionRow[]> {
+  const r = await fetch(`${BASE}/api/glossary/suggestions`)
+  if (!r.ok) throw new Error("suggestions list failed")
+  return (await r.json()).suggestions
+}
