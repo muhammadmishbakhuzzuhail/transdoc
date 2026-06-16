@@ -136,6 +136,100 @@ def diagnose(input: str = typer.Argument(...), source: str = typer.Option("auto"
     console.print(res.report_text)
 
 
+glossary_app = typer.Typer(add_completion=False, help="Manage the persistent glossary "
+                           "(term → target rendering, scoped per language pair + domain).")
+app.add_typer(glossary_app, name="glossary")
+
+
+@glossary_app.command("add")
+def glossary_add(
+    term: str = typer.Argument(..., help="Source term"),
+    rendering: str = typer.Argument(..., help="Target rendering (emitted verbatim)"),
+    source: str = typer.Option(..., "--source", "-s", help="Source language (ISO 639)"),
+    target: str = typer.Option(..., "--target", "-t", help="Target language (ISO 639)"),
+    domain: str = typer.Option("", "--domain", "-d", help="Domain scope ('' = global)"),
+    lock: bool = typer.Option(False, "--lock", help="Lock: highest precedence, immune to -g/auto"),
+):
+    """Add or update a glossary entry."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/] (TRANSDOC_TM_DISABLE set?)")
+        raise typer.Exit(1)
+    gs.add(term, rendering, source, target, domain=domain, locked=lock)
+    console.print(f"[green]✓ added[/] {term} → {rendering} ({source}→{target}"
+                  f"{', ' + domain if domain else ''}{', locked' if lock else ''})")
+
+
+@glossary_app.command("list")
+def glossary_list(
+    source: str = typer.Option(None, "--source", "-s"),
+    target: str = typer.Option(None, "--target", "-t"),
+    domain: str = typer.Option(None, "--domain", "-d"),
+):
+    """List glossary entries."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/]")
+        raise typer.Exit(1)
+    rows = gs.list(source, target, domain)
+    if not rows:
+        console.print("[yellow]no entries[/]")
+        return
+    for e in rows:
+        lock = " [bold red]🔒[/]" if e["locked"] else ""
+        dom = f" [{e['domain']}]" if e["domain"] else ""
+        console.print(f"{e['src_lang']}→{e['tgt_lang']}{dom}: [cyan]{e['term']}[/] → "
+                      f"{e['rendering']} ({e['origin']}){lock}")
+
+
+@glossary_app.command("rm")
+def glossary_rm(
+    term: str = typer.Argument(...),
+    source: str = typer.Option(..., "--source", "-s"),
+    target: str = typer.Option(..., "--target", "-t"),
+    domain: str = typer.Option("", "--domain", "-d"),
+):
+    """Remove a glossary entry."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/]")
+        raise typer.Exit(1)
+    n = gs.remove(term, source, target, domain=domain)
+    console.print(f"[green]✓ removed {n} entr{'y' if n == 1 else 'ies'}[/]" if n
+                  else "[yellow]no match[/]")
+
+
+@glossary_app.command("export")
+def glossary_export(
+    file: str = typer.Argument(..., help="Output .json or .tsv"),
+    source: str = typer.Option(None, "--source", "-s"),
+    target: str = typer.Option(None, "--target", "-t"),
+):
+    """Export glossary entries to JSON or TSV."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/]")
+        raise typer.Exit(1)
+    n = gs.export(file, source, target)
+    console.print(f"[green]✓ exported {n} entries[/] → {file}")
+
+
+@glossary_app.command("import")
+def glossary_import(file: str = typer.Argument(..., help="Input .json or .tsv")):
+    """Import glossary entries from JSON or TSV (upserts)."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/]")
+        raise typer.Exit(1)
+    n = gs.import_(file)
+    console.print(f"[green]✓ imported {n} entries[/] from {file}")
+
+
 def _execute(input: str, cfg: Config, out: str | None):
     console.print(f"[bold cyan]transdoc[/] {Path(input).name} "
                   f"→ {cfg.target_lang} ({cfg.output_format.value}, engine={cfg.engine.value})")

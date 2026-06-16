@@ -49,6 +49,24 @@ def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     return text
 
 
+def _resolve_glossary(cfg: Config, src_lang: str, tgt_lang: str) -> tuple[dict[str, str], set[str]]:
+    """Build the term→rendering map for this run plus the set of locked terms, merging the persisted
+    glossary with the per-run ``-g`` flag. Precedence: ``locked > user(-g) > confirmed > auto`` — the
+    persisted store resolves its own tiers, then ``-g`` overlays as an ephemeral user tier that wins
+    over everything EXCEPT locked entries. Domain comes from ``cfg.domain`` ('' / 'auto' = global)."""
+    merged: dict[str, str] = {}
+    locked: set[str] = set()
+    from ..store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is not None and src_lang and tgt_lang:
+        domain = "" if cfg.domain in ("", "auto") else cfg.domain
+        merged, locked = gs.resolve(src_lang, tgt_lang, domain)
+    for term, rendering in cfg.glossary.items():     # -g flag: ephemeral user tier, below locked
+        if term not in locked:
+            merged[term] = rendering
+    return merged, locked
+
+
 _ACRONYM = re.compile(r"\b[A-Z][A-Z0-9]{2,}\b")                 # NASA, API, ISO9001
 _PROPER = re.compile(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b")     # Hugging Face, United Nations
 _CAP_WORD = re.compile(r"\b[A-Z][a-z]{2,}\b")                   # single Capitalized word
@@ -130,7 +148,7 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     """Translate the whole IR in place. Collects translatable strings, batches them,
     writes results back to blocks and table cells, then enforces the glossary."""
     target = cfg.require_target()
-    glossary = dict(cfg.glossary)
+    glossary, locked = _resolve_glossary(cfg, doc.source_lang or "", target)
 
     # 1) collect (block paragraphs + table cells)
     items: list[tuple[str, object]] = []  # (text, sink)
@@ -174,16 +192,28 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     #    differently in every context). Conservative — proper nouns only (common-noun inflection is
     #    legitimate), only when the engine is real (echo is non-cacheable), and only when the
     #    canonical rendering actually differs from the source. User glossary entries always win.
+    #    The mined terms are applied THIS run for intra-document consistency but are NOT persisted to
+    #    the glossary table — they are recorded as *suggestions* (pending queue + report) for the user
+    #    to confirm; only a confirmation (PR-3) promotes a suggestion to an applied entry (PR-2).
     if getattr(cfg, "auto_glossary", True) and getattr(tr, "cacheable", True):
         auto = [t for t in _auto_glossary_terms(texts, src=doc.source_lang) if t not in glossary]
         if auto:
+            suggestions: list[tuple[str, str]] = []
             try:
                 for term, ren in zip(auto, tr.translate_batch(auto, cfg, src=doc.source_lang)):
                     ren = (ren or "").strip()
                     if ren and ren != term:
-                        glossary[term] = ren
+                        glossary[term] = ren            # apply this run (document-wide consistency)
+                        suggestions.append((term, ren))
             except Exception:
                 pass            # auto-glossary is best-effort; never block the main translation
+            if suggestions:
+                doc.glossary_suggestions = [(t, r, "auto") for t, r in suggestions]
+                from ..store.glossary import GlossaryStore
+                gs = GlossaryStore.get()
+                if gs is not None and doc.source_lang:
+                    sug_domain = "" if cfg.domain in ("", "auto") else cfg.domain
+                    gs.add_suggestions(suggestions, doc.source_lang, target, sug_domain)
 
     # doc-context engines (e.g. the Ollama LLM) translate the ORDERED segments with a sliding window
     # of translated neighbours, so coherence + terminology hold across the document. The engine
@@ -202,7 +232,7 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         if all((texts[i], ctxs[i]) in cached for i in range(len(texts))):
             out = [cached[(texts[i], ctxs[i])] for i in range(len(texts))]
         else:
-            protector = Protector(extra=list(glossary.keys()))
+            protector = Protector(extra=list(glossary.keys()), renderings=glossary)
             protected, maps = [], []
             for t in texts:
                 p, m = protector.protect(t)
@@ -228,7 +258,7 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         todo = [u for u in unique if u not in cached]
 
         # 1c) protect verbatim tokens (urls/emails/numbers/dates/codes) on cache MISSES only
-        protector = Protector(extra=list(glossary.keys()))
+        protector = Protector(extra=list(glossary.keys()), renderings=glossary)
         protected, maps = [], []
         for u in todo:
             p, m = protector.protect(u)

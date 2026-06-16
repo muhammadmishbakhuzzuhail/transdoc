@@ -12,7 +12,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 
 def default_db_path() -> Path:
@@ -116,6 +116,39 @@ def _migrate(conn: sqlite3.Connection) -> None:
             """
         )
         conn.execute("PRAGMA user_version=2")
+    if version < 3:
+        # v3: glossary (PR-2). `glossary` holds the persisted, applied terms (origin user/confirmed/
+        # auto, lockable); `glossary_suggestions` is the pending queue auto-mining + fuzzy write into
+        # — surfaced for the user to confirm, NEVER applied straight from here. Confirmation (promote
+        # a suggestion -> glossary, or a correction -> confirmed term) lands in PR-3.
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS glossary (
+              id          INTEGER PRIMARY KEY,
+              src_lang    TEXT NOT NULL,
+              tgt_lang    TEXT NOT NULL,
+              domain      TEXT NOT NULL DEFAULT '',
+              term        TEXT NOT NULL,
+              rendering   TEXT NOT NULL,
+              origin      TEXT NOT NULL DEFAULT 'user',   -- 'user' | 'confirmed' | 'auto'
+              locked      INTEGER NOT NULL DEFAULT 0,
+              created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+              UNIQUE(src_lang, tgt_lang, domain, term)
+            );
+            CREATE TABLE IF NOT EXISTS glossary_suggestions (
+              id          INTEGER PRIMARY KEY,
+              src_lang    TEXT NOT NULL,
+              tgt_lang    TEXT NOT NULL,
+              domain      TEXT NOT NULL DEFAULT '',
+              term        TEXT NOT NULL,
+              rendering   TEXT NOT NULL,
+              source_kind TEXT NOT NULL DEFAULT 'auto',    -- 'auto' | 'fuzzy'
+              created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+              UNIQUE(src_lang, tgt_lang, domain, term)
+            );
+            """
+        )
+        conn.execute("PRAGMA user_version=3")
     conn.commit()
     # guard: code expecting a newer schema than the file should fail loudly, not corrupt data.
     if conn.execute("PRAGMA user_version").fetchone()[0] > _SCHEMA_VERSION:

@@ -267,6 +267,10 @@ class Document(BaseModel):
     # Temp directories of intermediate crop images, cleaned by the pipeline after rendering
     # (they were leaking one dir per run under /tmp).
     tmp_dirs: list[str] = Field(default_factory=list)
+    # Auto-mined glossary suggestions from this run: (term, rendering, source_kind). Applied this
+    # run for consistency but not persisted as applied entries — surfaced in the report for the user
+    # to confirm (PR-2). source_kind is 'auto' (mining) or, later, 'fuzzy'.
+    glossary_suggestions: list[tuple[str, str, str]] = Field(default_factory=list)
     # PDF outline / bookmarks (level, title, target page) — titles translated, outline rebuilt.
     toc: list[TocEntry] = Field(default_factory=list)
     # Page margins (pt): {left,right,top,bottom}. Carried to the rebuilt document.
