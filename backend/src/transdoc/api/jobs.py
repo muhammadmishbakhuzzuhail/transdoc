@@ -43,6 +43,13 @@ class Job:
     error: Optional[str] = None
     meta: dict = field(default_factory=dict)
     updated_at: float = 0.0
+    batch_id: Optional[str] = None  # set when the job is part of a batch upload
+
+
+# Heavy translation work (OCR + local LLM) is memory-hungry; on a single CPU box two jobs at once
+# risk OOM. Serialise the actual run so jobs queue instead of competing — a job waits here as
+# 'queued' and flips to 'running' only once it holds the lock.
+_RUN_LOCK = threading.Lock()
 
 
 _COLUMNS = [f.name for f in fields(Job)]
@@ -71,6 +78,12 @@ class JobStore:
                    updated_at REAL
                )"""
         )
+        # batch_id was added later; add the column to pre-existing DBs (ignored if present)
+        try:
+            self._conn.execute("ALTER TABLE jobs ADD COLUMN batch_id TEXT")
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass
         self._conn.commit()
         self._recover_orphans()
 
@@ -97,11 +110,23 @@ class JobStore:
             )
             self._conn.commit()
 
-    def create(self, input_path: str, meta: dict) -> Job:
+    def create(self, input_path: str, meta: dict, batch_id: str | None = None) -> Job:
         jid = uuid.uuid4().hex[:12]
-        job = Job(id=jid, input_path=input_path, meta=meta)
+        job = Job(id=jid, input_path=input_path, meta=meta, batch_id=batch_id)
         self._save(job)
         return job
+
+    def list_batch(self, batch_id: str) -> list[Job]:
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT * FROM jobs WHERE batch_id=? ORDER BY updated_at", (batch_id,))
+            rows = cur.fetchall()
+        out = []
+        for r in rows:
+            data = dict(r)
+            data["meta"] = json.loads(data["meta"]) if data["meta"] else {}
+            out.append(Job(**{c: data[c] for c in _COLUMNS}))
+        return out
 
     def get(self, jid: str) -> Optional[Job]:
         with self._lock:
@@ -118,6 +143,11 @@ class JobStore:
         t.start()
 
     def _run(self, job: Job, cfg: Config) -> None:
+        # block here until no other job is running (serialise heavy work); stay 'queued' meanwhile
+        with _RUN_LOCK:
+            self._run_locked(job, cfg)
+
+    def _run_locked(self, job: Job, cfg: Config) -> None:
         job.status = "running"
         job.progress = 0.1
         job.message = "extracting + diagnosing"

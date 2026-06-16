@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -52,6 +53,37 @@ def health() -> dict:
             "layout": ["auto", "off", "paddle"]}
 
 
+def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, domain, register,
+              layout, ocr_engine, bilingual, quality, localize, pages) -> Config:
+    """Build a Config from the upload form, raising HTTP 400 on a bad value. A fresh Config per
+    job — the pipeline mutates cfg.fidelity/layout for some inputs, so jobs must not share one."""
+    try:
+        return Config(
+            source_lang=source_lang, target_lang=target_lang,
+            output_format=OutputFormat(output_format), engine=Engine(engine),
+            fidelity=Fidelity(fidelity), domain=domain, register=Register(register),
+            ocr_engine=OCREngine(ocr_engine), layout=layout, bilingual=bilingual,
+            quality_check=quality, localize=localize, pages=pages or None,
+        )
+    except ValueError as e:
+        raise HTTPException(400, f"bad config: {e}")
+
+
+def _save_upload(file: UploadFile) -> str:
+    """Persist an upload to a temp file, rejecting oversized inputs (HTTP 413). Returns the path."""
+    suffix = Path(file.filename or "doc").suffix or ".bin"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    with tmp as f:
+        shutil.copyfileobj(file.file, f)
+    from ..limits import InputTooLarge, check_file_size
+    try:
+        check_file_size(tmp.name)
+    except InputTooLarge as e:
+        Path(tmp.name).unlink(missing_ok=True)
+        raise HTTPException(413, str(e))
+    return tmp.name
+
+
 @app.post("/api/translate")
 async def translate(
     file: UploadFile = File(...),
@@ -69,42 +101,61 @@ async def translate(
     localize: bool = Form(False),
     pages: str = Form(""),
 ) -> dict:
-    # save upload to a temp file
-    suffix = Path(file.filename or "doc").suffix or ".bin"
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    with tmp as f:
-        shutil.copyfileobj(file.file, f)
-
-    # reject oversized uploads before scheduling any work
-    from ..limits import InputTooLarge, check_file_size
-    try:
-        check_file_size(tmp.name)
-    except InputTooLarge as e:
-        Path(tmp.name).unlink(missing_ok=True)
-        raise HTTPException(413, str(e))
-
-    try:
-        cfg = Config(
-            source_lang=source_lang,
-            target_lang=target_lang,
-            output_format=OutputFormat(output_format),
-            engine=Engine(engine),
-            fidelity=Fidelity(fidelity),
-            domain=domain,
-            register=Register(register),
-            ocr_engine=OCREngine(ocr_engine),
-            layout=layout,
-            bilingual=bilingual,
-            quality_check=quality,
-            localize=localize,
-            pages=pages or None,
-        )
-    except ValueError as e:
-        raise HTTPException(400, f"bad config: {e}")
-
-    job = store.create(tmp.name, meta={"filename": file.filename})
+    path = _save_upload(file)
+    cfg = _make_cfg(target_lang=target_lang, source_lang=source_lang, output_format=output_format,
+                    engine=engine, fidelity=fidelity, domain=domain, register=register,
+                    layout=layout, ocr_engine=ocr_engine, bilingual=bilingual, quality=quality,
+                    localize=localize, pages=pages)
+    job = store.create(path, meta={"filename": file.filename})
     store.run_async(job, cfg)
     return {"job_id": job.id, "status": job.status}
+
+
+@app.post("/api/batch")
+async def batch(
+    files: list[UploadFile] = File(...),
+    target_lang: str = Form(...),
+    source_lang: str = Form("auto"),
+    output_format: str = Form("docx"),
+    engine: str = Form("google"),
+    fidelity: str = Form("auto"),
+    domain: str = Form("auto"),
+    register: str = Form("auto"),
+    layout: str = Form("auto"),
+    ocr_engine: str = Form("auto"),
+    bilingual: bool = Form(False),
+    quality: bool = Form(False),
+    localize: bool = Form(False),
+    pages: str = Form(""),
+) -> dict:
+    """Batch upload: one independent job per file (DeepL-style), tied by a shared batch_id, applied
+    with the SAME settings. Heavy work is serialised by the job store, so they run one at a time."""
+    if not files:
+        raise HTTPException(400, "no files")
+    bid = uuid.uuid4().hex[:12]
+    out = []
+    for file in files:
+        path = _save_upload(file)
+        cfg = _make_cfg(target_lang=target_lang, source_lang=source_lang,
+                        output_format=output_format, engine=engine, fidelity=fidelity,
+                        domain=domain, register=register, layout=layout, ocr_engine=ocr_engine,
+                        bilingual=bilingual, quality=quality, localize=localize, pages=pages)
+        job = store.create(path, meta={"filename": file.filename}, batch_id=bid)
+        store.run_async(job, cfg)
+        out.append({"job_id": job.id, "filename": file.filename})
+    return {"batch_id": bid, "jobs": out}
+
+
+@app.get("/api/batch/{bid}")
+def batch_status(bid: str) -> dict:
+    jobs = store.list_batch(bid)
+    if not jobs:
+        raise HTTPException(404, "batch not found")
+    return {"batch_id": bid, "jobs": [
+        {"job_id": j.id, "filename": j.meta.get("filename", ""), "status": j.status,
+         "progress": j.progress, "message": j.message, "error": j.error,
+         "has_output": bool(j.output_path), "has_report": bool(j.report_path)}
+        for j in jobs]}
 
 
 @app.get("/api/jobs/{jid}")

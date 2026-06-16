@@ -62,10 +62,10 @@ function Picker({ value, onChange, options, labels }: {
 export function TranslateForm({ health, busy, onSubmit }: {
   health: Health | null
   busy: boolean
-  onSubmit: (file: File, v: FormValues) => void
+  onSubmit: (files: File[], v: FormValues) => void
 }) {
   const [v, setV] = useState<FormValues>(DEFAULTS)
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [drag, setDrag] = useState(false)
   const [advanced, setAdvanced] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -81,18 +81,20 @@ export function TranslateForm({ health, busy, onSubmit }: {
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
           onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]) }}
+          onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files.length) setFiles(Array.from(e.dataTransfer.files)) }}
           className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-10 text-center transition-colors ${drag ? "border-primary bg-accent" : "border-border"}`}
         >
           <FileUp className="h-8 w-8 text-muted-foreground" />
           <div className="text-sm">
-            {file ? <span className="font-medium">{file.name}</span> : "Drop a document or click to browse"}
+            {files.length === 1 ? <span className="font-medium">{files[0].name}</span>
+              : files.length > 1 ? <span className="font-medium">{files.length} files</span>
+              : "Drop documents or click to browse"}
           </div>
           <p className="text-xs text-muted-foreground">
-            PDF (incl. scans), DOCX, PPTX, XLSX, EPUB, images, subtitles
+            One or many — PDF (incl. scans), DOCX, PPTX, XLSX, EPUB, images, subtitles
           </p>
-          <input ref={inputRef} type="file" className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input ref={inputRef} type="file" multiple className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
         </div>
 
         {/* The two things a beginner actually chooses */}
@@ -108,9 +110,10 @@ export function TranslateForm({ health, busy, onSubmit }: {
           </Field>
         </div>
 
-        <Button disabled={!file || busy} className="w-full" size="lg"
-          onClick={() => file && onSubmit(file, v)}>
-          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Working…</> : "Translate"}
+        <Button disabled={!files.length || busy} className="w-full" size="lg"
+          onClick={() => files.length && onSubmit(files, v)}>
+          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Working…</>
+            : files.length > 1 ? `Translate ${files.length} files` : "Translate"}
         </Button>
 
         {/* Advanced — hidden by default */}

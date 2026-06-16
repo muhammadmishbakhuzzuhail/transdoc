@@ -1,19 +1,22 @@
 import { AlertCircle, Languages, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
+import { BatchView } from "@/components/BatchView"
 import { PreviewPanel } from "@/components/PreviewPanel"
 import { ReviewView } from "@/components/ReviewView"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  type Analysis, getAnalysis, getHealth, getJob, type Health, type JobStatus, startTranslate,
+  type Analysis, getAnalysis, getHealth, getJob, type Health, type JobStatus, startBatch,
+  startTranslate,
 } from "@/lib/api"
 
 export default function App() {
   const [health, setHealth] = useState<Health | null>(null)
   const [job, setJob] = useState<JobStatus | null>(null)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
+  const [batchId, setBatchId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const poll = useRef<number | null>(null)
 
@@ -24,11 +27,22 @@ export default function App() {
 
   const busy = job?.status === "queued" || job?.status === "running"
 
-  async function submit(file: File, v: FormValues) {
-    setError(null); setAnalysis(null); setJob(null)
+  async function submit(files: File[], v: FormValues) {
+    setError(null); setAnalysis(null); setJob(null); setBatchId(null)
     const fd = new FormData()
-    fd.append("file", file)
     Object.entries(v).forEach(([k, val]) => fd.append(k, String(val)))
+    // more than one file -> batch (one job per file, polled as a list); one file -> review-first
+    if (files.length > 1) {
+      files.forEach((f) => fd.append("files", f))
+      try {
+        const { batch_id } = await startBatch(fd)
+        setBatchId(batch_id)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "batch failed")
+      }
+      return
+    }
+    fd.append("file", files[0])
     try {
       const { job_id } = await startTranslate(fd)
       if (poll.current) clearInterval(poll.current)
@@ -82,6 +96,8 @@ export default function App() {
           </CardContent>
         </Card>
       )}
+
+      {batchId && <BatchView bid={batchId} />}
 
       {busy && (
         <Card>
