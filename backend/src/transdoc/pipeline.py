@@ -180,6 +180,16 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
             from .verify import verify_output
             verify_warnings = verify_output(doc, outp, cfg)
 
+    # Phase 6c: emit the review sidecar for the human feedback loop (opt-in). It carries the source
+    # for every translated segment, which a monolingual output cannot, so a re-imported edit can be
+    # promoted to a confirmed TM entry keyed by source.
+    if getattr(cfg, "review", False):
+        from .store.feedback import write_review
+        rows = [(b.id, b.text, b.translated) for b in doc.blocks
+                if b.is_translatable and b.translated]
+        if rows:
+            write_review(rows, str(Path(outp).with_suffix("")) + ".review.tsv")
+
     report = build_report(doc, cfg)
     if verify_warnings:
         report += "\n\n## Post-render verification\n" + "\n".join(

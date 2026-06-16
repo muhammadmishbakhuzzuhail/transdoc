@@ -171,6 +171,28 @@ class GlossaryStore:
             cols = [c[0] for c in cur.description]
             return [dict(zip(cols, row)) for row in cur.fetchall()]
 
+    def accept_suggestion(self, term: str, src_lang: str, tgt_lang: str,
+                          domain: str = "", locked: bool = False) -> bool:
+        """Promote a pending suggestion to an applied glossary entry (origin 'user') and drop it from
+        the queue. Returns True if a matching suggestion existed."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT rendering FROM glossary_suggestions "
+                "WHERE src_lang=? AND tgt_lang=? AND domain=? AND term=?",
+                [src_lang, tgt_lang, domain, term],
+            ).fetchone()
+        if not row:
+            return False
+        self.add(term, row[0], src_lang, tgt_lang, domain=domain, locked=locked, origin="user")
+        with self._lock:
+            self._conn.execute(
+                "DELETE FROM glossary_suggestions "
+                "WHERE src_lang=? AND tgt_lang=? AND domain=? AND term=?",
+                [src_lang, tgt_lang, domain, term],
+            )
+            self._conn.commit()
+        return True
+
     # --- interop (TSV + JSON) ------------------------------------------------------------------
 
     def export(self, path: str | Path, src_lang: str | None = None,

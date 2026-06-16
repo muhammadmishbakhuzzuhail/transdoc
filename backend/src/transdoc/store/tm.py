@@ -99,6 +99,58 @@ class TMStore:
                 for s, c, t in triples if s.strip() and t and t.strip()]
         self._upsert(rows)
 
+    def put_correction(self, source: str, corrected: str, target: str,
+                       src_lang: str = "", domain: str = "") -> None:
+        """Store a human-confirmed segment translation: confirmed=1, origin='correction'. Overrides
+        any existing row for the key (corrections are authoritative) and makes it immune to later
+        auto-overwrite by an engine result."""
+        if not (source and source.strip() and corrected and corrected.strip()):
+            return
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO tm (src_norm, src_text, src_lang, tgt_lang, domain, ctx, tgt_text, "
+                "                origin, confirmed) VALUES (?, ?, ?, ?, ?, '', ?, 'correction', 1) "
+                "ON CONFLICT(src_norm, src_lang, tgt_lang, domain, ctx) DO UPDATE SET "
+                "  tgt_text=excluded.tgt_text, origin='correction', confirmed=1, "
+                "  updated_at=datetime('now')",
+                [_norm(source), source, src_lang, target, domain, corrected],
+            )
+            self._conn.commit()
+
+    def confirm(self, source: str, target: str, src_lang: str = "", domain: str = "") -> int:
+        """Promote an existing engine entry to confirmed=1 (immune to auto-overwrite). Returns the
+        number of rows confirmed."""
+        with self._lock:
+            cur = self._conn.execute(
+                "UPDATE tm SET confirmed=1, updated_at=datetime('now') "
+                "WHERE src_norm=? AND tgt_lang=? AND src_lang=? AND domain=?",
+                [_norm(source), target, src_lang, domain],
+            )
+            self._conn.commit()
+            return cur.rowcount
+
+    def stats(self) -> dict[str, int]:
+        """Row counts: total / confirmed / unconfirmed."""
+        with self._lock:
+            total = self._conn.execute("SELECT COUNT(*) FROM tm").fetchone()[0]
+            confirmed = self._conn.execute(
+                "SELECT COUNT(*) FROM tm WHERE confirmed=1").fetchone()[0]
+        return {"total": total, "confirmed": confirmed, "unconfirmed": total - confirmed}
+
+    def purge(self, unconfirmed_only: bool = True, older_than_days: int | None = None) -> int:
+        """Delete TM rows. By default only unconfirmed (confirmed corrections are protected). With
+        ``older_than_days`` also restrict to rows last updated before that cutoff. Returns rows deleted."""
+        where = ["confirmed=0"] if unconfirmed_only else []
+        params: list = []
+        if older_than_days is not None:
+            where.append("updated_at < datetime('now', ?)")
+            params.append(f"-{int(older_than_days)} days")
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        with self._lock:
+            cur = self._conn.execute(f"DELETE FROM tm{clause}", params)
+            self._conn.commit()
+            return cur.rowcount
+
     def _upsert(self, rows: list[tuple]) -> None:
         if not rows:
             return
