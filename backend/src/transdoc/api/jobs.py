@@ -144,6 +144,12 @@ class JobStore:
                     json.dumps(build_analysis(res.doc, cfg)))
             except Exception:  # analysis is best-effort, never fail the job over it
                 pass
+            try:
+                from .review import build_review
+                (out_dir / "review.json").write_text(
+                    json.dumps(build_review(res.doc), ensure_ascii=False))
+            except Exception:  # review payload is best-effort too
+                pass
             job.progress = 1.0
             job.status = "done"
             job.message = "completed"
