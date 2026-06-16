@@ -111,6 +111,13 @@ eval-layout:
 eval-consistency:
 	cd backend && .venv/bin/python -m scripts.eval_consistency $(ARGS)
 
+# Translation QA-rate: run curated entity-dense sentences through the full translate path, then the
+# rule-based QA suite (entity/placeholder/untranslated/empty/length/glossary). Reports HARD findings
+# per language (0 = all entities preserved). Online (real engine). Pass langs/--show/--engine via ARGS.
+#   make eval-qa ARGS="--show fr ar ja"
+eval-qa:
+	cd backend && .venv/bin/python -m scripts.eval_qa $(ARGS)
+
 # LLM-as-judge: Claude vision scores extraction vs the source image (automates the manual
 # vision-QA audit). Needs ANTHROPIC_API_KEY + the [llm] extra. Online + costs tokens.
 #   make eval-judge ARGS="corpus/real/full_image/newspaper_scan.jpg corpus/real/multilingual/udhr_english.pdf"
