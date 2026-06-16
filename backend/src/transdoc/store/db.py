@@ -12,7 +12,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
 
 
 def default_db_path() -> Path:
@@ -149,6 +149,27 @@ def _migrate(conn: sqlite3.Connection) -> None:
             """
         )
         conn.execute("PRAGMA user_version=3")
+    if version < 4:
+        # v4: corrections (PR-3) — the feedback audit trail + promotion source. Every `correct` (and
+        # every imported edit) appends a row here; the same call also promotes the fix into tm
+        # (segment -> confirmed) or glossary (term -> user). Kept as a separate log so provenance
+        # survives even after the promoted row is later re-corrected or purged.
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS corrections (
+              id          INTEGER PRIMARY KEY,
+              src_text    TEXT NOT NULL,
+              src_lang    TEXT NOT NULL DEFAULT '',
+              tgt_lang    TEXT NOT NULL,
+              domain      TEXT NOT NULL DEFAULT '',
+              bad_text    TEXT,                          -- what the system produced (if known)
+              corrected   TEXT NOT NULL,                 -- the human fix
+              scope       TEXT NOT NULL,                 -- 'segment' (->tm) | 'term' (->glossary)
+              created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            """
+        )
+        conn.execute("PRAGMA user_version=4")
     conn.commit()
     # guard: code expecting a newer schema than the file should fail loudly, not corrupt data.
     if conn.execute("PRAGMA user_version").fetchone()[0] > _SCHEMA_VERSION:

@@ -99,6 +99,10 @@ class Config(BaseModel):
     verify: bool = False                        # re-extract the rendered output and diff its
                                                 # structure (block/table/figure counts, text
                                                 # length) against the source IR -> report warnings
+    review: bool = False                        # emit a <output>.review.tsv sidecar (block_id,
+                                                # source, translation, correction) for the human
+                                                # feedback loop — fill the correction column and
+                                                # `transdoc feedback import` it (PR-3)
     ocr_figures: bool = False                   # OCR text inside large embedded images
                                                 # (a scanned image sitting on a digital page)
     layout: str = "auto"                         # "auto" -> PP-StructureV3 structure path when

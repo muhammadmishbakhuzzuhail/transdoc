@@ -59,6 +59,9 @@ def translate(
                                   help="hybrid QE-gate: re-translate QA-weak segments with the "
                                        "local doc-context LLM (Ollama)"),
     verify: bool = typer.Option(False, "--verify", help="re-extract output, diff structure vs source"),
+    review: bool = typer.Option(False, "--review",
+                                help="emit a <output>.review.tsv for the feedback loop "
+                                     "(fill the correction column, then `transdoc feedback import`)"),
     ocr_figures: bool = typer.Option(False, "--ocr-figures",
                                      help="OCR text inside large embedded images (scan-in-page)"),
     glossary: str = typer.Option(None, "--glossary", "-g",
@@ -75,6 +78,7 @@ def translate(
     cfg.quality_check = quality
     cfg.escalate = escalate
     cfg.verify = verify
+    cfg.review = review
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout
     if glossary:
@@ -228,6 +232,144 @@ def glossary_import(file: str = typer.Argument(..., help="Input .json or .tsv"))
         raise typer.Exit(1)
     n = gs.import_(file)
     console.print(f"[green]✓ imported {n} entries[/] from {file}")
+
+
+@glossary_app.command("suggestions")
+def glossary_suggestions(
+    source: str = typer.Option(None, "--source", "-s"),
+    target: str = typer.Option(None, "--target", "-t"),
+    domain: str = typer.Option(None, "--domain", "-d"),
+):
+    """List pending auto-glossary suggestions (confirm with `glossary accept`)."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/]")
+        raise typer.Exit(1)
+    rows = gs.list_suggestions(source, target, domain)
+    if not rows:
+        console.print("[yellow]no suggestions[/]")
+        return
+    for e in rows:
+        dom = f" [{e['domain']}]" if e["domain"] else ""
+        console.print(f"{e['src_lang']}→{e['tgt_lang']}{dom}: [cyan]{e['term']}[/] → "
+                      f"{e['rendering']} ({e['source_kind']})")
+
+
+@glossary_app.command("accept")
+def glossary_accept(
+    term: str = typer.Argument(...),
+    source: str = typer.Option(..., "--source", "-s"),
+    target: str = typer.Option(..., "--target", "-t"),
+    domain: str = typer.Option("", "--domain", "-d"),
+    lock: bool = typer.Option(False, "--lock"),
+):
+    """Promote a pending suggestion to an applied glossary entry."""
+    from .store.glossary import GlossaryStore
+    gs = GlossaryStore.get()
+    if gs is None:
+        console.print("[red]glossary store unavailable[/]")
+        raise typer.Exit(1)
+    ok = gs.accept_suggestion(term, source, target, domain=domain, locked=lock)
+    console.print(f"[green]✓ accepted[/] {term}" if ok else "[yellow]no such suggestion[/]")
+
+
+@app.command()
+def correct(
+    source_text: str = typer.Argument(..., help="Source text (a term with --term, else a segment)"),
+    fix: str = typer.Argument(..., help="The correct target translation"),
+    source: str = typer.Option(..., "--source", "-s", help="Source language"),
+    target: str = typer.Option(..., "--target", "-t", help="Target language"),
+    domain: str = typer.Option("", "--domain", "-d"),
+    term: bool = typer.Option(False, "--term", help="Correct a TERM (-> glossary) instead of a "
+                                                    "whole segment (-> confirmed TM)"),
+    lock: bool = typer.Option(False, "--lock", help="With --term: lock the glossary entry (top tier)"),
+):
+    """Record a human correction: a segment fix becomes a confirmed TM entry, a --term fix becomes
+    an authoritative glossary entry. Reused on every later document."""
+    from .store.feedback import record_correction
+    ok = record_correction(source_text, fix, source, target, domain=domain,
+                           scope="term" if term else "segment", locked=lock)
+    if not ok:
+        console.print("[red]correction not recorded[/] (store unavailable or empty input)")
+        raise typer.Exit(1)
+    kind = "term → glossary" if term else "segment → confirmed TM"
+    console.print(f"[green]✓ recorded[/] ({kind}): {source_text} → {fix}")
+
+
+feedback_app = typer.Typer(add_completion=False, help="Import human corrections from edited output "
+                           "or a filled review sidecar.")
+app.add_typer(feedback_app, name="feedback")
+
+
+@feedback_app.command("import")
+def feedback_import(
+    file: str = typer.Argument(..., help="A filled <output>.review.tsv, or an edited output with "
+                                         "--against <review.tsv>"),
+    source: str = typer.Option(..., "--source", "-s"),
+    target: str = typer.Option(..., "--target", "-t"),
+    domain: str = typer.Option("", "--domain", "-d"),
+    against: str = typer.Option(None, "--against", help="The original <output>.review.tsv to align "
+                                                       "an edited output against (mechanism 2)"),
+):
+    """Import corrections from a filled review sidecar (mechanism 3) or an edited output aligned to
+    the review sidecar (mechanism 2)."""
+    from .store.feedback import import_edited, import_review
+    if against:
+        n = import_edited(file, against, source, target, domain=domain)
+    else:
+        n = import_review(file, source, target, domain=domain)
+    console.print(f"[green]✓ imported {n} correction{'' if n == 1 else 's'}[/]")
+
+
+tm_app = typer.Typer(add_completion=False, help="Inspect / maintain the translation memory.")
+app.add_typer(tm_app, name="tm")
+
+
+@tm_app.command("stats")
+def tm_stats():
+    """Show TM row counts (total / confirmed / unconfirmed)."""
+    from .store.tm import TMStore
+    tm = TMStore.get()
+    if tm is None:
+        console.print("[red]TM unavailable[/] (TRANSDOC_TM_DISABLE set?)")
+        raise typer.Exit(1)
+    s = tm.stats()
+    console.print(f"total={s['total']} confirmed={s['confirmed']} unconfirmed={s['unconfirmed']}")
+
+
+@tm_app.command("confirm")
+def tm_confirm(
+    source_text: str = typer.Argument(...),
+    target: str = typer.Option(..., "--target", "-t"),
+    source: str = typer.Option("", "--source", "-s"),
+    domain: str = typer.Option("", "--domain", "-d"),
+):
+    """Promote an existing engine TM entry to confirmed (immune to auto-overwrite)."""
+    from .store.tm import TMStore
+    tm = TMStore.get()
+    if tm is None:
+        console.print("[red]TM unavailable[/]")
+        raise typer.Exit(1)
+    n = tm.confirm(source_text, target, src_lang=source, domain=domain)
+    console.print(f"[green]✓ confirmed {n} row(s)[/]" if n else "[yellow]no match[/]")
+
+
+@tm_app.command("purge")
+def tm_purge(
+    unconfirmed: bool = typer.Option(True, "--unconfirmed/--all",
+                                     help="--unconfirmed (default) protects confirmed rows; "
+                                          "--all purges everything"),
+    older_than: int = typer.Option(None, "--older-than", help="Only rows older than N days"),
+):
+    """Delete TM rows (unconfirmed by default; confirmed corrections are protected)."""
+    from .store.tm import TMStore
+    tm = TMStore.get()
+    if tm is None:
+        console.print("[red]TM unavailable[/]")
+        raise typer.Exit(1)
+    n = tm.purge(unconfirmed_only=unconfirmed, older_than_days=older_than)
+    console.print(f"[green]✓ purged {n} row(s)[/]")
 
 
 def _execute(input: str, cfg: Config, out: str | None):
