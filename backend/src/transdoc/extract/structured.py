@@ -46,6 +46,9 @@ _LABEL = {
     "header_image": BlockType.HEADER,
     "number": BlockType.PAGE_NUMBER,
     "page_number": BlockType.PAGE_NUMBER,
+    "aside_text": BlockType.ASIDE,
+    "aside": BlockType.ASIDE,
+    "marginalia": BlockType.ASIDE,
 }
 # Regions cropped verbatim from the source (no text reflow). Tables are handled separately
 # (HTML -> cells); they fall back to a crop only if parsing fails.
@@ -103,9 +106,9 @@ def _parse_table_html(html: str) -> Table | None:
         return None
     tbl = BeautifulSoup(html, "html.parser").find("table")
     return _table_from_soup(tbl) if tbl is not None else None
-# Page furniture we drop from a clean reflow.
-_SKIP = {"header", "footer", "number", "page_number", "formula_number", "header_image",
-         "aside_text"}
+# Page furniture we drop from a clean reflow. aside_text is NOT dropped — marginalia/side notes are
+# real content (typed ASIDE, kept + translated), not furniture.
+_SKIP = {"header", "footer", "number", "page_number", "formula_number", "header_image"}
 # Regions that belong AFTER the body no matter what reading-order index the model gave them.
 # PP-StructureV3 hands footnotes/references block_order=0 (it can't place a floating element),
 # which would otherwise sort them to the very top of the page.
@@ -268,8 +271,9 @@ def extract_structured(path: str, cfg: Config) -> Document:
     out.blocks = reconcile(out.blocks)
     # Recompute reading order geometrically (XY-cut) rather than trusting PP-StructureV3's order,
     # which floats footnotes/references to order 0 and is weak on multi-column pages.
-    from .block_types import detect_running_heads
+    from .block_types import detect_marginalia, detect_running_heads
     detect_running_heads(out)   # page-number + running head/foot PP-StructureV3 may have missed
+    detect_marginalia(out)      # side notes the model didn't label aside_text
     from .reading_order import reading_order
     reading_order(out)
     from .base import associate_captions

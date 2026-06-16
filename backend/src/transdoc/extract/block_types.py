@@ -19,6 +19,9 @@ from collections import defaultdict
 from ..ir import Block, BlockType, Document
 
 _MARGIN = 0.10            # top/bottom 10% of the page is the header/footer band
+_SIDE_MARGIN = 0.15       # outer left/right 15% is the marginalia band
+_SIDE_MAX_W = 0.20        # marginalia is narrow — at most 20% of the page width
+_BODY_MIN_W = 0.40        # a "body" block (the main text the note sits beside) is wider than this
 _UPGRADABLE = {BlockType.PARAGRAPH, BlockType.OTHER, BlockType.HEADING, BlockType.TITLE}
 # a page-number cell: a short run of digits / roman numerals, optionally "Page 3" or "3 / 10"
 _PAGENUM = re.compile(r"(?:page\s+)?[\divxlcm]+(?:\s*[/of-]+\s*[\divxlcm]+)?\.?", re.IGNORECASE)
@@ -76,3 +79,33 @@ def detect_running_heads(doc: Document) -> None:
         for b in blocks:
             if b.type in _UPGRADABLE:
                 b.type = target
+
+
+def detect_marginalia(doc: Document) -> None:
+    """Tag side notes / marginalia: a NARROW block in the outer left/right margin sitting BESIDE a
+    wider body block (not page furniture, not a column). Kept + translated as ASIDE. Conservative —
+    a body column is too wide (> _SIDE_MAX_W) to qualify, so two-column layouts are unaffected."""
+    by_page: dict[int, list[Block]] = {}
+    for b in doc.blocks:
+        if b.bbox:
+            by_page.setdefault(b.page, []).append(b)
+    for pno, blocks in by_page.items():
+        pw = (doc.page_sizes.get(pno, (595.0, 842.0))[0]) or 595.0
+        bodies = [b for b in blocks if (b.bbox.x1 - b.bbox.x0) > _BODY_MIN_W * pw]
+        if not bodies:
+            continue
+        for b in blocks:
+            if b.type not in _UPGRADABLE:
+                continue
+            w = b.bbox.x1 - b.bbox.x0
+            if w > _SIDE_MAX_W * pw:
+                continue
+            in_left = b.bbox.x1 <= _SIDE_MARGIN * pw
+            in_right = b.bbox.x0 >= (1 - _SIDE_MARGIN) * pw
+            if not (in_left or in_right):
+                continue
+            # must sit beside a body block (vertical overlap) — else it's a stray narrow line
+            beside = any(min(b.bbox.y1, body.bbox.y1) - max(b.bbox.y0, body.bbox.y0) > 0
+                         for body in bodies if body is not b)
+            if beside:
+                b.type = BlockType.ASIDE

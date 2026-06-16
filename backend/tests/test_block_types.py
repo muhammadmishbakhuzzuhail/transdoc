@@ -4,8 +4,8 @@ band + cross-page repetition, and the typing_match eval metric."""
 from __future__ import annotations
 
 from transdoc.eval.metrics import typing_match
-from transdoc.extract.block_types import detect_running_heads
-from transdoc.ir import BBox, Block, BlockType, Document
+from transdoc.extract.block_types import detect_marginalia, detect_running_heads
+from transdoc.ir import NON_TRANSLATABLE, BBox, Block, BlockType, Document
 
 
 def _b(bid, text, x0, y0, x1, y1, page, t=BlockType.PARAGRAPH):
@@ -54,6 +54,35 @@ def test_does_not_clobber_specific_types():
         d.blocks.append(_b(f"c{p}", "Figure 1: chart", 40, 22, 560, 40, p, t=BlockType.CAPTION))
     detect_running_heads(d)
     assert all(b.type == BlockType.CAPTION for b in d.blocks)   # caption survives margin+repeat
+
+
+def _box(bid, x0, y0, x1, y1, page=0, t=BlockType.PARAGRAPH):
+    return Block(id=bid, type=t, page=page, text="x",
+                 bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1))
+
+
+def test_narrow_outer_margin_note_beside_body_becomes_aside():
+    d = _doc(1)                                            # page 600x800
+    body = _box("body", 40, 300, 500, 360)                # wide body (~77%)
+    note = _box("note", 520, 300, 585, 360)               # narrow note in right outer margin
+    d.blocks = [body, note]
+    detect_marginalia(d)
+    assert note.type == BlockType.ASIDE
+    assert body.type == BlockType.PARAGRAPH
+
+
+def test_column_not_mistaken_for_marginalia():
+    d = _doc(1)
+    # two ~42%-wide columns: neither is narrow enough (>20%) to be marginalia
+    left = _box("L", 40, 300, 290, 360)
+    right = _box("R", 310, 300, 560, 360)
+    d.blocks = [left, right]
+    detect_marginalia(d)
+    assert all(b.type == BlockType.PARAGRAPH for b in d.blocks)
+
+
+def test_aside_is_translatable():
+    assert BlockType.ASIDE not in NON_TRANSLATABLE
 
 
 def test_typing_metric_accuracy_and_confusion():
