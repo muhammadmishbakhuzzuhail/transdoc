@@ -27,7 +27,7 @@ PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
         eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency eval-layout \
-        serve dev clean
+        eval-expansion serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -104,6 +104,14 @@ eval-table:
 #   make eval-layout ARGS="path/to/doc.pdf"
 eval-layout:
 	cd backend && .venv/bin/python -m scripts.eval_layout $(ARGS)
+
+# Text-expansion fidelity (Area C): simulate target-language expansion (pad each block ~1.4x),
+# reconstruct the PDF, and count illegible/tiny/overflow spans + page spill. Deterministic/offline
+# (no engine). BYO corpus of text-layer PDFs. --baseline gates regressions.
+#   make eval-expansion ARGS="corpus/real/multilingual/*.pdf"
+#   make eval-expansion ARGS="--baseline corpus/baseline_expansion.json corpus/real/**/*.pdf"
+eval-expansion:
+	cd backend && .venv/bin/python -m scripts.eval_expansion $(ARGS)
 
 # Terminology consistency: does a repeated term get the same target rendering across contexts?
 # (1.0 = consistent.) Measure-before-build for glossary auto-extraction. Online. Pass langs via ARGS.
