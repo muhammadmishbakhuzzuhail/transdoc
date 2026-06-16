@@ -146,7 +146,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         from .textdir import apply_text_direction
         apply_text_direction(doc, cfg)
 
-    # Phase 5b: optional reference-free quality estimation -> flag weak segments
+    # Phase 5b: rule-based QA (always-on, deterministic, model-free) -> flag entity/placeholder/
+    # untranslated/empty (hard) + length/glossary (soft). Complements the optional COMET QE below.
+    with _stage(timings, "qa"):
+        from .translate.qa import run_qa
+        qa_findings = run_qa(doc, cfg)
+
+    # Phase 5c: optional reference-free quality estimation (COMET-Kiwi) -> flag weak segments
     if cfg.quality_check:
         with _stage(timings, "quality_check"):
             from .translate.quality import annotate_quality
@@ -169,6 +175,8 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     if verify_warnings:
         report += "\n\n## Post-render verification\n" + "\n".join(
             f"- {w}" for w in verify_warnings)
+    from .translate.qa import qa_report
+    report += qa_report(qa_findings)
     report += _timing_report(timings)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
     Path(report_path).write_text(report, encoding="utf-8")
