@@ -167,6 +167,14 @@ class OllamaTranslator:
             i = end
         return [r if r is not None else "" for r in results]
 
+    def translate_one(self, text: str, cfg: Config, src: str | None = None,
+                      prev_pairs: list[tuple[str, str]] | None = None,
+                      following: list[str] | None = None) -> str:
+        """Translate a SINGLE segment with explicit neighbour context (already-translated previous +
+        source following). Used by the hybrid QE-gate to re-translate one weak segment in context,
+        without re-translating its neighbours."""
+        return self._translate_once(cfg, src, [("0", text)], prev_pairs or [], following or [])[0]
+
     def translate_batch(self, texts: list[str], cfg: Config,
                         src: str | None = None) -> list[str]:
         """Segment-independent path (used for auto-glossary term renderings + as a generic API).
