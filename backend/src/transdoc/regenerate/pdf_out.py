@@ -511,17 +511,6 @@ def _norm_rect(b):
     return fitz.Rect(bb.x0 * s, bb.y0 * s, bb.x1 * s, bb.y1 * s)
 
 
-def _grow_rect(r, obstacles, page_height):
-    """Grow a box down into the empty space before the next block (or page edge)."""
-    import fitz
-    limit = page_height
-    for o in obstacles:
-        if o.y0 >= r.y1 - 1 and min(r.x1, o.x1) - max(r.x0, o.x0) > 2:
-            limit = min(limit, o.y0)
-    new_y1 = limit - 2.0
-    return fitz.Rect(r.x0, r.y0, r.x1, new_y1) if new_y1 > r.y1 + 1 else r
-
-
 _HIGHLIGHT_CSS = {
     "yellow": "#ffff00", "bright_green": "#00ff00", "turquoise": "#40e0d0", "pink": "#ffc0cb",
     "blue": "#0000ff", "red": "#ff0000", "dark_blue": "#000080", "teal": "#008080",
@@ -577,8 +566,12 @@ def _runs_html(runs) -> str:
     return "".join(_run_span(r) for r in runs)
 
 
-def _block_html(b):
-    """Styled HTML for a block (size/bold/italic/colour/align/rtl) -> (html, size_pt)."""
+def _block_html(b, compress: bool = False):
+    """Styled HTML for a block (size/bold/italic/colour/align/rtl) -> (html, size_pt).
+
+    ``compress`` is Area-C tier 1: when the translation is longer than the source, tighten leading
+    to ~1.0 and drop paragraph spacing so the text reclaims vertical space BEFORE any font shrink or
+    cascade — the cheapest way to absorb expansion without moving the block."""
     size = b.style.size or 11
     rtl = b.style.rtl
     is_heading = b.type in (BlockType.TITLE, BlockType.HEADING)
@@ -588,7 +581,8 @@ def _block_html(b):
         align = "right" if rtl else "justify"
     else:
         align = "right" if rtl else "left"
-    css = [f"font-size:{size:.1f}pt", f"text-align:{align}", "line-height:1.05"]
+    css = [f"font-size:{size:.1f}pt", f"text-align:{align}",
+           f"line-height:{'1.0' if compress else '1.05'}"]
     if b.style.font:
         css.append(f"font-family:{b.style.font}")
     if rtl:
@@ -604,15 +598,15 @@ def _block_html(b):
     if b.style.color and b.style.color.lower() not in ("#000000", "#000"):
         css.append(f"color:{b.style.color}")
     css += _char_css(b.style)
-    if b.style.space_before:
+    if b.style.space_before and not compress:
         css.append(f"margin-top:{b.style.space_before:.0f}pt")
-    if b.style.space_after:
+    if b.style.space_after and not compress:
         css.append(f"margin-bottom:{b.style.space_after:.0f}pt")
     if b.style.indent_left:
         css.append(f"margin-left:{b.style.indent_left:.0f}pt")
     if b.style.indent_first:
         css.append(f"text-indent:{b.style.indent_first:.0f}pt")
-    if b.style.line_spacing and b.style.line_spacing > 0:
+    if b.style.line_spacing and b.style.line_spacing > 0 and not compress:
         css = [c for c in css if not c.startswith("line-height")]
         css.append(f"line-height:{b.style.line_spacing:.2f}")
     if b.style.para_shading:                      # boxed/callout paragraph background
@@ -686,12 +680,117 @@ def _redraw_vectors(page, drawings) -> None:
             continue
 
 
+# --- Area C: text-expansion reflow ------------------------------------------------------------
+# When a translation runs longer than the source (DE/FI/RU expand ~30%), the original bbox is too
+# small. Tiered response, cheapest first: (1) COMPRESS leading; (2) GROW into the whitespace below
+# the block; (3) CASCADE — push the following same-column blocks down; (4) SPILL the overflow onto
+# a fresh page (the DeepL reflow, page count may grow). Font-shrink + 'illegible' flag stay as the
+# final safety net. Strict-fit blocks (no expansion, not pushed) render verbatim at their original
+# bbox, so an unexpanded doc (e.g. echo engine) is byte-for-byte the old fixed-layout output.
+
+_PAGE_MARGIN = 36.0       # spill-page top/bottom margin (0.5in)
+_BLOCK_GAP = 2.0          # vertical gap kept between cascaded blocks
+
+
+def _measure_html_height(html: str, width: float) -> float:
+    """Height (pt) the HTML needs at the given column width — fitz.Story laid out into a very tall
+    column. Approximate (Story's default metrics differ slightly from insert_htmlbox), but enough
+    to decide grow/cascade/spill; insert_htmlbox still shrink-fits as the safety net."""
+    import fitz
+
+    if width <= 1:
+        return 0.0
+    try:
+        story = fitz.Story(html=html)
+        _, filled = story.place(fitz.Rect(0, 0, width, 1_000_000))
+        return float(filled[3] - filled[1])
+    except Exception:
+        return 0.0
+
+
+def _columns(items: list[dict]) -> list[list[dict]]:
+    """Cluster page items into columns by horizontal overlap (newspaper/two-column aware), each
+    column sorted top-to-bottom in reading order. Single-column docs collapse to one list."""
+    cols: list[dict] = []
+    for it in sorted(items, key=lambda x: x["rect"].x0):
+        r = it["rect"]
+        for c in cols:
+            ov = min(c["x1"], r.x1) - max(c["x0"], r.x0)
+            if ov > 0.4 * min(c["x1"] - c["x0"], r.x1 - r.x0):
+                c["items"].append(it)
+                c["x0"], c["x1"] = min(c["x0"], r.x0), max(c["x1"], r.x1)
+                break
+        else:
+            cols.append({"x0": r.x0, "x1": r.x1, "items": [it]})
+    for c in cols:
+        c["items"].sort(key=lambda x: (x["block"].reading_order, x["rect"].y0))
+    return [c["items"] for c in cols]
+
+
+def _reflow(items: list[dict], page_h: float, anchored: bool) -> tuple[dict, list[dict]]:
+    """Assign each item a (top, bottom) on this page; return (placements, overflow).
+
+    anchored=True (a source page): a block that neither expanded nor got pushed keeps its ORIGINAL
+    y — identity for unexpanded docs. Expanded/pushed blocks cascade down their column; what no
+    longer fits spills. anchored=False (a spill page): stack everything from the top margin."""
+    placements: dict[str, tuple[float, float]] = {}
+    overflow: list[dict] = []
+    usable_bottom = page_h - _PAGE_MARGIN
+    fresh_cap = page_h - 2 * _PAGE_MARGIN
+    for col in _columns(items):
+        # anchored: cursor starts at the page top so the first block keeps its original y; a spill
+        # page stacks from the top margin instead.
+        cursor = 0.0 if anchored else _PAGE_MARGIN
+        spilling = False
+        for it in col:
+            if spilling:
+                overflow.append(it)
+                continue
+            b, rect, need = it["block"], it["rect"], it["h"]
+            expanded = need > rect.height + 1
+            if anchored and not expanded and cursor <= rect.y0 + 1:
+                # strict fit at the original position — verbatim, no reflow
+                top, bottom = rect.y0, rect.y0 + rect.height
+                placements[b.id] = (top, bottom)
+                cursor = bottom + _BLOCK_GAP
+                continue
+            top = max(rect.y0, cursor) if anchored else cursor
+            h = max(rect.height, need)
+            bottom = top + h
+            if bottom > usable_bottom and h <= fresh_cap:
+                # doesn't fit here but fits a fresh page -> spill this and the rest of the column
+                overflow.append(it)
+                spilling = True
+                continue
+            if bottom > usable_bottom:              # taller than a whole page: clamp, shrink-fit
+                bottom = usable_bottom
+            placements[b.id] = (top, bottom)
+            cursor = bottom + _BLOCK_GAP
+    overflow.sort(key=lambda x: x["block"].reading_order)
+    return placements, overflow
+
+
+def _block_item(b, page_h: float) -> dict:
+    """Pre-measure a text block: pick compressed vs normal styling and the height it needs."""
+    r = _norm_rect(b)
+    html_n, size = _block_html(b, compress=False)
+    need = _measure_html_height(html_n, r.width)
+    html, compressed = html_n, False
+    if need > r.height + 1:                          # tier 1: try compressed leading
+        html_c, _ = _block_html(b, compress=True)
+        need_c = _measure_html_height(html_c, r.width)
+        if need_c < need:
+            html, need, compressed = html_c, need_c, True
+    return {"block": b, "rect": r, "h": need, "html": html, "size": size,
+            "kind": "text", "compressed": compressed}
+
+
 def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
     """Positioned per-page reconstruction — the DeepL approach. A fresh page at the SOURCE page
-    size for every source page, with each block's translation placed at its ORIGINAL bbox and
-    reflowed within it; figures go back at their original position. Preserves page count, page
-    size, block positions and images — only the text changes. Dense boxes grow into adjacent
-    whitespace, then shrink to fit (flagged 'illegible' below the readable floor)."""
+    size for every source page, with each block's translation placed at its ORIGINAL bbox.
+    Preserves page count, size, block positions and images for content that fits. When the
+    translation expands past its box, the Area-C reflow kicks in (compress -> grow -> cascade ->
+    spill to a new page); font-shrink + 'illegible' flag remain the final safety net."""
     import fitz
 
     by_page: dict[int, list] = {}
@@ -713,78 +812,44 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
     try:
         for pno in range(npages):
             w, h = doc.page_sizes.get(pno, (595.0, 842.0))
-            page = out.new_page(width=w, height=h)
-            bg = doc.page_background.get(pno)
-            if bg:                                # coloured page: paint the panel first
-                try:
-                    rgb = _hex_rgb(bg)
-                    if rgb:
-                        page.draw_rect(page.rect, color=rgb, fill=rgb)
-                except Exception:
-                    pass
-            _redraw_vectors(page, doc.page_drawings.get(pno, []))
-            blocks = by_page.get(pno, [])
-            obstacles = [_norm_rect(b) for b in blocks if b.bbox]
+            blocks = [b for b in by_page.get(pno, []) if b.bbox]
+            # Pre-measure every block so the reflow knows which ones expanded. Non-text blocks
+            # (figure/formula/table) keep their original height in the cascade.
+            items: list[dict] = []
             for b in blocks:
-                if not b.bbox:
-                    continue
-                r = _norm_rect(b)
-                if b.type == BlockType.FIGURE:
-                    if b.crop_region and src is not None and b.page < src.page_count:
-                        # layout-detected non-text region (figure/diagram/chart/math/table):
-                        # crop it verbatim from the source -> pixel-perfect, never re-typeset.
+                if b.type in (BlockType.FIGURE, BlockType.FORMULA, BlockType.TABLE):
+                    items.append({"block": b, "rect": _norm_rect(b),
+                                  "h": _norm_rect(b).height, "kind": "media"})
+                elif b.output_text.strip():
+                    items.append(_block_item(b, h))
+
+            # Lay this source page out, then keep emitting spill pages until everything is placed.
+            # The origin page is ALWAYS emitted (even when empty) so an unexpanded doc keeps its
+            # 1:1 source-page mapping; spill pages are appended only when content overflows.
+            page_items, anchored, origin = items, True, True
+            while True:
+                placements, overflow = _reflow(page_items, h, anchored) if page_items else ({}, [])
+                page = out.new_page(width=w, height=h)
+                if origin:                            # backgrounds/vectors/annots use source geom
+                    bg = doc.page_background.get(pno)
+                    if bg:
                         try:
-                            page.insert_image(r, pixmap=src[b.page].get_pixmap(clip=r, dpi=200))
+                            rgb = _hex_rgb(bg)
+                            if rgb:
+                                page.draw_rect(page.rect, color=rgb, fill=rgb)
                         except Exception:
                             pass
-                    elif b.image_path:
-                        try:
-                            page.insert_image(r, filename=b.image_path)
-                        except Exception:
-                            pass
-                    continue
-                if b.type == BlockType.FORMULA and src is not None and b.page < src.page_count:
-                    # crop the equation region from the source (pixel-perfect math) instead of
-                    # placing flattened text that lost the fraction/super/subscript layout.
-                    try:
-                        pix = src[b.page].get_pixmap(clip=r, dpi=200)
-                        page.insert_image(r, pixmap=pix)
+                    _redraw_vectors(page, doc.page_drawings.get(pno, []))
+                for it in page_items:
+                    pl = placements.get(it["block"].id)
+                    if pl is None:                    # spilled to the next page
                         continue
-                    except Exception:
-                        pass   # fall through to text placement if the crop fails
-                if b.type == BlockType.TABLE and b.table:
-                    # grow into adjacent whitespace + flag shrink, like the text branch — a table
-                    # whose translated cells expanded (de/bn) otherwise shrinks silently or clips
-                    # in the original box with no signal (audit P4).
-                    try:
-                        gt = _grow_rect(r, obstacles, h)
-                        ret = page.insert_htmlbox(gt, _table_html(b.table), scale_low=0)
-                        scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
-                        if scale and scale < OVERFLOW_FLAG_SCALE:
-                            b.flags["text_expansion"] = (
-                                f"table shrunk to {scale:.0%} to fit — verify legibility/layout")
-                    except Exception:
-                        pass
-                    continue
-                if not b.output_text.strip():
-                    continue
-                if _is_mixed_bidi(b.output_text):
-                    b.flags["bidi_mixed"] = (
-                        "mixed RTL+LTR on one line — verify word order")
-                htmlbox, size = _block_html(b)
-                grown = _grow_rect(r, obstacles, h)
-                try:
-                    ret = page.insert_htmlbox(grown, htmlbox, scale_low=0)
-                    scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
-                    eff = (size or 11) * (scale or 1.0)
-                    if eff < LEGIBLE_MIN_PT:
-                        b.flags["illegible"] = (
-                            f"rendered at {eff:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — box too tight")
-                except Exception:
-                    # raw glyph draw — no HarfBuzz/UBA here, so reshape+reorder RTL ourselves
-                    raw = shape_for_raw_draw(b.output_text, b.style.rtl)
-                    page.insert_textbox(r, raw, fontsize=size, align=2 if b.style.rtl else 0)
-            _redraw_annots(page, doc.page_annots.get(pno, []))
+                    _place_item(page, it, pl, src)
+                if origin:
+                    _redraw_annots(page, doc.page_annots.get(pno, []))
+                if not overflow or len(overflow) == len(page_items):
+                    break                             # done, or nothing fit (avoid infinite spill)
+                page_items, anchored, origin = overflow, False, False
         _subset_pages(out, cfg)
         _apply_pdf_metadata(out, doc)
         _apply_pdf_toc(out, doc)
@@ -794,3 +859,59 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
         if src is not None:
             src.close()
     return out_path
+
+
+def _place_item(page, it: dict, pl: tuple[float, float], src) -> None:
+    """Render one reflowed item (media or text) into its assigned rect."""
+    import fitz
+
+    b = it["block"]
+    orig = it["rect"]
+    top, bottom = pl
+    r = fitz.Rect(orig.x0, top, orig.x1, bottom)
+    if it["kind"] == "media":
+        if b.type == BlockType.FIGURE:
+            if b.crop_region and src is not None and b.page < src.page_count:
+                try:                              # crop the source region at its ORIGINAL geometry
+                    page.insert_image(r, pixmap=src[b.page].get_pixmap(clip=orig, dpi=200))
+                except Exception:
+                    pass
+            elif b.image_path:
+                try:
+                    page.insert_image(r, filename=b.image_path)
+                except Exception:
+                    pass
+            return
+        if b.type == BlockType.FORMULA and src is not None and b.page < src.page_count:
+            try:
+                page.insert_image(r, pixmap=src[b.page].get_pixmap(clip=orig, dpi=200))
+                return
+            except Exception:
+                pass   # fall through to text placement if the crop fails
+        if b.type == BlockType.TABLE and b.table:
+            try:
+                ret = page.insert_htmlbox(r, _table_html(b.table), scale_low=0)
+                scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
+                if scale and scale < OVERFLOW_FLAG_SCALE:
+                    b.flags["text_expansion"] = (
+                        f"table shrunk to {scale:.0%} to fit — verify legibility/layout")
+            except Exception:
+                pass
+        return
+    # text
+    if _is_mixed_bidi(b.output_text):
+        b.flags["bidi_mixed"] = "mixed RTL+LTR on one line — verify word order"
+    size = it["size"]
+    try:
+        ret = page.insert_htmlbox(r, it["html"], scale_low=0)
+        scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
+        eff = (size or 11) * (scale or 1.0)
+        if eff < LEGIBLE_MIN_PT:
+            b.flags["illegible"] = (
+                f"rendered at {eff:.1f}pt (< {LEGIBLE_MIN_PT:.0f}pt) — box too tight")
+        elif scale and scale < OVERFLOW_FLAG_SCALE:
+            b.flags["text_expansion"] = (
+                f"shrunk to {scale:.0%} to fit box — verify legibility/layout")
+    except Exception:
+        raw = shape_for_raw_draw(b.output_text, b.style.rtl)
+        page.insert_textbox(r, raw, fontsize=size, align=2 if b.style.rtl else 0)
