@@ -56,8 +56,14 @@ _PH_RE = re.compile(r"\[\s?PH(\d+)\s?\]")
 
 
 class Protector:
-    def __init__(self, extra: list[str] | None = None):
+    def __init__(self, extra: list[str] | None = None,
+                 renderings: dict[str, str] | None = None):
+        """``extra`` = source terms to mask verbatim (the engine never sees them). ``renderings`` maps
+        a term to its TARGET rendering: when given, that term's placeholder restores to the rendering
+        instead of the source (protect→restore-target glossary application, PR-2). Terms without a
+        rendering restore to the source, as before."""
         self.extra = [e for e in (extra or []) if e.strip()]
+        self.renderings = {k: v for k, v in (renderings or {}).items() if k and v}
 
     def _spans(self, text: str) -> list[tuple[int, int]]:
         spans: list[tuple[int, int]] = []
@@ -89,7 +95,10 @@ class Protector:
         for i, (a, b) in enumerate(spans):
             out.append(text[cursor:a])
             out.append(_PH.format(i))
-            mapping[i] = text[a:b]
+            span = text[a:b]
+            # protect→restore-target: a glossary term restores to its TARGET rendering, so the engine
+            # never produces (or mistranslates) the term and the pinned rendering is emitted verbatim.
+            mapping[i] = self.renderings.get(span, span)
             cursor = b
         out.append(text[cursor:])
         return "".join(out), mapping

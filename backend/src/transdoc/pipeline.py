@@ -186,11 +186,25 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
             f"- {w}" for w in verify_warnings)
     from .translate.qa import qa_report
     report += qa_report(qa_findings)
+    report += _glossary_suggestions_report(doc)
     report += _timing_report(timings)
     report_path = str(Path(outp).with_suffix("")) + ".report.md"
     Path(report_path).write_text(report, encoding="utf-8")
     _cleanup_tmp(doc)
     return Result(doc, outp, report_path, report, timings)
+
+
+def _glossary_suggestions_report(doc) -> str:
+    """Surface this run's auto-mined glossary suggestions so the user can confirm them into the
+    persistent glossary (PR-2). They were applied this run for consistency but not persisted."""
+    sug = getattr(doc, "glossary_suggestions", None)
+    if not sug:
+        return ""
+    src, tgt = doc.source_lang or "?", doc.target_lang or "?"
+    rows = "\n".join(f"- `{term}` → `{ren}`" for term, ren, _kind in sug)
+    return ("\n\n## Glossary suggestions\n"
+            f"Auto-detected recurring terms (applied this run, not yet persisted). Confirm with "
+            f"`transdoc glossary add <term> <rendering> -s {src} -t {tgt}`:\n{rows}")
 
 
 def _cleanup_tmp(doc) -> None:
