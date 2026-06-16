@@ -1,0 +1,71 @@
+name: Eval (on-demand)
+
+# Accuracy scorecard, run on demand (not on every PR). Fetches the real public corpus, runs the
+# DETERMINISTIC evals — structure regression (echo, no network) + OCR CER/WER (tesseract script
+# models) — and uploads the scorecard as an artifact. Opt-in like the local `make eval-*` targets:
+# corpus fetch hits external sites, so it is triggered manually, never on a schedule.
+#   Actions tab -> "Eval (on-demand)" -> Run workflow
+# The online evals (translate/judge/preserve/consistency) stay local — they need network/keys and
+# hammer the Google web endpoint, which doesn't belong in cloud CI.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install system libs
+        # libmagic for detection; tesseract + the per-script models (latn/grek/cyrl) the OCR eval
+        # depends on; poppler for any PDF tooling the corpus fetch touches.
+        run: sudo apt-get update && sudo apt-get install -y libmagic1 poppler-utils tesseract-ocr tesseract-ocr-script-latn tesseract-ocr-script-grek tesseract-ocr-script-cyrl
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install package (core + dev + formats + api)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,formats,api]"
+
+      - name: Fetch corpus
+        # Best-effort: some upstreams rate-limit/move; a partial corpus still scores what arrived.
+        continue-on-error: true
+        run: bash scripts/fetch_corpus.sh
+
+      - name: Structure regression (eval-real)
+        # Echo engine, layout+TM disabled -> deterministic, no network. Reports drift vs the
+        # committed real-corpus baseline. continue-on-error: a partial corpus shifts counts; the
+        # scorecard is for tracking, not a hard gate (PR-CI's `eval` over committed fixtures is).
+        continue-on-error: true
+        run: |
+          TRANSDOC_LAYOUT_DISABLE=1 TRANSDOC_TM_DISABLE=1 python \
+            -m transdoc.eval.harness corpus/real --engine echo \
+            --baseline corpus/baseline_real.json \
+            --exclude-dir full_image --exclude-dir scanned_pdf --structure-only \
+            2>&1 | tee eval-structure.txt
+
+      - name: OCR accuracy (eval-ocr, CER/WER)
+        # Rasterize text-bearing UDHR PDFs -> OCR -> score vs the source text layer. Deterministic
+        # (tesseract script models), no network beyond the corpus already fetched.
+        continue-on-error: true
+        run: python -m scripts.eval_ocr 2>&1 | tee eval-ocr.txt
+
+      - name: Upload scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-scorecard
+          path: |
+            backend/eval-structure.txt
+            backend/eval-ocr.txt
+          if-no-files-found: warn
