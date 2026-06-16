@@ -27,7 +27,7 @@ PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
         eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency eval-layout \
-        eval-expansion serve dev clean
+        eval-expansion eval-reading-order serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -104,6 +104,12 @@ eval-table:
 #   make eval-layout ARGS="path/to/doc.pdf"
 eval-layout:
 	cd backend && .venv/bin/python -m scripts.eval_layout $(ARGS)
+
+# Reading-order accuracy (Area D): XY-cut order vs <stem>.order.json refs (boxes in reading
+# order) — Kendall-tau + sequence accuracy. What eval-layout (IoU/label) can't measure. BYO refs.
+#   make eval-reading-order ARGS="path/to/doc.pdf"
+eval-reading-order:
+	cd backend && .venv/bin/python -m scripts.eval_reading_order $(ARGS)
 
 # Text-expansion fidelity (Area C): simulate target-language expansion (pad each block ~1.4x),
 # reconstruct the PDF, and count illegible/tiny/overflow spans + page spill. Deterministic/offline

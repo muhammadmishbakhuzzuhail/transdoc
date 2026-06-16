@@ -167,6 +167,41 @@ def layout_match(refs, hyps, iou_thresh: float = 0.5) -> dict:
             "label_acc": label_acc, "matched": tp, "refs": len(refs), "hyps": len(hyps)}
 
 
+def reading_order_match(refs, hyps, iou_thresh: float = 0.5) -> dict:
+    """Score reading-order quality. refs/hyps are lists of (x0,y0,x1,y1) IN READING ORDER (list
+    index = rank). Greedy-match hyp blocks to ref blocks by IoU, then on the matched set report:
+      kendall_tau   — rank correlation in [-1,1] (1 = every pair ordered correctly)
+      seq_accuracy  — fraction of adjacent ref pairs kept in the right relative order
+      coverage      — matched / ref count (unmatched = a missing/extra block)
+    IoU matching makes the metric robust to hand-authored refs whose boxes only approximate the
+    extractor's. This is the order metric layout_match (IoU/label only) can't give."""
+    pairs = sorted(((bbox_iou(rb, hb), i, j)
+                    for i, rb in enumerate(refs)
+                    for j, hb in enumerate(hyps)),
+                   key=lambda t: t[0], reverse=True)
+    used_r, used_h, match = set(), set(), {}
+    for iou, i, j in pairs:
+        if iou < iou_thresh or i in used_r or j in used_h:
+            continue
+        used_r.add(i)
+        used_h.add(j)
+        match[i] = j
+    ranks = [match[i] for i in sorted(match)]      # hyp positions, in ref order
+    n = len(ranks)
+    conc = disc = 0
+    for a in range(n):
+        for b in range(a + 1, n):
+            if ranks[a] < ranks[b]:
+                conc += 1
+            elif ranks[a] > ranks[b]:
+                disc += 1
+    tau = (conc - disc) / (conc + disc) if (conc + disc) else 1.0
+    seq = (sum(1 for a in range(n - 1) if ranks[a] < ranks[a + 1]) / (n - 1)) if n > 1 else 1.0
+    return {"kendall_tau": tau, "seq_accuracy": seq, "matched": n,
+            "refs": len(refs), "hyps": len(hyps),
+            "coverage": n / len(refs) if refs else (1.0 if not hyps else 0.0)}
+
+
 # --------------------------------------------------------------------------- structure
 
 
