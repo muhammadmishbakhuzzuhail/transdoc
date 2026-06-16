@@ -48,6 +48,46 @@ def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     return text
 
 
+_ACRONYM = re.compile(r"\b[A-Z][A-Z0-9]{2,}\b")                 # NASA, API, ISO9001
+_PROPER = re.compile(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b")     # Hugging Face, United Nations
+_CAP_WORD = re.compile(r"\b[A-Z][a-z]{2,}\b")                   # single Capitalized word
+_WORD = re.compile(r"\b[a-zA-Z]{2,}\b")
+# Common words that are Capitalized only because they start sentences — never proper nouns.
+_CAP_STOP = {
+    "The", "This", "That", "These", "Those", "There", "Then", "Thus", "However", "Therefore",
+    "Moreover", "Although", "Because", "While", "When", "Where", "What", "Which", "Whereas",
+    "After", "Before", "During", "Since", "Also", "And", "But", "For", "Each", "Every", "All",
+    "Both", "Such", "They", "Their", "His", "Her", "Our", "Your", "Its", "It", "If", "In", "On",
+    "At", "As", "An", "Article", "Everyone", "No", "One",
+}
+
+
+def _auto_glossary_terms(texts: list[str], min_count: int = 2) -> list[str]:
+    """Mine recurring (>= min_count) proper nouns whose rendering is safe to pin document-wide:
+    ALL-CAPS acronyms, and single Capitalized words that are NEVER seen lowercased ("Transdoc",
+    "Photoshop"). Deliberately conservative — excluded: sentence-start stopwords; any word that
+    also appears lowercase (common nouns inflect legitimately); and any word that sits inside a
+    multi-word Capitalized run (pinning one word of a name in isolation could mistranslate it,
+    e.g. "Face" -> "Visage" inside "Hugging Face"). Multi-word names are left to the user glossary."""
+    from collections import Counter
+    c: Counter = Counter()
+    lowered: set[str] = set()
+    run_words: set[str] = set()
+    for t in texts:
+        for m in _WORD.findall(t):
+            if m.islower():
+                lowered.add(m)
+        for m in _PROPER.findall(t):
+            run_words.update(m.split())        # part of a multi-word name -> don't pin in isolation
+    for t in texts:
+        for m in _ACRONYM.findall(t):
+            c[m] += 1
+        for m in _CAP_WORD.findall(t):
+            if m not in _CAP_STOP and m.lower() not in lowered and m not in run_words:
+                c[m] += 1
+    return sorted((term for term, n in c.items() if n >= min_count), key=len, reverse=True)
+
+
 def _collect_cells(table, items: list) -> None:
     """Collect translatable cell texts, recursing into nested tables."""
     for row in table.rows:
@@ -99,6 +139,23 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     from .protect import Protector
 
     texts = [t for t, _ in items]
+
+    # 0) auto-glossary: mine repeated proper nouns (acronyms + multi-word Capitalized names) and
+    #    pin ONE rendering for each across the whole document. Sentence MT translates each segment
+    #    independently, so a product/org name can drift (measured: id "Transdoc" rendered
+    #    differently in every context). Conservative — proper nouns only (common-noun inflection is
+    #    legitimate), only when the engine is real (echo is non-cacheable), and only when the
+    #    canonical rendering actually differs from the source. User glossary entries always win.
+    if getattr(cfg, "auto_glossary", True) and getattr(tr, "cacheable", True):
+        auto = [t for t in _auto_glossary_terms(texts) if t not in glossary]
+        if auto:
+            try:
+                for term, ren in zip(auto, tr.translate_batch(auto, cfg, src=doc.source_lang)):
+                    ren = (ren or "").strip()
+                    if ren and ren != term:
+                        glossary[term] = ren
+            except Exception:
+                pass            # auto-glossary is best-effort; never block the main translation
 
     # 1a) dedupe identical segments via TM -> translate each unique string once
     tm = TranslationMemory()
