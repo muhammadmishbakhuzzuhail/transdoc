@@ -261,9 +261,10 @@ def extract_structured(path: str, cfg: Config) -> Document:
     doc.close()
     from .fuse import reconcile
     out.blocks = reconcile(out.blocks)
-    # global reading order across pages
-    for i, b in enumerate(sorted(out.blocks, key=lambda b: (b.page, b.reading_order))):
-        b.reading_order = i
+    # Recompute reading order geometrically (XY-cut) rather than trusting PP-StructureV3's order,
+    # which floats footnotes/references to order 0 and is weak on multi-column pages.
+    from .reading_order import reading_order
+    reading_order(out)
     from .base import associate_captions
     associate_captions(out)     # keep each caption adjacent to its figure/table
     out.blocks.sort(key=lambda b: b.reading_order)
