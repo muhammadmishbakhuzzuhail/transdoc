@@ -67,6 +67,51 @@ def _resolve_glossary(cfg: Config, src_lang: str, tgt_lang: str) -> tuple[dict[s
     return merged, locked
 
 
+def _protected_tokens_match(a: str, b: str) -> bool:
+    """True if two sources carry the SAME verbatim tokens (numbers, codes, dates, currency, ...).
+    The auto-apply safety gate: a near-identical past source whose protected tokens are unchanged is
+    safe to reuse; if a number/code differs, the past translation would carry the wrong value."""
+    from .protect import Protector
+    p = Protector()
+    _, ma = p.protect(a)
+    _, mb = p.protect(b)
+    return sorted(ma.values()) == sorted(mb.values())
+
+
+def _fuzzy_reuse(ptm, todo: list[str], target: str, src_lang: str, cfg: Config,
+                 glossary: dict[str, str], doc) -> tuple[dict[str, str], set[str]]:
+    """For each cache-miss segment, look for a near-identical / similar past translation. Returns
+    ``(fuzzy_hits, suggestion_sources)``: ``fuzzy_hits`` maps a source to a reused (glossary-applied)
+    translation to auto-apply; ``suggestion_sources`` is the set of sources surfaced as review
+    suggestions (engine still translates them). Records suggestions on ``doc.fuzzy_suggestions``."""
+    hits: dict[str, str] = {}
+    sugg: set[str] = set()
+    if not (getattr(cfg, "fuzzy_tm", True) and ptm and todo
+            and hasattr(ptm, "fuzzy_search")):
+        return hits, sugg
+    from ..store.embed import Embedder
+    from ..store.tm import lexical_ratio
+    embedder = Embedder.get(getattr(cfg, "embed_model", None))
+    auto_t = getattr(cfg, "fuzzy_auto_threshold", 0.95)
+    sugg_t = getattr(cfg, "fuzzy_suggest_threshold", 0.75)
+    for u in todo:
+        cands = ptm.fuzzy_search(u, target, src_lang=src_lang, embedder=embedder,
+                                 min_score=sugg_t)
+        if not cands:
+            continue
+        msrc, mtgt, score = cands[0]
+        # Auto-apply only when the strings are near-identical AND protected tokens are unchanged —
+        # regardless of the (possibly looser, semantic) embedding score.
+        if (score >= auto_t and lexical_ratio(u, msrc) >= auto_t
+                and _protected_tokens_match(u, msrc)):
+            # Reuse the past translation verbatim (its tokens already match), then enforce glossary.
+            hits[u] = _apply_glossary(mtgt, glossary)
+        elif score >= sugg_t:
+            sugg.add(u)
+            doc.fuzzy_suggestions.append((u, msrc, mtgt, round(float(score), 3)))
+    return hits, sugg
+
+
 _ACRONYM = re.compile(r"\b[A-Z][A-Z0-9]{2,}\b")                 # NASA, API, ISO9001
 _PROPER = re.compile(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b")     # Hugging Face, United Nations
 _CAP_WORD = re.compile(r"\b[A-Z][a-z]{2,}\b")                   # single Capitalized word
@@ -257,6 +302,16 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         cached = ptm.get_many(unique, target) if ptm else {}
         todo = [u for u in unique if u not in cached]
 
+        # 1b-fuzzy) reuse a near-identical past translation (PR-4). A high-scoring match whose text is
+        #     near-identical AND whose protected tokens (numbers/codes/dates) are unchanged is safe to
+        #     auto-apply (skip the engine) — this is the CAT-tool exact/placeable behaviour. A weaker
+        #     (semantic) match is surfaced as a review suggestion; the engine still translates it. The
+        #     embedding model only powers the suggestion ranking — auto-apply always requires lexical
+        #     near-identity, so a semantically-similar-but-different sentence is never silently reused.
+        fuzzy_hits, fuzzy_sugg_src = _fuzzy_reuse(ptm, todo, target, doc.source_lang or "",
+                                                  cfg, glossary, doc)
+        todo = [u for u in todo if u not in fuzzy_hits]
+
         # 1c) protect verbatim tokens (urls/emails/numbers/dates/codes) on cache MISSES only
         protector = Protector(extra=list(glossary.keys()), renderings=glossary)
         protected, maps = [], []
@@ -292,12 +347,15 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         # "[id] ..." placeholder output never poisons the cross-run TM for later real runs.
         if ptm and fresh_map and getattr(tr, "cacheable", True):
             ptm.put_many(fresh_map, target)
-        translated_unique = [cached.get(u) or fresh_map.get(u, u) for u in unique]
+        translated_unique = [cached.get(u) or fuzzy_hits.get(u) or fresh_map.get(u, u)
+                             for u in unique]
 
         # 3) scatter unique results back to every original position
         out = [translated_unique[idx_map[i]] for i in range(len(texts))]
 
     # 4) write back + glossary enforcement
+    fuzzy_hits = locals().get("fuzzy_hits", {})
+    fuzzy_sugg_src = locals().get("fuzzy_sugg_src", set())
     for (src_text, sink), translated in zip(items, out):
         translated = _apply_glossary(translated, glossary)
         if isinstance(sink, Block):
@@ -306,6 +364,10 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
             if _looks_untranslated(src_text, translated):
                 sink.flags["untranslated"] = (
                     "translation equals source — engine may have skipped this segment")
+            if src_text in fuzzy_hits:
+                sink.flags["fuzzy_auto"] = "reused a near-identical past translation"
+            elif src_text in fuzzy_sugg_src:
+                sink.flags["fuzzy_suggest"] = "a similar past translation exists (see report)"
         else:  # Cell
             sink.translated = translated
 

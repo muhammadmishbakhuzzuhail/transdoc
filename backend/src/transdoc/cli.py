@@ -62,6 +62,8 @@ def translate(
     review: bool = typer.Option(False, "--review",
                                 help="emit a <output>.review.tsv for the feedback loop "
                                      "(fill the correction column, then `transdoc feedback import`)"),
+    fuzzy: bool = typer.Option(True, "--fuzzy/--no-fuzzy",
+                               help="reuse near-identical past translations from the TM (PR-4)"),
     ocr_figures: bool = typer.Option(False, "--ocr-figures",
                                      help="OCR text inside large embedded images (scan-in-page)"),
     glossary: str = typer.Option(None, "--glossary", "-g",
@@ -79,6 +81,7 @@ def translate(
     cfg.escalate = escalate
     cfg.verify = verify
     cfg.review = review
+    cfg.fuzzy_tm = fuzzy
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout
     if glossary:
