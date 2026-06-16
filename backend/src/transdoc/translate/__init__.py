@@ -35,6 +35,10 @@ def get_translator(cfg: Config) -> Translator:
         from .anthropic import AnthropicTranslator
 
         return AnthropicTranslator()
+    if cfg.engine == Engine.OLLAMA:
+        from .ollama import OllamaTranslator
+
+        return OllamaTranslator()
     if cfg.engine == Engine.MADLAD:
         from .madlad import MadladTranslator
 

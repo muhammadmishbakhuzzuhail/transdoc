@@ -65,6 +65,7 @@ class Engine(str, Enum):
     INDICTRANS = "indictrans"  # offline NMT, 22 Indic langs (multi-script) — MIT (commercial-safe)
     OPENROUTER = "openrouter"  # LLM via OpenRouter (needs API key)
     ANTHROPIC = "anthropic"   # LLM, needs API key
+    OLLAMA = "ollama"         # local LLM (Ollama) — document-level context-aware, offline, zero-cost
     ECHO = "echo"             # no-op passthrough, for testing the pipeline
 
 
@@ -113,6 +114,16 @@ class Config(BaseModel):
     # Model knobs
     anthropic_model: str = "claude-opus-4-8"
     nllb_model: str = "facebook/nllb-200-distilled-600M"
+
+    # Ollama (local LLM, document-level context-aware translation). Deterministic (temp=0) so the
+    # context-hash TM cache stays valid. Host overridable via config or OLLAMA_HOST env.
+    # Model: Qwen2.5-7B-Instruct (HF Qwen/Qwen2.5-7B-Instruct) — Apache-2.0, 29+ languages incl.
+    # Indonesian; Q4_K_M ~4.7 GB fits a 6 GB GPU (rest offloads to CPU). One model, no per-run choice.
+    ollama_model: str = "qwen2.5:7b"
+    ollama_host: str = "http://localhost:11434"
+    ollama_num_ctx: int = 4096                  # tokens; sized for a 6 GB GPU; batch packs under it
+    ollama_timeout: float = 120.0              # per-request seconds
+    llm_context_window: int = 2                 # sliding window: N prev (translated) + N next (source)
 
     # Confidence threshold below which values are flagged for human review.
     flag_threshold: float = 0.90
