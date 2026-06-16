@@ -753,8 +753,16 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                     except Exception:
                         pass   # fall through to text placement if the crop fails
                 if b.type == BlockType.TABLE and b.table:
+                    # grow into adjacent whitespace + flag shrink, like the text branch — a table
+                    # whose translated cells expanded (de/bn) otherwise shrinks silently or clips
+                    # in the original box with no signal (audit P4).
                     try:
-                        page.insert_htmlbox(r, _table_html(b.table), scale_low=0)
+                        gt = _grow_rect(r, obstacles, h)
+                        ret = page.insert_htmlbox(gt, _table_html(b.table), scale_low=0)
+                        scale = ret[1] if isinstance(ret, (tuple, list)) and len(ret) > 1 else 1.0
+                        if scale and scale < OVERFLOW_FLAG_SCALE:
+                            b.flags["text_expansion"] = (
+                                f"table shrunk to {scale:.0%} to fit — verify legibility/layout")
                     except Exception:
                         pass
                     continue

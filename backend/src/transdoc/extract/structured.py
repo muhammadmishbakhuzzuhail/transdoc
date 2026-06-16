@@ -124,6 +124,19 @@ def _ordered_regions(regs: list) -> list:
     return sorted(regs, key=key)
 
 
+# PP-StructureV3 region boxes hug their content, so a verbatim crop clips glyph ascenders,
+# formula super/subscripts, and figure outer labels. Pad the crop a few points (clamped to the
+# page) so nothing on the edge is lost (audit P8).
+_CROP_PAD = 2.0
+
+
+def _padded(r, page):
+    import fitz
+    pr = page.rect
+    return fitz.Rect(max(pr.x0, r.x0 - _CROP_PAD), max(pr.y0, r.y0 - _CROP_PAD),
+                     min(pr.x1, r.x1 + _CROP_PAD), min(pr.y1, r.y1 + _CROP_PAD))
+
+
 def _pick_text(digital: str, content: str) -> tuple[str, bool]:
     """Choose a region's text + whether the digital layer was usable. Prefer the digital text
     layer (perfect) — BUT only when it's real text: a subsetted/CID region with no ToUnicode emits
@@ -193,7 +206,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
                     continue
                 # parse failed -> fall through to a verbatim crop
             if r.label in _CROP or r.label == "table":
-                rect = fitz.Rect(r.x0, r.y0, r.x1, r.y1)
+                rect = _padded(r, page)        # pad so edge glyphs/labels aren't clipped (P8)
+                bbox = BBox(x0=rect.x0, y0=rect.y0, x1=rect.x1, y1=rect.y1)
                 fn = img_dir / f"p{pno}-crop{cidx}.png"
                 page.get_pixmap(clip=rect, dpi=200).save(str(fn))
                 cidx += 1
@@ -209,7 +223,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
             if r.label == "formula":
                 # Keep the LaTeX (Markdown renders it as $$…$$) AND a verbatim crop so
                 # image-based outputs (DOCX/PDF) get pixel-perfect math.
-                rect = fitz.Rect(r.x0, r.y0, r.x1, r.y1)
+                rect = _padded(r, page)        # pad so super/subscripts aren't clipped (P8)
+                bbox = BBox(x0=rect.x0, y0=rect.y0, x1=rect.x1, y1=rect.y1)
                 fn = img_dir / f"p{pno}-formula{cidx}.png"
                 try:
                     page.get_pixmap(clip=rect, dpi=200).save(str(fn))
