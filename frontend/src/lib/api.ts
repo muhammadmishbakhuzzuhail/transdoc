@@ -63,6 +63,31 @@ export async function startTranslate(form: FormData): Promise<{ job_id: string }
   return r.json()
 }
 
+export interface BatchJob {
+  job_id: string
+  filename: string
+  status: "queued" | "running" | "done" | "error"
+  progress: number
+  message: string
+  error: string | null
+  has_output: boolean
+  has_report: boolean
+}
+
+export async function startBatch(
+  form: FormData,
+): Promise<{ batch_id: string; jobs: { job_id: string; filename: string }[] }> {
+  const r = await fetch(`${BASE}/api/batch`, { method: "POST", body: form })
+  if (!r.ok) throw new Error((await r.text()) || `batch failed (${r.status})`)
+  return r.json()
+}
+
+export async function getBatch(bid: string): Promise<{ batch_id: string; jobs: BatchJob[] }> {
+  const r = await fetch(`${BASE}/api/batch/${bid}`)
+  if (!r.ok) throw new Error("batch lookup failed")
+  return r.json()
+}
+
 export async function getJob(jid: string): Promise<JobStatus> {
   const r = await fetch(`${BASE}/api/jobs/${jid}`)
   if (!r.ok) throw new Error("job lookup failed")
