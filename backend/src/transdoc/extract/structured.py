@@ -35,12 +35,17 @@ _LABEL = {
     "paragraph_title": BlockType.HEADING,
     "text": BlockType.PARAGRAPH,
     "abstract": BlockType.PARAGRAPH,
-    "footnote": BlockType.PARAGRAPH,
+    "footnote": BlockType.FOOTNOTE,
     "reference": BlockType.PARAGRAPH,
     "content": BlockType.PARAGRAPH,
     "figure_title": BlockType.CAPTION,
     "table_title": BlockType.CAPTION,
     "formula": BlockType.FORMULA,
+    "header": BlockType.HEADER,
+    "footer": BlockType.FOOTER,
+    "header_image": BlockType.HEADER,
+    "number": BlockType.PAGE_NUMBER,
+    "page_number": BlockType.PAGE_NUMBER,
 }
 # Regions cropped verbatim from the source (no text reflow). Tables are handled separately
 # (HTML -> cells); they fall back to a crop only if parsing fails.
@@ -263,6 +268,8 @@ def extract_structured(path: str, cfg: Config) -> Document:
     out.blocks = reconcile(out.blocks)
     # Recompute reading order geometrically (XY-cut) rather than trusting PP-StructureV3's order,
     # which floats footnotes/references to order 0 and is weak on multi-column pages.
+    from .block_types import detect_running_heads
+    detect_running_heads(out)   # page-number + running head/foot PP-StructureV3 may have missed
     from .reading_order import reading_order
     reading_order(out)
     from .base import associate_captions
