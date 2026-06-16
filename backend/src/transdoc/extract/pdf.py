@@ -494,6 +494,8 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         attach_pdf_links(doc[pno], [b for b in out.blocks if b.page == pno])
 
     doc.close()
+    from .block_types import detect_running_heads
+    detect_running_heads(out)   # running header/footer + page-number typing (margin + repetition)
     column_reading_order(out)   # multi-column-aware reading order (research)
     from .base import associate_captions
     associate_captions(out)     # keep each caption adjacent to its figure/table

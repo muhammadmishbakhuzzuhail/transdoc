@@ -27,7 +27,7 @@ PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
         eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency eval-layout \
-        eval-expansion eval-reading-order serve dev clean
+        eval-expansion eval-reading-order eval-typing serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -110,6 +110,13 @@ eval-layout:
 #   make eval-reading-order ARGS="path/to/doc.pdf"
 eval-reading-order:
 	cd backend && .venv/bin/python -m scripts.eval_reading_order $(ARGS)
+
+# Block-typing accuracy (Area D): final IR block types vs <stem>.types.json refs (type+bbox) —
+# overall accuracy + per-type P/R + confusion. Scores the running-head/footer/page-number pass +
+# heuristic/PP typing. BYO refs. Add --show for the per-type breakdown.
+#   make eval-typing ARGS="--show path/to/doc.pdf"
+eval-typing:
+	cd backend && .venv/bin/python -m scripts.eval_typing $(ARGS)
 
 # Text-expansion fidelity (Area C): simulate target-language expansion (pad each block ~1.4x),
 # reconstruct the PDF, and count illegible/tiny/overflow spans + page spill. Deterministic/offline

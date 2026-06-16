@@ -202,6 +202,38 @@ def reading_order_match(refs, hyps, iou_thresh: float = 0.5) -> dict:
             "coverage": n / len(refs) if refs else (1.0 if not hyps else 0.0)}
 
 
+def typing_match(refs, hyps, iou_thresh: float = 0.5) -> dict:
+    """Block-typing accuracy over the FINAL IR blocks (not just layout regions). refs/hyps are
+    lists of (type, (x0,y0,x1,y1)). Greedy-match by IoU, then report overall type accuracy on
+    matched pairs, per-type precision/recall, and a confusion list of (ref_type, hyp_type) for the
+    mismatches — so a 'footer typed as paragraph' regression is visible, not hidden in a mean."""
+    pairs = sorted(((bbox_iou(rb, hb), i, j)
+                    for i, (_, rb) in enumerate(refs)
+                    for j, (_, hb) in enumerate(hyps)),
+                   key=lambda t: t[0], reverse=True)
+    used_r, used_h, matched = set(), set(), []
+    for iou, i, j in pairs:
+        if iou < iou_thresh or i in used_r or j in used_h:
+            continue
+        used_r.add(i)
+        used_h.add(j)
+        matched.append((i, j))
+    correct = sum(1 for i, j in matched if refs[i][0] == hyps[j][0])
+    types = {t for t, _ in refs} | {t for t, _ in hyps}
+    per_type = {}
+    for t in sorted(types):
+        tp = sum(1 for i, j in matched if refs[i][0] == t and hyps[j][0] == t)
+        n_ref = sum(1 for ty, _ in refs if ty == t)
+        n_hyp = sum(1 for ty, _ in hyps if ty == t)
+        per_type[t] = {"precision": tp / n_hyp if n_hyp else 0.0,
+                       "recall": tp / n_ref if n_ref else 0.0,
+                       "tp": tp, "refs": n_ref, "hyps": n_hyp}
+    confusion = sorted({(refs[i][0], hyps[j][0]) for i, j in matched if refs[i][0] != hyps[j][0]})
+    return {"accuracy": correct / len(matched) if matched else (1.0 if not refs else 0.0),
+            "matched": len(matched), "refs": len(refs), "hyps": len(hyps),
+            "per_type": per_type, "confusion": confusion}
+
+
 # --------------------------------------------------------------------------- structure
 
 
