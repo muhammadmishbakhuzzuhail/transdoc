@@ -55,6 +55,9 @@ def translate(
     pages: str = typer.Option(None, "--pages", "-p", help='e.g. "3-7,10"'),
     bilingual: bool = typer.Option(False, "--bilingual", "-b", help="source + translation"),
     quality: bool = typer.Option(False, "--quality", "-q", help="QE: score+flag weak segments"),
+    escalate: bool = typer.Option(False, "--escalate",
+                                  help="hybrid QE-gate: re-translate QA-weak segments with the "
+                                       "local doc-context LLM (Ollama)"),
     verify: bool = typer.Option(False, "--verify", help="re-extract output, diff structure vs source"),
     ocr_figures: bool = typer.Option(False, "--ocr-figures",
                                      help="OCR text inside large embedded images (scan-in-page)"),
@@ -70,6 +73,7 @@ def translate(
     cfg = _cfg(lang, source, to, engine, ocr, fidelity, domain, localize, register, pages)
     cfg.bilingual = bilingual
     cfg.quality_check = quality
+    cfg.escalate = escalate
     cfg.verify = verify
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout

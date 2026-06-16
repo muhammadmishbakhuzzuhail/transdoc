@@ -148,15 +148,24 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     # Phase 5b: rule-based QA (always-on, deterministic, model-free) -> flag entity/placeholder/
     # untranslated/empty (hard) + length/glossary (soft). Complements the optional COMET QE below.
+    from .translate.qa import run_qa
     with _stage(timings, "qa"):
-        from .translate.qa import run_qa
         qa_findings = run_qa(doc, cfg)
 
-    # Phase 5c: optional reference-free quality estimation (COMET-Kiwi) -> flag weak segments
+    # Phase 5c: optional reference-free quality estimation (COMET-Kiwi) -> flag weak segments.
+    # Runs before escalation so a low COMET score can also trigger the gate.
     if cfg.quality_check:
         with _stage(timings, "quality_check"):
             from .translate.quality import annotate_quality
             annotate_quality(doc, cfg)
+
+    # Phase 5d: hybrid QE-gate (opt-in) -> re-translate the weak segments with the local doc-context
+    # LLM, then re-run QA so the report reflects the improved output.
+    if cfg.escalate:
+        with _stage(timings, "escalate"):
+            from .translate.escalate import escalate_weak
+            if escalate_weak(doc, cfg, qa_findings):
+                qa_findings = run_qa(doc, cfg)
 
     # --- Phase 6: Regenerate + Report ---
     outp = _resolve_out(input_path, cfg, out_path)

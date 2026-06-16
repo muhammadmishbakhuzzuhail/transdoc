@@ -90,7 +90,12 @@ class Config(BaseModel):
     mode: Mode = Mode.FULL
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
     bilingual: bool = False                     # emit source + translation together
-    quality_check: bool = False                 # run reference-free QE, flag weak segments
+    quality_check: bool = False                 # run reference-free QE (COMET), flag weak segments
+    escalate: bool = False                       # hybrid QE-gate: re-translate QA-weak segments
+                                                # (entity/untranslated/empty/length + low-COMET) with
+                                                # the local doc-context LLM (Ollama). Opt-in (needs
+                                                # Ollama); best-effort — keeps the NMT output if the
+                                                # LLM call fails. The accuracy lever where it matters.
     verify: bool = False                        # re-extract the rendered output and diff its
                                                 # structure (block/table/figure counts, text
                                                 # length) against the source IR -> report warnings
