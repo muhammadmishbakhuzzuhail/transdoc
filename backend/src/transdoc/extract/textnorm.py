@@ -25,8 +25,13 @@ _LIGATURES = {
 }
 _LIG_RE = re.compile("[" + "".join(_LIGATURES) + "]")
 _STRIP = str.maketrans("", "", "­​﻿")   # soft hyphen, ZWSP, BOM
-# letter + (hyphen | soft hyphen) + newline + letter  ->  join (drop hyphen + newline)
-_DEHYPHEN = re.compile(r"(?<=[^\W\d_])[-­]\n(?=[^\W\d_])")
+# letter + (hyphen | soft hyphen) + (newline | spaces) + letter  ->  join (drop hyphen + break).
+# Newline case allows any following letter (classic "inter-\nnational"). The SPACE case matters
+# because blocks are space-joined long before this runs — so on the OCR/structured/PDF paths the
+# newline is already gone and "inter- national" would otherwise reach the translator. It requires
+# a LOWERCASE letter after, leaving a real compound/sentence break ("well- Known") and ranges
+# ("10 - 20", digits) intact.
+_DEHYPHEN = re.compile(r"(?<=[^\W\d_])[-­](?:\n(?=[^\W\d_])|[ \t]+(?=[a-z]))")
 
 
 def clean(text: str) -> str:
