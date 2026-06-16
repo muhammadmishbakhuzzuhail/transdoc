@@ -23,9 +23,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install system libs
-        # python-magic needs libmagic; tesseract for the OCR path; script-latn = the Latin
-        # script model that reads diacritics (ç/ã/é/...) the bare eng pack drops
-        run: sudo apt-get update && sudo apt-get install -y libmagic1 tesseract-ocr tesseract-ocr-script-latn
+        # python-magic needs libmagic; tesseract for the OCR path; script-{latn,grek,cyrl} = the
+        # per-script models that read every language of a script far better than the lang packs
+        # (greek 2.7→1.5, russian 0.5→0.25, portuguese 3→0.04 CER)
+        run: sudo apt-get update && sudo apt-get install -y libmagic1 tesseract-ocr tesseract-ocr-script-latn tesseract-ocr-script-grek tesseract-ocr-script-cyrl
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6

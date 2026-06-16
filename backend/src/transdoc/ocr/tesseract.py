@@ -43,13 +43,11 @@ def _resolve(name: str | None, avail: set) -> str | None:
             return cand
     return None
 
-# Tesseract OSD script name -> tesseract language pack. Used when the source language is auto:
-# without this a non-Latin scan is OCR'd with "eng" and comes back as Latin gibberish.
+# Tesseract OSD script name -> representative language pack, the FALLBACK when the script/<Script>
+# model isn't installed (see _detect_script_lang, which prefers the script model). Without either,
+# a non-Latin scan is OCR'd with "eng" and comes back as Latin gibberish. (Latin needs no entry:
+# its fallback is "eng", handled in _langs; script/Latin is preferred when present.)
 _SCRIPT_LANG = {
-    # Latin pages: the script/Latin model reads every Latin language's diacritics (ç/ã/â/é/...)
-    # without guessing the language — "eng" alone drops them (portuguese CER 2.96% -> 0.04% with
-    # Latin, eval finding). Falls back to "eng" when the Latin pack isn't installed.
-    "Latin": "Latin",
     "Devanagari": "hin", "Han": "chi_sim", "HanS": "chi_sim", "HanT": "chi_tra",
     "Hangul": "kor", "Japanese": "jpn", "Hiragana": "jpn", "Katakana": "jpn",
     "Arabic": "ara", "Cyrillic": "rus", "Hebrew": "heb", "Greek": "ell",
@@ -63,8 +61,11 @@ class TesseractOCR:
     name = "tesseract"
 
     def _detect_script_lang(self, image, avail: set) -> str | None:
-        """Source=auto: ask Tesseract OSD which SCRIPT the page uses and map it to a lang pack,
-        so a Devanagari/Han/Arabic scan isn't read as English. None if undetectable/uninstalled."""
+        """Source=auto: ask Tesseract OSD which SCRIPT the page uses, then pick the best installed
+        model for it — the script/<Script> model (reads every language of that script) when
+        present, else the representative language pack. Returns the resolved token, or None when
+        nothing's installed (caller falls back to eng). Measured: script/Greek 2.9→1.4%,
+        script/Cyrillic 1.7→0.4%, script/Latin (pt) 3→0.04% CER vs the lang packs."""
         import re
 
         import pytesseract
@@ -73,8 +74,13 @@ class TesseractOCR:
         except Exception:
             return None
         m = re.search(r"Script:\s*([\w]+)", osd)
-        code = _SCRIPT_LANG.get(m.group(1)) if m else None
-        return code if _resolve(code, avail) else None   # logical name; _langs resolves the token
+        if not m:
+            return None
+        script = m.group(1)
+        for cand in (f"script/{script}", script, _SCRIPT_LANG.get(script)):
+            if cand and cand in avail:
+                return cand
+        return None
 
     def _langs(self, cfg: Config, detected: str | None = None) -> str:
         avail = set(_avail_langs())

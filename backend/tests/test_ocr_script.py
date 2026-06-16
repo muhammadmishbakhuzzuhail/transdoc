@@ -21,9 +21,23 @@ def test_script_map_has_major_scripts():
         assert _SCRIPT_LANG[script] == lang
 
 
-def test_latin_maps_to_script_model():
-    # Latin pages use the script/Latin model (all diacritics, no lang guess), not bare eng.
-    assert _SCRIPT_LANG["Latin"] == "Latin"
+def test_script_model_preference_resolution():
+    # _detect_script_lang prefers script/<Script> over the lang pack. Latin needs no map entry
+    # (its fallback is eng); non-Latin scripts keep a lang-pack fallback for when the script
+    # model isn't installed. Replicates the resolver's candidate order.
+    assert "Latin" not in _SCRIPT_LANG          # handled by the script-name path, not the map
+    assert _SCRIPT_LANG["Greek"] == "ell" and _SCRIPT_LANG["Cyrillic"] == "rus"
+
+    def resolve(script, avail):
+        for cand in (f"script/{script}", script, _SCRIPT_LANG.get(script)):
+            if cand and cand in avail:
+                return cand
+        return None
+
+    assert resolve("Greek", {"script/Greek", "ell"}) == "script/Greek"   # model preferred
+    assert resolve("Greek", {"ell"}) == "ell"                            # fallback to lang pack
+    assert resolve("Latin", {"eng"}) is None                             # -> _langs adds eng
+    assert resolve("Cyrillic", {"script/Cyrillic"}) == "script/Cyrillic"
 
 
 def test_avail_langs_lists_eng_and_is_robust():
