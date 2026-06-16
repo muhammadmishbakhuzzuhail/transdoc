@@ -25,7 +25,7 @@ LAYOUT_VENV := backend/layout_venv
 PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
-        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency \
+        eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency eval-layout \
         serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
@@ -97,6 +97,12 @@ eval-preserve:
 #   make eval-table ARGS="path/to/doc.pdf"
 eval-table:
 	cd backend && .venv/bin/python -m scripts.eval_table $(ARGS)
+
+# Layout region accuracy: IoU + detection P/R/F1 + label accuracy vs <stem>.layout.json refs —
+# scores whether regions are in the right places with the right types (counts can't). BYO refs.
+#   make eval-layout ARGS="path/to/doc.pdf"
+eval-layout:
+	cd backend && .venv/bin/python -m scripts.eval_layout $(ARGS)
 
 # Terminology consistency: does a repeated term get the same target rendering across contexts?
 # (1.0 = consistent.) Measure-before-build for glossary auto-extraction. Online. Pass langs via ARGS.

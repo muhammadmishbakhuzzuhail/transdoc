@@ -121,6 +121,52 @@ def table_teds(ref_html: str, hyp_table) -> float:
     return 1.0 - edit_distance(ref, hyp) / max(len(ref), len(hyp), 1)
 
 
+# --------------------------------------------------------------------------- layout
+
+
+def bbox_iou(a, b) -> float:
+    """Intersection-over-union of two (x0,y0,x1,y1) boxes (0..1)."""
+    ix0, iy0 = max(a[0], b[0]), max(a[1], b[1])
+    ix1, iy1 = min(a[2], b[2]), min(a[3], b[3])
+    inter = max(0.0, ix1 - ix0) * max(0.0, iy1 - iy0)
+    if inter <= 0:
+        return 0.0
+    aa = max(0.0, a[2] - a[0]) * max(0.0, a[3] - a[1])
+    ab = max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1])
+    union = aa + ab - inter
+    return inter / union if union > 0 else 0.0
+
+
+def layout_match(refs, hyps, iou_thresh: float = 0.5) -> dict:
+    """Greedy-match extracted layout regions to reference regions by IoU and report detection
+    quality: mean IoU of matched boxes, precision/recall/F1 at the IoU threshold, and the label
+    accuracy of matched pairs. refs/hyps are lists of (label, (x0,y0,x1,y1)). This is the missing
+    POSITIONAL metric — counts say "5 regions", this says whether they're in the right places with
+    the right types (region drift/mis-typing that overlay-redaction & reconstruct depend on)."""
+    pairs = sorted(((bbox_iou(rb, hb), i, j)
+                    for i, (_, rb) in enumerate(refs)
+                    for j, (_, hb) in enumerate(hyps)),
+                   key=lambda t: t[0], reverse=True)
+    used_r, used_h, matched = set(), set(), []
+    for iou, i, j in pairs:
+        if iou <= 0 or i in used_r or j in used_h:
+            continue
+        used_r.add(i)
+        used_h.add(j)
+        matched.append((iou, i, j))
+    tp = sum(1 for iou, _, _ in matched if iou >= iou_thresh)
+    prec = tp / len(hyps) if hyps else (1.0 if not refs else 0.0)
+    rec = tp / len(refs) if refs else (1.0 if not hyps else 0.0)
+    f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
+    mean_iou = (sum(iou for iou, _, _ in matched) / len(matched) if matched
+                else (1.0 if not refs and not hyps else 0.0))
+    label_acc = (sum(1 for iou, i, j in matched
+                     if iou >= iou_thresh and refs[i][0] == hyps[j][0]) / tp if tp
+                 else (1.0 if not refs else 0.0))
+    return {"mean_iou": mean_iou, "precision": prec, "recall": rec, "f1": f1,
+            "label_acc": label_acc, "matched": tp, "refs": len(refs), "hyps": len(hyps)}
+
+
 # --------------------------------------------------------------------------- structure
 
 
