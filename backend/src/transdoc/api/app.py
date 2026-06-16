@@ -13,9 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from ..config import (Config, Engine, Fidelity, OCREngine, OutputFormat, Register)
+from .feedback_routes import router as feedback_router
 from .jobs import store
 
 app = FastAPI(title="transdoc", description="Document Intelligence & Translation")
+app.include_router(feedback_router)
 
 # The React dev server (Vite, :5173) and any deployed origin call this API cross-origin.
 # Override with TRANSDOC_CORS_ORIGINS="https://app.example.com,https://..." in production.
