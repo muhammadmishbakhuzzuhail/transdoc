@@ -42,9 +42,10 @@ class TMStore:
                 return None             # never let a TM failure break translation
         return cls._instance
 
-    def get_many(self, sources: list[str], target: str,
-                 src_lang: str = "", domain: str = "") -> dict[str, str]:
-        """Return {source_text: translation} for sources already cached for this (target, scope)."""
+    def get_many(self, sources: list[str], target: str, src_lang: str = "", domain: str = "",
+                 ctx: str = "") -> dict[str, str]:
+        """Return {source_text: translation} for sources cached for this (target, scope, ctx).
+        ctx='' is the plain exact-match cache (NMT); a non-empty ctx is a context-hash bucket."""
         if not sources:
             return {}
         by_norm = {_norm(s): s for s in sources}
@@ -53,8 +54,8 @@ class TMStore:
         with self._lock:
             cur = self._conn.execute(
                 f"SELECT src_norm, tgt_text FROM tm "
-                f"WHERE tgt_lang=? AND src_lang=? AND domain=? AND src_norm IN ({qmarks})",
-                [target, src_lang, domain, *by_norm.keys()],
+                f"WHERE tgt_lang=? AND src_lang=? AND domain=? AND ctx=? AND src_norm IN ({qmarks})",
+                [target, src_lang, domain, ctx, *by_norm.keys()],
             )
             for norm, tgt in cur.fetchall():
                 if norm in by_norm:
@@ -62,18 +63,50 @@ class TMStore:
         return hits
 
     def put_many(self, pairs: dict[str, str], target: str, src_lang: str = "", domain: str = "",
-                 origin: str = "engine") -> None:
-        """Store {source_text: translation} for this (target, scope). Whitespace-only translations
-        are skipped. An existing CONFIRMED row is never overwritten (human corrections are immune)."""
-        rows = [(_norm(s), s, src_lang, target, domain, t, origin)
+                 origin: str = "engine", ctx: str = "") -> None:
+        """Store {source_text: translation} for this (target, scope, ctx). Whitespace-only
+        translations are skipped. A CONFIRMED row is never overwritten (corrections are immune)."""
+        rows = [(_norm(s), s, src_lang, target, domain, ctx, t, origin)
                 for s, t in pairs.items() if s.strip() and t and t.strip()]
+        self._upsert(rows)
+
+    def get_segments(self, items: list[tuple[str, str]], target: str,
+                     src_lang: str = "", domain: str = "") -> dict[tuple[str, str], str]:
+        """Per-segment context-hash lookup. items = [(source_text, ctx)]; returns
+        {(source_text, ctx): translation} for the ones cached. Used by the doc-context LLM path."""
+        if not items:
+            return {}
+        want = {(_norm(s), c): (s, c) for s, c in items}
+        norms = list({n for n, _ in want})
+        qmarks = ",".join("?" * len(norms))
+        hits: dict[tuple[str, str], str] = {}
+        with self._lock:
+            cur = self._conn.execute(
+                f"SELECT src_norm, ctx, tgt_text FROM tm "
+                f"WHERE tgt_lang=? AND src_lang=? AND domain=? AND src_norm IN ({qmarks})",
+                [target, src_lang, domain, *norms],
+            )
+            for norm, ctx, tgt in cur.fetchall():
+                key = (norm, ctx)
+                if key in want:
+                    hits[want[key]] = tgt
+        return hits
+
+    def put_segments(self, triples: list[tuple[str, str, str]], target: str,
+                     src_lang: str = "", domain: str = "", origin: str = "engine") -> None:
+        """Store [(source_text, ctx, translation)] for this (target, scope). Confirmed rows immune."""
+        rows = [(_norm(s), s, src_lang, target, domain, c, t, origin)
+                for s, c, t in triples if s.strip() and t and t.strip()]
+        self._upsert(rows)
+
+    def _upsert(self, rows: list[tuple]) -> None:
         if not rows:
             return
         with self._lock:
             self._conn.executemany(
-                "INSERT INTO tm (src_norm, src_text, src_lang, tgt_lang, domain, tgt_text, origin) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(src_norm, src_lang, tgt_lang, domain) DO UPDATE SET "
+                "INSERT INTO tm (src_norm, src_text, src_lang, tgt_lang, domain, ctx, tgt_text, "
+                "                origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(src_norm, src_lang, tgt_lang, domain, ctx) DO UPDATE SET "
                 "  tgt_text=excluded.tgt_text, origin=excluded.origin, "
                 "  updated_at=datetime('now') "
                 "WHERE tm.confirmed=0",

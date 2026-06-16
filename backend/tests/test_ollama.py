@@ -16,6 +16,20 @@ from transdoc.translate.base import translate_document
 from transdoc.translate.ollama import OllamaError, OllamaTranslator
 
 
+@pytest.fixture(autouse=True)
+def _isolated_tm(tmp_path, monkeypatch):
+    """Point the TM store at a throwaway DB (never the real user DB) + isolate the legacy import.
+    Re-enable the TM here (conftest disables it session-wide) so the context-hash cache is exercised;
+    safe because the DB is the per-test tmp file."""
+    monkeypatch.setenv("TRANSDOC_DB_PATH", str(tmp_path / "transdoc.db"))
+    monkeypatch.setenv("TRANSDOC_TM_PATH", str(tmp_path / "nolegacy.sqlite"))
+    monkeypatch.delenv("TRANSDOC_TM_DISABLE", raising=False)
+    from transdoc.store.tm import TMStore
+    TMStore._instance = None
+    yield
+    TMStore._instance = None
+
+
 def _fake_call_factory(record=None, drop_id=None):
     """Return a _call(self, cfg, system, user) that translates each item to 'T:'+text, optionally
     recording payloads and optionally dropping one id (to trigger an alignment failure)."""
@@ -91,3 +105,32 @@ def test_protect_placeholder_preserved_under_llm(monkeypatch):
                         confidence=Confidence(source="digital"))]
     translate_document(doc, OllamaTranslator(), Config(target_lang="id", auto_glossary=False))
     assert "1500" in doc.blocks[0].translated and "https://x.io" in doc.blocks[0].translated
+
+
+def test_context_hash_cache_skips_engine_on_rerun(monkeypatch):
+    calls = {"n": 0}
+    base = _fake_call_factory()
+
+    def counting(self, cfg, system, user):
+        calls["n"] += 1
+        return base(self, cfg, system, user)
+
+    monkeypatch.setattr(OllamaTranslator, "_call", counting)
+
+    def run():
+        doc = Document(source_path="x.txt", mime="text/plain")
+        doc.source_lang = "en"
+        doc.blocks = [Block(id="b0", type=BlockType.PARAGRAPH, page=0, text="Alpha beta gamma.",
+                            confidence=Confidence(source="digital")),
+                      Block(id="b1", type=BlockType.PARAGRAPH, page=0, text="Delta epsilon zeta.",
+                            confidence=Confidence(source="digital"))]
+        translate_document(doc, OllamaTranslator(), Config(target_lang="id", auto_glossary=False))
+        return doc
+
+    d1 = run()
+    n_after_first = calls["n"]
+    assert n_after_first > 0
+    d2 = run()                                    # identical doc -> full context-hash cache hit
+    assert calls["n"] == n_after_first            # engine NOT called again
+    assert d2.blocks[0].translated == d1.blocks[0].translated
+    assert d2.blocks[1].translated == d1.blocks[1].translated

@@ -12,7 +12,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 
 def default_db_path() -> Path:
@@ -79,6 +79,43 @@ def _migrate(conn: sqlite3.Connection) -> None:
             """
         )
         conn.execute("PRAGMA user_version=1")
+    if version < 2:
+        # v2: add `ctx` to the TM key for context-hash caching of the document-context LLM (Area A2).
+        # NMT rows use ctx=''; an LLM row is keyed by a hash of its source neighbour window, so the
+        # same segment in a different context caches separately. The v1 table-level
+        # UNIQUE(src_norm,src_lang,tgt_lang,domain) would forbid that, so the table is rebuilt with
+        # ctx in the UNIQUE; existing rows migrate with ctx='' (identity preserved).
+        conn.executescript(
+            """
+            CREATE TABLE tm_v2 (
+              id         INTEGER PRIMARY KEY,
+              src_norm   TEXT NOT NULL,
+              src_text   TEXT NOT NULL,
+              src_lang   TEXT NOT NULL DEFAULT '',
+              tgt_lang   TEXT NOT NULL,
+              domain     TEXT NOT NULL DEFAULT '',
+              ctx        TEXT NOT NULL DEFAULT '',
+              tgt_text   TEXT NOT NULL,
+              origin     TEXT NOT NULL DEFAULT 'engine',
+              confirmed  INTEGER NOT NULL DEFAULT 0,
+              engine     TEXT,
+              quality    REAL,
+              hits       INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL DEFAULT (datetime('now')),
+              updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+              embedding  BLOB,
+              UNIQUE(src_norm, src_lang, tgt_lang, domain, ctx)
+            );
+            INSERT INTO tm_v2 (id, src_norm, src_text, src_lang, tgt_lang, domain, tgt_text,
+                               origin, confirmed, engine, quality, hits, created_at, updated_at,
+                               embedding)
+              SELECT id, src_norm, src_text, src_lang, tgt_lang, domain, tgt_text, origin,
+                     confirmed, engine, quality, hits, created_at, updated_at, embedding FROM tm;
+            DROP TABLE tm;
+            ALTER TABLE tm_v2 RENAME TO tm;
+            """
+        )
+        conn.execute("PRAGMA user_version=2")
     conn.commit()
     # guard: code expecting a newer schema than the file should fail loudly, not corrupt data.
     if conn.execute("PRAGMA user_version").fetchone()[0] > _SCHEMA_VERSION:

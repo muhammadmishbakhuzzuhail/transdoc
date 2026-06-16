@@ -36,6 +36,17 @@ def test_unconfirmed_row_is_updated_by_engine(tmp_path):
     assert s.get_many(["cat"], "id") == {"cat": "new"}
 
 
+def test_segments_context_hash_scoped(tmp_path):
+    s = TMStore(path=tmp_path / "transdoc.db")
+    s.put_segments([("bank", "CTX_geo", "tepi sungai")], target="id", src_lang="en")
+    s.put_segments([("bank", "CTX_fin", "bank")], target="id", src_lang="en")
+    assert s.get_segments([("bank", "CTX_geo")], "id", src_lang="en") == {("bank", "CTX_geo"): "tepi sungai"}
+    assert s.get_segments([("bank", "CTX_fin")], "id", src_lang="en") == {("bank", "CTX_fin"): "bank"}
+    assert s.get_segments([("bank", "CTX_other")], "id", src_lang="en") == {}      # unseen ctx -> miss
+    # plain exact-match (ctx='') is a separate bucket, unaffected by the context-hashed rows
+    assert s.get_many(["bank"], "id", src_lang="en") == {}
+
+
 def test_legacy_cache_migrated_on_default_path(tmp_path, monkeypatch):
     # build an old-schema tm.sqlite and point the legacy + default paths at the tmp dir
     legacy = tmp_path / "cache" / "transdoc" / "tm.sqlite"
