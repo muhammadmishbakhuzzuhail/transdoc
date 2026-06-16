@@ -106,6 +106,28 @@ def test_parse_table_header_span_nested():
     assert p.has_header_row is False
 
 
+def test_padded_crop_expands_and_clamps():
+    from transdoc.extract.structured import _CROP_PAD, _padded
+
+    class _Box:
+        x0 = y0 = 0
+        x1 = y1 = 0
+
+    page = fitz.open()
+    pg = page.new_page(width=200, height=200)
+    # interior region -> padded on every side
+    r = _Box()
+    r.x0, r.y0, r.x1, r.y1 = 50, 50, 100, 100
+    p = _padded(r, pg)
+    assert p.x0 == 50 - _CROP_PAD and p.x1 == 100 + _CROP_PAD
+    # edge region -> clamped to the page, never negative / off-page
+    e = _Box()
+    e.x0, e.y0, e.x1, e.y1 = 0, 0, 200, 200
+    pe = _padded(e, pg)
+    assert pe.x0 == 0 and pe.y0 == 0 and pe.x1 == 200 and pe.y1 == 200
+    page.close()
+
+
 def test_pick_text_falls_back_when_digital_is_garbage():
     from transdoc.extract.structured import _pick_text
 
