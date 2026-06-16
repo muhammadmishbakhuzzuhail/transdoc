@@ -117,9 +117,10 @@ class Config(BaseModel):
 
     # Ollama (local LLM, document-level context-aware translation). Deterministic (temp=0) so the
     # context-hash TM cache stays valid. Host overridable via config or OLLAMA_HOST env.
-    # Model: Qwen2.5-7B-Instruct (HF Qwen/Qwen2.5-7B-Instruct) — Apache-2.0, 29+ languages incl.
-    # Indonesian; Q4_K_M ~4.7 GB fits a 6 GB GPU (rest offloads to CPU). One model, no per-run choice.
-    ollama_model: str = "qwen2.5:7b"
+    # Model: Gemma-2-9B-it (Ollama `gemma2:9b`) — Google, clean multilingual incl. Indonesian.
+    # Chosen after Qwen2.5-7B leaked Chinese on DE->ID (Chinese-origin model drifts to zh at temp=0).
+    # Q4 ~5.5 GB on a 6 GB GPU (partial CPU offload). One model, no per-run choice.
+    ollama_model: str = "gemma2:9b"
     ollama_host: str = "http://localhost:11434"
     ollama_num_ctx: int = 4096                  # tokens; sized for a 6 GB GPU; batch packs under it
     ollama_timeout: float = 120.0              # per-request seconds
