@@ -1,11 +1,11 @@
-import { AlertCircle, Check, Loader2, Sparkles } from "lucide-react"
+import { AlertCircle, Check, Loader2, Sparkles, Wand2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
-  acceptGlossarySuggestion, type FuzzySuggestion, getReview, type GlossarySuggestion,
-  postCorrection, previewUrl, type ReviewPayload, type ReviewSegment,
+  acceptGlossarySuggestion, type FuzzySuggestion, getAlternatives, getReview,
+  type GlossarySuggestion, postCorrection, previewUrl, type ReviewPayload, type ReviewSegment,
 } from "@/lib/api"
 
 type SaveState = "idle" | "saving" | "saved" | "error"
@@ -75,6 +75,8 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
   const [value, setValue] = useState(seg.translation)
   const [state, setState] = useState<SaveState>("idle")
   const saved = useRef(seg.translation)
+  const [alts, setAlts] = useState<string[] | null>(null)
+  const [loadingAlts, setLoadingAlts] = useState(false)
 
   // a TM match whose source equals this segment's source — offer it as a one-click fill
   const match = useMemo(
@@ -91,6 +93,17 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
       setState("saved")
     } catch {
       setState("error")
+    }
+  }
+
+  async function loadAlts() {
+    setLoadingAlts(true)
+    try {
+      setAlts(await getAlternatives({ source: seg.source, src_lang: srcLang, tgt_lang: tgtLang }))
+    } catch {
+      setAlts([])
+    } finally {
+      setLoadingAlts(false)
     }
   }
 
@@ -121,6 +134,27 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
           <Sparkles className="h-3 w-3" />
           TM {Math.round(match.score * 100)}%: {match.match_translation}
         </button>
+      )}
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={loadAlts} disabled={loadingAlts}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          {loadingAlts ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+          alternatives
+        </button>
+        {alts && alts.length === 0 && !loadingAlts && (
+          <span className="text-xs text-muted-foreground">none (local LLM off?)</span>
+        )}
+      </div>
+      {alts && alts.length > 0 && (
+        <div className="mt-1 space-y-1">
+          {alts.map((a, i) => (
+            <button key={i} type="button"
+              onClick={() => { setValue(a); save(a); setAlts(null) }}
+              className="block w-full rounded border border-dashed px-2 py-1 text-left text-xs hover:border-primary hover:bg-primary/5">
+              {a}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )

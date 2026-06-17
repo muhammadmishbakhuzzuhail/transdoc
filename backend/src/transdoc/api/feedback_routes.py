@@ -199,6 +199,34 @@ async def tm_import(file: UploadFile = File(...)) -> dict:
     return {"imported": n}
 
 
+# --- LLM alternative translations (review aid) ------------------------------------------------
+
+class AltReq(BaseModel):
+    source: str
+    src_lang: str = ""
+    tgt_lang: str
+    domain: str = ""
+    n: int = 3
+
+
+@router.post("/alternatives")
+def alternatives(body: AltReq) -> dict:
+    """Generate alternative translations of one segment via the local LLM (Gemma/Ollama). 503 if the
+    local LLM isn't reachable — the UI hides the feature then."""
+    from ..config import Config, Register
+    from ..translate.ollama import OllamaError, OllamaTranslator
+    if not body.source.strip():
+        return {"alternatives": []}
+    cfg = Config(source_lang=body.src_lang or "auto", target_lang=body.tgt_lang,
+                 domain=body.domain or "auto", register=Register("auto"))
+    try:
+        alts = OllamaTranslator().alternatives(
+            body.source, cfg, src=body.src_lang or None, n=body.n)
+    except OllamaError as e:
+        raise HTTPException(503, f"local LLM unavailable: {e}")
+    return {"alternatives": alts}
+
+
 # --- per-job review payload (side-by-side UI) -------------------------------------------------
 
 @router.get("/review/{jid}")
