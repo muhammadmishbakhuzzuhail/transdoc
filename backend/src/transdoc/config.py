@@ -105,6 +105,12 @@ class Config(BaseModel):
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
     bilingual: bool = False                     # emit source + translation together
     quality_check: bool = False                 # run reference-free QE (COMET), flag weak segments
+    align_styles: bool = False                  # word-alignment style transfer: redistribute inline
+                                                # run styles (bold/italic/super/link) onto the
+                                                # whole-block translation via mBERT word alignment, so
+                                                # a styled span tracks the right words after reorder/
+                                                # expansion. Falls back to per-run translation when the
+                                                # aligner is unavailable or the alignment is too sparse.
     escalate: bool = False                       # hybrid QE-gate: re-translate QA-weak segments
                                                 # (entity/untranslated/empty/length + low-COMET) with
                                                 # the local doc-context LLM (Ollama). Opt-in (needs

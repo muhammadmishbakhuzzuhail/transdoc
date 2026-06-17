@@ -54,7 +54,7 @@ def health() -> dict:
 
 
 def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, domain, register,
-              layout, ocr_engine, bilingual, quality, localize, pages) -> Config:
+              layout, ocr_engine, bilingual, quality, localize, pages, align=True) -> Config:
     """Build a Config from the upload form, raising HTTP 400 on a bad value. A fresh Config per
     job — the pipeline mutates cfg.fidelity/layout for some inputs, so jobs must not share one."""
     try:
@@ -64,6 +64,7 @@ def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, doma
             fidelity=Fidelity(fidelity), domain=domain, register=Register(register),
             ocr_engine=OCREngine(ocr_engine), layout=layout, bilingual=bilingual,
             quality_check=quality, localize=localize, pages=pages or None,
+            align_styles=align,
         )
     except ValueError as e:
         raise HTTPException(400, f"bad config: {e}")
@@ -99,13 +100,14 @@ async def translate(
     bilingual: bool = Form(False),
     quality: bool = Form(True),
     localize: bool = Form(False),
+    align: bool = Form(True),
     pages: str = Form(""),
 ) -> dict:
     path = _save_upload(file)
     cfg = _make_cfg(target_lang=target_lang, source_lang=source_lang, output_format=output_format,
                     engine=engine, fidelity=fidelity, domain=domain, register=register,
                     layout=layout, ocr_engine=ocr_engine, bilingual=bilingual, quality=quality,
-                    localize=localize, pages=pages)
+                    localize=localize, align=align, pages=pages)
     job = store.create(path, meta={"filename": file.filename})
     store.run_async(job, cfg)
     return {"job_id": job.id, "status": job.status}
@@ -126,6 +128,7 @@ async def batch(
     bilingual: bool = Form(False),
     quality: bool = Form(True),
     localize: bool = Form(False),
+    align: bool = Form(True),
     pages: str = Form(""),
 ) -> dict:
     """Batch upload: one independent job per file (DeepL-style), tied by a shared batch_id, applied

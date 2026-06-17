@@ -54,6 +54,9 @@ api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
 scale = ["celery>=5.4", "redis>=5.0"]
 # Reference-free translation quality estimation (COMET-Kiwi)
 qe = ["unbabel-comet>=2.2"]
+# Word-alignment style transfer: redistribute inline run styles onto the block translation
+# (awesome-align algorithm on mBERT). pip install -e ".[align]"  (pulls torch)
+align = ["transformers>=4.44", "torch>=2.2"]
 # Extra round-trip formats: subtitles, EPUB, PowerPoint, Excel
 formats = ["python-pptx>=1.0", "openpyxl>=3.1", "ebooklib>=0.18", "srt>=3.5", "beautifulsoup4>=4.12"]
 # More accurate, deterministic language detection (lingua low-accuracy mode). Heavier RAM
