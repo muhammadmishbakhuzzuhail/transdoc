@@ -211,29 +211,42 @@ def glossary_rm(
 
 @glossary_app.command("export")
 def glossary_export(
-    file: str = typer.Argument(..., help="Output .json or .tsv"),
+    file: str = typer.Argument(..., help="Output .json, .tsv or .csv"),
     source: str = typer.Option(None, "--source", "-s"),
     target: str = typer.Option(None, "--target", "-t"),
 ):
-    """Export glossary entries to JSON or TSV."""
+    """Export glossary entries to JSON, TSV or CSV (DeepL-style)."""
     from .store.glossary import GlossaryStore
     gs = GlossaryStore.get()
     if gs is None:
         console.print("[red]glossary store unavailable[/]")
         raise typer.Exit(1)
-    n = gs.export(file, source, target)
+    if file.lower().endswith(".csv"):
+        from .store.interchange import export_glossary_csv
+        n = export_glossary_csv(gs, file, source, target)
+    else:
+        n = gs.export(file, source, target)
     console.print(f"[green]✓ exported {n} entries[/] → {file}")
 
 
 @glossary_app.command("import")
-def glossary_import(file: str = typer.Argument(..., help="Input .json or .tsv")):
-    """Import glossary entries from JSON or TSV (upserts)."""
+def glossary_import(
+    file: str = typer.Argument(..., help="Input .json, .tsv or .csv"),
+    source: str = typer.Option("", "--source", "-s", help="src lang for CSV rows lacking it"),
+    target: str = typer.Option("", "--target", "-t", help="tgt lang for CSV rows lacking it"),
+    domain: str = typer.Option("", "--domain", "-d"),
+):
+    """Import glossary entries from JSON, TSV or CSV (upserts)."""
     from .store.glossary import GlossaryStore
     gs = GlossaryStore.get()
     if gs is None:
         console.print("[red]glossary store unavailable[/]")
         raise typer.Exit(1)
-    n = gs.import_(file)
+    if file.lower().endswith(".csv"):
+        from .store.interchange import import_glossary_csv
+        n = import_glossary_csv(gs, file, source, target, domain)
+    else:
+        n = gs.import_(file)
     console.print(f"[green]✓ imported {n} entries[/] from {file}")
 
 
@@ -373,6 +386,32 @@ def tm_purge(
         raise typer.Exit(1)
     n = tm.purge(unconfirmed_only=unconfirmed, older_than_days=older_than)
     console.print(f"[green]✓ purged {n} row(s)[/]")
+
+
+@tm_app.command("export")
+def tm_export(file: str = typer.Argument(..., help="Output .tmx")):
+    """Export the translation memory to TMX 1.4 (portable to Trados/memoQ/OmegaT)."""
+    from .store.interchange import export_tmx
+    from .store.tm import TMStore
+    tm = TMStore.get()
+    if tm is None:
+        console.print("[red]TM unavailable[/]")
+        raise typer.Exit(1)
+    n = export_tmx(tm, file)
+    console.print(f"[green]✓ exported {n} units[/] → {file}")
+
+
+@tm_app.command("import")
+def tm_import(file: str = typer.Argument(..., help="Input .tmx")):
+    """Import translation units from a TMX file (upserts)."""
+    from .store.interchange import import_tmx
+    from .store.tm import TMStore
+    tm = TMStore.get()
+    if tm is None:
+        console.print("[red]TM unavailable[/]")
+        raise typer.Exit(1)
+    n = import_tmx(tm, file)
+    console.print(f"[green]✓ imported {n} units[/] from {file}")
 
 
 def _execute(input: str, cfg: Config, out: str | None):

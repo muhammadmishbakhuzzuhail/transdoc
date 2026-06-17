@@ -162,6 +162,24 @@ class TMStore:
             self._conn.commit()
             return cur.rowcount
 
+    def export_pairs(self) -> list[dict]:
+        """All TM entries as dicts (source/target/src_lang/tgt_lang/domain/confirmed) — for TMX
+        export / backup."""
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT src_text, tgt_text, src_lang, tgt_lang, domain, confirmed FROM tm "
+                "ORDER BY src_lang, tgt_lang, domain, src_text")
+            cols = [c[0] for c in cur.description]
+            return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+    def import_pairs(self, rows) -> int:
+        """Insert (source, target, src_lang, tgt_lang, domain) tuples — for TMX import. Reuses the
+        confirmed-immune upsert; imported rows are origin='import'. Returns the count attempted."""
+        triples = [(_norm(s), s, sl, tl, dom, "", t, "import")
+                   for s, t, sl, tl, dom in rows if s and s.strip() and t and t.strip()]
+        self._upsert(triples)
+        return len(triples)
+
     def fuzzy_search(self, source: str, target: str, src_lang: str = "", domain: str = "",
                      embedder=None, limit: int = 5, min_score: float = 0.5,
                      candidate_cap: int = 500) -> list[tuple[str, str, float]]:
