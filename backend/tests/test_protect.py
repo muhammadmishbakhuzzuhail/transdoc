@@ -137,3 +137,19 @@ def test_load_glossary_reads_pairs(tmp_path):
     g = tmp_path / "g.json"
     g.write_text('{"cat": "kucing", "  ": "skip", "dog": ""}', encoding="utf-8")
     assert load_glossary(g) == {"cat": "kucing"}
+
+
+def test_literal_placeholder_in_source_does_not_collide():
+    # a source that literally contains "[PH0]" must not corrupt a real protected span (regression:
+    # the literal token + an assigned placeholder both became [PH0], so restore duplicated the email)
+    p = Protector()
+    text = "literal [PH0] bracket then a@b.com"
+    protected, mapping = p.protect(text)
+    assert Protector.restore(protected, mapping) == text
+
+
+def test_multiple_literal_placeholders_roundtrip():
+    p = Protector()
+    text = "[PH3] and [PH7] markers with https://a.com link"
+    protected, mapping = p.protect(text)
+    assert Protector.restore(protected, mapping) == text
