@@ -27,7 +27,7 @@ PADDLE_PKG ?= paddlepaddle-gpu==3.3.1
 
 .PHONY: setup setup-backend setup-frontend setup-layout test lint eval eval-baseline \
         eval-real eval-real-baseline eval-ocr eval-judge eval-translate eval-preserve eval-table eval-consistency eval-layout \
-        eval-expansion eval-reading-order eval-typing serve dev clean
+        eval-expansion eval-reading-order eval-typing quality-gate quality-baseline serve dev clean
 
 setup: setup-backend setup-frontend ## everyday dev setup (no paddle)
 
@@ -117,6 +117,15 @@ eval-reading-order:
 #   make eval-typing ARGS="--show path/to/doc.pdf"
 eval-typing:
 	cd backend && .venv/bin/python -m scripts.eval_typing $(ARGS)
+
+# Translation-quality regression gate: translate the committed held-out set through the REAL engine,
+# score chrF, compare to the committed baseline (exit non-zero on a >tol drop). Online; runs nightly
+# in CI, not on PRs. `quality-baseline` rewrites the baseline after an intended quality change.
+quality-gate:
+	cd backend && .venv/bin/python -m scripts.quality_gate $(ARGS)
+
+quality-baseline:
+	cd backend && .venv/bin/python -m scripts.quality_gate --update $(ARGS)
 
 # Text-expansion fidelity (Area C): simulate target-language expansion (pad each block ~1.4x),
 # reconstruct the PDF, and count illegible/tiny/overflow spans + page spill. Deterministic/offline

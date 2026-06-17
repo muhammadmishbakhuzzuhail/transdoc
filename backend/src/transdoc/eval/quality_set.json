@@ -1,0 +1,12 @@
+[
+  {"src_lang": "en", "tgt_lang": "id", "src": "The meeting will start at nine o'clock tomorrow morning.", "ref": "Rapat akan dimulai pukul sembilan besok pagi."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "Please sign the document and return it to the office.", "ref": "Mohon tanda tangani dokumen ini dan kembalikan ke kantor."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "The total amount due is 1,250 dollars.", "ref": "Jumlah total yang harus dibayar adalah 1.250 dolar."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "Children under twelve enter free of charge.", "ref": "Anak-anak di bawah dua belas tahun masuk gratis."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "The report summarizes the results of the experiment.", "ref": "Laporan ini merangkum hasil percobaan tersebut."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "Water boils at one hundred degrees Celsius at sea level.", "ref": "Air mendidih pada suhu seratus derajat Celsius di permukaan laut."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "She bought three books and a new umbrella.", "ref": "Dia membeli tiga buku dan sebuah payung baru."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "The train was delayed because of heavy rain.", "ref": "Kereta tertunda karena hujan deras."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "Our company was founded in 1998 in Jakarta.", "ref": "Perusahaan kami didirikan pada tahun 1998 di Jakarta."},
+  {"src_lang": "en", "tgt_lang": "id", "src": "He explained the plan clearly to the whole team.", "ref": "Dia menjelaskan rencana itu dengan jelas kepada seluruh tim."}
+]

@@ -1,0 +1,51 @@
+name: Quality gate (nightly)
+
+# Translation-quality tracking: translate the committed held-out set through the REAL engine, score
+# chrF, and compare to the committed baseline. Online (the engine is online), so it runs on a
+# schedule + on demand — never on a PR, where a flaky network request would turn a green diff red.
+# Non-blocking: continue-on-error keeps a network hiccup from paging; a real regression shows up as
+# "REGRESSION" in the step log + the uploaded artifact.
+#   Actions tab -> "Quality gate (nightly)" -> Run workflow
+
+on:
+  schedule:
+    - cron: "0 3 * * *"        # 03:00 UTC nightly
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install system libs
+        run: sudo apt-get update && sudo apt-get install -y libmagic1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install package (core + dev + formats + api)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,formats,api]"
+
+      - name: Quality gate (chrF vs baseline)
+        # online engine: tolerate transient failures (non-blocking tracking), surface regressions in
+        # the log + artifact rather than hard-failing the scheduled run
+        continue-on-error: true
+        run: python -m scripts.quality_gate 2>&1 | tee quality.txt
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-scorecard
+          path: backend/quality.txt
+          if-no-files-found: warn
