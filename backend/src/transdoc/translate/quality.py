@@ -64,5 +64,5 @@ def annotate_quality(doc, cfg) -> None:
         if s is None:
             continue
         b.confidence.translation = round(s, 3)
-        if s < cfg.flag_threshold:
+        if s < cfg.qe_threshold:
             b.flags["low_translation_quality"] = f"QE {s:.0%}"

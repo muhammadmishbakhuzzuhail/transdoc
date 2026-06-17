@@ -151,6 +151,10 @@ class Config(BaseModel):
 
     # Confidence threshold below which values are flagged for human review.
     flag_threshold: float = 0.90
+    # Separate threshold for COMET-Kiwi QE scores. COMET-Kiwi scores cluster lower than OCR
+    # confidence (good translations land ~0.6-0.88), so reusing flag_threshold (0.90) would flag
+    # almost everything and over-escalate. 0.75 flags only the clearly weak segments.
+    qe_threshold: float = 0.75
 
     def require_target(self) -> str:
         if not self.target_lang:
