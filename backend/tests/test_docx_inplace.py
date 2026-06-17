@@ -45,6 +45,25 @@ def test_inplace_keeps_styles_and_swaps_text(tmp_path):
     assert t.tables[0].rows[0].cells[0].text == "[id] Name"
 
 
+def test_inplace_preserves_embedded_image(tmp_path):
+    """In-place editing only rewrites run text, so an embedded image must survive untouched."""
+    from PIL import Image
+    img = tmp_path / "logo.png"
+    Image.new("RGB", (32, 32), (200, 30, 30)).save(str(img))
+    src = tmp_path / "doc.docx"
+    d = Docx()
+    d.add_heading("Report", level=1)
+    d.add_paragraph("Body text to translate here.")
+    d.add_picture(str(img))
+    d.save(str(src))
+
+    out = tmp_path / "doc.id.docx"
+    run(str(src), Config(source_lang="en", target_lang="id", engine=Engine.ECHO,
+                         output_format=OutputFormat.DOCX, mode=Mode.FULL), out_path=str(out))
+    o, t = Docx(str(src)), Docx(str(out))
+    assert len(t.inline_shapes) == len(o.inline_shapes) >= 1   # image preserved in place
+
+
 def test_inplace_falls_back_when_block_count_diverges(tmp_path, monkeypatch):
     """If extraction/reconcile dropped a block, the index-zip would misalign every later
     paragraph. The renderer must detect the count mismatch and fall back to the IR rebuild
