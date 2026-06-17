@@ -93,6 +93,10 @@ class Config(BaseModel):
     embed_model: str | None = "paraphrase-multilingual-MiniLM-L12-v2"   # sentence-transformer for
                                                 # semantic fuzzy rerank; None or unavailable -> lexical
                                                 # similarity only (graceful degradation)
+    few_shot: bool = True                        # feedback flywheel: inject the user's most similar
+                                                # confirmed corrections as few-shot examples in the
+                                                # LLM prompt (LLM path only; NMT can't few-shot)
+    few_shot_k: int = 3                          # max few-shot exemplars per LLM chunk
                                                 # (acronyms/multi-word names) across the document
     register: Register = Register.AUTO
     mode: Mode = Mode.FULL

@@ -64,6 +64,9 @@ def translate(
                                      "(fill the correction column, then `transdoc feedback import`)"),
     fuzzy: bool = typer.Option(True, "--fuzzy/--no-fuzzy",
                                help="reuse near-identical past translations from the TM (PR-4)"),
+    few_shot: bool = typer.Option(True, "--few-shot/--no-few-shot",
+                                  help="feedback flywheel: inject your most similar confirmed "
+                                       "corrections as LLM few-shot examples (LLM path only)"),
     ocr_figures: bool = typer.Option(False, "--ocr-figures",
                                      help="OCR text inside large embedded images (scan-in-page)"),
     glossary: str = typer.Option(None, "--glossary", "-g",
@@ -82,6 +85,7 @@ def translate(
     cfg.verify = verify
     cfg.review = review
     cfg.fuzzy_tm = fuzzy
+    cfg.few_shot = few_shot
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout
     if glossary:

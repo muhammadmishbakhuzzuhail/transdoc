@@ -49,11 +49,49 @@ class OllamaTranslator:
             h = "http://" + h
         return h
 
-    def _system(self, cfg: Config, src: str | None) -> str:
+    def _few_shot(self, cfg: Config, src: str | None,
+                  texts: list[str]) -> list[tuple[str, str]]:
+        """Feedback flywheel: the user's most similar CONFIRMED corrections, to show the model how
+        this user wants things translated. Per-chunk, dedup, capped at cfg.few_shot_k. Best-effort —
+        returns [] if persistence/TM is off or nothing relevant."""
+        if not getattr(cfg, "few_shot", False) or cfg.few_shot_k <= 0:
+            return []
+        from ..store.tm import TMStore
+        tm = TMStore.get()
+        if tm is None or not hasattr(tm, "fuzzy_search"):
+            return []
+        embedder = None
+        if cfg.embed_model:
+            try:
+                from ..store.embed import Embedder
+                embedder = Embedder.get(cfg.embed_model)
+            except Exception:
+                embedder = None
+        seen: dict[str, tuple[str, str, float]] = {}
+        for text in texts:
+            try:
+                hits = tm.fuzzy_search(text, cfg.target_lang, src_lang=src or "",
+                                       domain=cfg.domain, embedder=embedder, limit=cfg.few_shot_k,
+                                       min_score=0.6, confirmed_only=True)
+            except Exception:
+                continue
+            for s, t, sc in hits:
+                if s not in seen or sc > seen[s][2]:
+                    seen[s] = (s, t, sc)
+        ranked = sorted(seen.values(), key=lambda r: r[2], reverse=True)[:cfg.few_shot_k]
+        return [(s, t) for s, t, _ in ranked]
+
+    def _system(self, cfg: Config, src: str | None,
+                examples: list[tuple[str, str]] | None = None) -> str:
         gl = ""
         if cfg.glossary:
             pairs = "; ".join(f"{k} -> {v}" for k, v in cfg.glossary.items())
             gl = f" Enforce this glossary exactly (source -> target): {pairs}."
+        fs = ""
+        if examples:
+            ex = "; ".join(f'"{s}" -> "{t}"' for s, t in examples)
+            fs = (" Here is how THIS user has corrected similar translations before — match their "
+                  f"wording, terminology and register: {ex}.")
         return (
             "You are a professional document translator. Translate from "
             f"{src or 'the detected language'} to {cfg.target_lang}. "
@@ -62,7 +100,7 @@ class OllamaTranslator:
             "stay coherent and consistent — do NOT translate the context, only the items. "
             "Translate meaning idiomatically. Preserve numbers, dates, IDs, codes, URLs and proper "
             "nouns exactly. Keep any [PH<n>] placeholders verbatim and in place. Do not add, remove, "
-            "merge or reorder items." + gl +
+            "merge or reorder items." + gl + fs +
             ' Return ONLY a JSON object: {"translations": {"<id>": "<translated text>", ...}} '
             "with exactly one entry per item id given."
         )
@@ -115,12 +153,13 @@ class OllamaTranslator:
         """One model call for a chunk. chunk: [(id, source)]; prev_pairs: [(source, translation)]
         carried context; following: next source segments (read-only). Returns translations in chunk
         order, or raises OllamaError if the response can't be aligned 1:1 to the requested ids."""
+        examples = self._few_shot(cfg, src, [s for _, s in chunk])
         user = json.dumps({
             "context_before": [{"source": s, "translation": t} for s, t in prev_pairs],
             "items": [{"id": i, "text": s} for i, s in chunk],
             "context_after": following,
         }, ensure_ascii=False)
-        content = self._call(cfg, self._system(cfg, src), user)
+        content = self._call(cfg, self._system(cfg, src, examples), user)
         try:
             return self._parse(content, [i for i, _ in chunk])
         except (OllamaError, json.JSONDecodeError, ValueError) as e:

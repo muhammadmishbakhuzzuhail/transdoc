@@ -182,12 +182,14 @@ class TMStore:
 
     def fuzzy_search(self, source: str, target: str, src_lang: str = "", domain: str = "",
                      embedder=None, limit: int = 5, min_score: float = 0.5,
-                     candidate_cap: int = 500) -> list[tuple[str, str, float]]:
+                     candidate_cap: int = 500, confirmed_only: bool = False
+                     ) -> list[tuple[str, str, float]]:
         """Find past translations whose SOURCE is similar to ``source`` (monolingual). Returns
         ``[(src_text, tgt_text, score)]`` sorted by score desc. Scope: same (target, src_lang,
-        domain) — plus global ('') when a domain is given. Scoring: cosine via ``embedder`` if
-        provided, else :func:`lexical_ratio`. Candidates are token-prefiltered then capped to bound
-        the work on a large TM (personal-scale: a linear scan over the scoped rows)."""
+        domain) — plus global ('') when a domain is given. ``confirmed_only`` restricts to
+        human-confirmed corrections (the feedback-flywheel few-shot source). Scoring: cosine via
+        ``embedder`` if provided, else :func:`lexical_ratio`. Candidates are token-prefiltered then
+        capped to bound the work on a large TM (personal-scale: a linear scan over the scoped rows)."""
         if not source or not source.strip():
             return []
         # src_lang/domain wildcard '': engine rows are stored unscoped (src_lang='', domain=''),
@@ -196,10 +198,12 @@ class TMStore:
         domains = {domain, ""} if domain else {""}
         lq = ",".join("?" * len(langs))
         dq = ",".join("?" * len(domains))
+        conf = " AND confirmed=1" if confirmed_only else ""
         with self._lock:
             cur = self._conn.execute(
                 f"SELECT src_text, tgt_text FROM tm "
-                f"WHERE tgt_lang=? AND src_lang IN ({lq}) AND domain IN ({dq}) AND tgt_text<>''",
+                f"WHERE tgt_lang=? AND src_lang IN ({lq}) AND domain IN ({dq}) "
+                f"AND tgt_text<>''{conf}",
                 [target, *langs, *domains],
             )
             rows = cur.fetchall()
