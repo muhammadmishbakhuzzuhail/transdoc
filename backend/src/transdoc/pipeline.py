@@ -131,12 +131,14 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     source_is_pdf = (doc.mime == "application/pdf")
     if cfg.resolve_fidelity(source_is_pdf) == Fidelity.FLOW:
         from .extract.base import reorder_vertical_last
-        from .extract.crosspage import merge_cross_page
+        from .extract.crosspage import merge_cross_page, merge_intra_page
         from .headers import strip_running_headers
         strip_running_headers(doc)
         reorder_vertical_last(doc)        # push margin/rotated text to end of its page
-        # rejoin a paragraph split by a page break — flow reflows anyway, so translate it as one
-        # unit (better context, no mid-sentence fragment). LAYOUT keeps pages verbatim, so skipped.
+        # rejoin a paragraph the extractor split — within a page (mis-segmentation) then across a
+        # page break. Flow reflows anyway, so translate it as one unit (better context, no
+        # mid-sentence fragment). LAYOUT keeps pages verbatim, so skipped.
+        merge_intra_page(doc)
         merge_cross_page(doc)
 
     from .translate import get_translator, translate_document
