@@ -97,6 +97,8 @@ class Config(BaseModel):
                                                 # confirmed corrections as few-shot examples in the
                                                 # LLM prompt (LLM path only; NMT can't few-shot)
     few_shot_k: int = 3                          # max few-shot exemplars per LLM chunk
+    consistency: bool = True                     # post-translate: force identical source text to one
+                                                # translation across the document (confirmed>majority)
                                                 # (acronyms/multi-word names) across the document
     register: Register = Register.AUTO
     mode: Mode = Mode.FULL

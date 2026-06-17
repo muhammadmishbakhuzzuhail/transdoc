@@ -150,6 +150,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         from .textdir import apply_text_direction
         apply_text_direction(doc, cfg)
 
+    # Phase 5a': document-level consistency — force identical source text to one translation
+    # (confirmed > majority > first). Before QA so the harmonised output is what gets checked.
+    if cfg.consistency:
+        with _stage(timings, "consistency"):
+            from .translate.consistency import enforce_consistency
+            enforce_consistency(doc, cfg)
+
     # Phase 5b: rule-based QA (always-on, deterministic, model-free) -> flag entity/placeholder/
     # untranslated/empty (hard) + length/glossary (soft). Complements the optional COMET QE below.
     from .translate.qa import run_qa

@@ -67,6 +67,9 @@ def translate(
     few_shot: bool = typer.Option(True, "--few-shot/--no-few-shot",
                                   help="feedback flywheel: inject your most similar confirmed "
                                        "corrections as LLM few-shot examples (LLM path only)"),
+    consistency: bool = typer.Option(True, "--consistency/--no-consistency",
+                                     help="force identical source text to one translation across "
+                                          "the document (confirmed > majority)"),
     ocr_figures: bool = typer.Option(False, "--ocr-figures",
                                      help="OCR text inside large embedded images (scan-in-page)"),
     glossary: str = typer.Option(None, "--glossary", "-g",
@@ -86,6 +89,7 @@ def translate(
     cfg.review = review
     cfg.fuzzy_tm = fuzzy
     cfg.few_shot = few_shot
+    cfg.consistency = consistency
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout
     if glossary:

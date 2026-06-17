@@ -162,6 +162,18 @@ class TMStore:
             self._conn.commit()
             return cur.rowcount
 
+    def confirmed_translation(self, source: str, target: str, src_lang: str = "",
+                              domain: str = "") -> str | None:
+        """The human-confirmed translation of ``source`` for this target, if any (newest wins).
+        Used by the consistency pass to prefer a correction when harmonising duplicates."""
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT tgt_text FROM tm WHERE src_norm=? AND tgt_lang=? AND confirmed=1 "
+                "ORDER BY updated_at DESC LIMIT 1",
+                [_norm(source), target])
+            row = cur.fetchone()
+        return row[0] if row else None
+
     def export_pairs(self) -> list[dict]:
         """All TM entries as dicts (source/target/src_lang/tgt_lang/domain/confirmed) — for TMX
         export / backup."""
