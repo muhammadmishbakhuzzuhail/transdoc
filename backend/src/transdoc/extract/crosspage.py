@@ -39,6 +39,45 @@ def _join(tail: str, head: str) -> str:
     return t + " " + h
 
 
+def _same_column(a, b) -> bool:
+    """Two bboxes share a column: horizontal overlap >= half the narrower block's width."""
+    overlap = min(a.bbox.x1, b.bbox.x1) - max(a.bbox.x0, b.bbox.x0)
+    narrow = min(a.bbox.x1 - a.bbox.x0, b.bbox.x1 - b.bbox.x0) or 1.0
+    return overlap >= 0.5 * narrow
+
+
+def merge_intra_page(doc: Document) -> int:
+    """Rejoin a paragraph the extractor split into two adjacent SAME-PAGE blocks (mis-segmentation)
+    — same column, consecutive reading order, the first not ending a sentence and the second
+    continuing it. Flow output only (layout keeps blocks at their positions). Returns count merged.
+    Chains: one block keeps absorbing the next while the join condition holds."""
+    by_page: dict[int, list] = {}
+    for b in doc.ordered_blocks():
+        by_page.setdefault(b.page, []).append(b)
+    drop: set[int] = set()
+    for blocks in by_page.values():
+        i = 0
+        while i < len(blocks):
+            a = blocks[i]
+            if (a.type != BlockType.PARAGRAPH or not a.bbox or not a.text.strip()):
+                i += 1
+                continue
+            j = i + 1
+            while j < len(blocks):
+                b = blocks[j]
+                if (b.type != BlockType.PARAGRAPH or not b.bbox or not b.text.strip()
+                        or not _same_column(a, b) or not _continues(a.text, b.text)):
+                    break
+                a.text = _join(a.text, b.text)        # absorb into the tail block, keep chaining
+                drop.add(id(b))
+                j += 1
+            i = j
+    if not drop:
+        return 0
+    doc.blocks = [b for b in doc.blocks if id(b) not in drop]
+    return len(drop)
+
+
 def merge_cross_page(doc: Document) -> int:
     """Rejoin paragraphs split across a page break (flow output). Returns the count merged.
     In place; the head block is removed and its text folded into the tail block."""
