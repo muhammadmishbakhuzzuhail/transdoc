@@ -67,14 +67,14 @@ class OllamaTranslator:
             "with exactly one entry per item id given."
         )
 
-    def _call(self, cfg: Config, system: str, user: str) -> str:
+    def _call(self, cfg: Config, system: str, user: str, temperature: float = 0.0) -> str:
         body = json.dumps({
             "model": cfg.ollama_model,
             "messages": [{"role": "system", "content": system},
                          {"role": "user", "content": user}],
             "stream": False,
             "format": "json",
-            "options": {"temperature": 0, "num_ctx": cfg.ollama_num_ctx},
+            "options": {"temperature": temperature, "num_ctx": cfg.ollama_num_ctx},
         }).encode("utf-8")
         url = self._host(cfg) + "/api/chat"
         last: Exception | None = None
@@ -174,6 +174,33 @@ class OllamaTranslator:
         source following). Used by the hybrid QE-gate to re-translate one weak segment in context,
         without re-translating its neighbours."""
         return self._translate_once(cfg, src, [("0", text)], prev_pairs or [], following or [])[0]
+
+    def alternatives(self, text: str, cfg: Config, src: str | None = None, n: int = 3) -> list[str]:
+        """Generate up to ``n`` DISTINCT alternative translations of one segment (review aid). Higher
+        temperature for variety; preserves numbers/placeholders. Raises OllamaError if unavailable."""
+        n = max(1, min(5, n))
+        system = (
+            "You are a professional translator. Produce alternative translations from "
+            f"{src or 'the detected language'} to {cfg.target_lang} of the given text. Vary the "
+            "phrasing/word choice/register across alternatives, all faithful to the meaning. "
+            "Preserve numbers, dates, IDs, URLs, proper nouns and any [PH<n>] placeholders exactly. "
+            f'Return ONLY a JSON object: {{"alternatives": ["...", "..."]}} with {n} distinct items.'
+        )
+        user = json.dumps({"text": text, "n": n}, ensure_ascii=False)
+        content = self._call(cfg, system, user, temperature=0.8)
+        if content.startswith("```"):
+            content = content.split("```")[1].lstrip("json").strip()
+        obj = json.loads(content)
+        alts = obj.get("alternatives", obj) if isinstance(obj, dict) else obj
+        if not isinstance(alts, list):
+            raise OllamaError("alternatives not a list")
+        seen, out = set(), []
+        for a in alts:
+            s = str(a).strip()
+            if s and s not in seen:
+                seen.add(s)
+                out.append(s)
+        return out[:n]
 
     def translate_batch(self, texts: list[str], cfg: Config,
                         src: str | None = None) -> list[str]:

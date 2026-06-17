@@ -264,3 +264,15 @@ export async function importTmx(file: File): Promise<{ imported: number }> {
   if (!r.ok) throw new Error((await r.text()) || "TMX import failed")
   return r.json()
 }
+
+// LLM alternative translations (review aid). Returns [] when the local LLM is unavailable (503).
+export async function getAlternatives(body: {
+  source: string; tgt_lang: string; src_lang?: string; domain?: string; n?: number
+}): Promise<string[]> {
+  const r = await fetch(`${BASE}/api/alternatives`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  })
+  if (r.status === 503) return []
+  if (!r.ok) throw new Error("alternatives failed")
+  return (await r.json()).alternatives
+}
