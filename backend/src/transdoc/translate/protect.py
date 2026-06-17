@@ -67,6 +67,11 @@ class Protector:
 
     def _spans(self, text: str) -> list[tuple[int, int]]:
         spans: list[tuple[int, int]] = []
+        # Literal placeholder-shaped tokens already in the SOURCE (e.g. a doc that mentions "[PH0]"
+        # or uses such markers): protect them too, so they get their own index and restore to
+        # themselves instead of colliding with the placeholders we assign to real spans.
+        for m in _PH_RE.finditer(text):
+            spans.append((m.start(), m.end()))
         for pat in _PATTERNS:
             for m in re.finditer(pat, text):
                 spans.append((m.start(), m.end()))
