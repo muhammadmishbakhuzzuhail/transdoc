@@ -9,9 +9,11 @@ suggestion promotion) is identical across surfaces.
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from ..store.glossary import GlossaryStore
@@ -148,6 +150,53 @@ def tm_confirm(body: TMConfirm) -> dict:
 def tm_purge(body: TMPurge) -> dict:
     n = _tm().purge(unconfirmed_only=body.unconfirmed_only, older_than_days=body.older_than_days)
     return {"purged": n}
+
+
+# --- interchange: TMX (TM) + CSV (glossary) export/import -------------------------------------
+
+@router.get("/glossary/export.csv")
+def glossary_export_csv(src_lang: str | None = None, tgt_lang: str | None = None):
+    from ..store.interchange import export_glossary_csv
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+    tmp.close()
+    export_glossary_csv(_glossary(), tmp.name, src_lang, tgt_lang)
+    return FileResponse(tmp.name, filename="glossary.csv", media_type="text/csv")
+
+
+@router.post("/glossary/import")
+async def glossary_import(file: UploadFile = File(...), src_lang: str = Form(""),
+                          tgt_lang: str = Form(""), domain: str = Form("")) -> dict:
+    from ..store.interchange import import_glossary_csv
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+    tmp.write(await file.read())
+    tmp.close()
+    n = import_glossary_csv(_glossary(), tmp.name, src_lang, tgt_lang, domain)
+    Path(tmp.name).unlink(missing_ok=True)
+    return {"imported": n}
+
+
+@router.get("/tm/export.tmx")
+def tm_export_tmx():
+    from ..store.interchange import export_tmx
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".tmx")
+    tmp.close()
+    export_tmx(_tm(), tmp.name)
+    return FileResponse(tmp.name, filename="tm.tmx", media_type="application/x-tmx+xml")
+
+
+@router.post("/tm/import")
+async def tm_import(file: UploadFile = File(...)) -> dict:
+    from ..store.interchange import import_tmx
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".tmx")
+    tmp.write(await file.read())
+    tmp.close()
+    try:
+        n = import_tmx(_tm(), tmp.name)
+    except Exception as e:
+        raise HTTPException(400, f"bad TMX: {e}")
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
+    return {"imported": n}
 
 
 # --- per-job review payload (side-by-side UI) -------------------------------------------------

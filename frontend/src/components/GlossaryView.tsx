@@ -1,11 +1,12 @@
-import { Check, Lock, LockOpen, Plus, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Check, Download, Lock, LockOpen, Plus, Trash2, Upload } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  acceptGlossarySuggestion, addGlossary, type GlossaryEntry, type GlossarySuggestionRow,
-  listGlossary, listGlossarySuggestions, removeGlossary,
+  acceptGlossarySuggestion, addGlossary, glossaryCsvUrl, type GlossaryEntry,
+  type GlossarySuggestionRow, importGlossaryCsv, importTmx, listGlossary, listGlossarySuggestions,
+  removeGlossary, tmTmxUrl,
 } from "@/lib/api"
 
 // Global glossary manager: every term-pair the system knows, editable in place. Inline rendering
@@ -23,6 +24,7 @@ export function GlossaryView() {
 
   return (
     <div className="space-y-4">
+      <Interchange onChange={refresh} />
       <AddRow onAdded={refresh} />
 
       <Card>
@@ -79,6 +81,50 @@ export function GlossaryView() {
 }
 
 const keyOf = (s: GlossarySuggestionRow) => `${s.src_lang}:${s.tgt_lang}:${s.domain}:${s.term}`
+
+function Interchange({ onChange }: { onChange: () => void }) {
+  const [pair, setPair] = useState({ src: "en", tgt: "id" })
+  const [msg, setMsg] = useState("")
+  const csvRef = useRef<HTMLInputElement>(null)
+  const tmxRef = useRef<HTMLInputElement>(null)
+  const inp = "w-14 rounded border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center gap-2 pt-5 text-sm">
+        <a href={glossaryCsvUrl()}>
+          <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Glossary CSV</Button>
+        </a>
+        <input className={inp} value={pair.src} title="src lang for import"
+          onChange={(e) => setPair((p) => ({ ...p, src: e.target.value }))} />
+        <input className={inp} value={pair.tgt} title="tgt lang for import"
+          onChange={(e) => setPair((p) => ({ ...p, tgt: e.target.value }))} />
+        <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
+          <Upload className="h-4 w-4" /> Import CSV
+        </Button>
+        <input ref={csvRef} type="file" accept=".csv" className="hidden"
+          onChange={async (e) => {
+            const f = e.target.files?.[0]; if (!f) return
+            const r = await importGlossaryCsv(f, pair.src, pair.tgt).catch(() => null)
+            setMsg(r ? `imported ${r.imported} terms` : "import failed"); onChange()
+          }} />
+        <span className="mx-1 h-5 w-px bg-border" />
+        <a href={tmTmxUrl()}>
+          <Button size="sm" variant="outline"><Download className="h-4 w-4" /> TM TMX</Button>
+        </a>
+        <Button size="sm" variant="outline" onClick={() => tmxRef.current?.click()}>
+          <Upload className="h-4 w-4" /> Import TMX
+        </Button>
+        <input ref={tmxRef} type="file" accept=".tmx,.xml" className="hidden"
+          onChange={async (e) => {
+            const f = e.target.files?.[0]; if (!f) return
+            const r = await importTmx(f).catch(() => null)
+            setMsg(r ? `imported ${r.imported} TM units` : "import failed"); onChange()
+          }} />
+        {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
+      </CardContent>
+    </Card>
+  )
+}
 
 function Row({ e, onChange }: { e: GlossaryEntry; onChange: () => void }) {
   const [rendering, setRendering] = useState(e.rendering)

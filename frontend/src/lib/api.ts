@@ -240,3 +240,27 @@ export async function listGlossarySuggestions(): Promise<GlossarySuggestionRow[]
   if (!r.ok) throw new Error("suggestions list failed")
   return (await r.json()).suggestions
 }
+
+// --- interchange (TMX / CSV) ----------------------------------------------------------------
+
+export const glossaryCsvUrl = () => `${BASE}/api/glossary/export.csv`
+export const tmTmxUrl = () => `${BASE}/api/tm/export.tmx`
+
+export async function importGlossaryCsv(
+  file: File, src_lang: string, tgt_lang: string, domain = "",
+): Promise<{ imported: number }> {
+  const fd = new FormData()
+  fd.append("file", file); fd.append("src_lang", src_lang)
+  fd.append("tgt_lang", tgt_lang); fd.append("domain", domain)
+  const r = await fetch(`${BASE}/api/glossary/import`, { method: "POST", body: fd })
+  if (!r.ok) throw new Error((await r.text()) || "glossary import failed")
+  return r.json()
+}
+
+export async function importTmx(file: File): Promise<{ imported: number }> {
+  const fd = new FormData()
+  fd.append("file", file)
+  const r = await fetch(`${BASE}/api/tm/import`, { method: "POST", body: fd })
+  if (!r.ok) throw new Error((await r.text()) || "TMX import failed")
+  return r.json()
+}
