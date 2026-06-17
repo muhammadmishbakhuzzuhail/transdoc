@@ -32,7 +32,7 @@ export interface FormValues {
 const DEFAULTS: FormValues = {
   target_lang: "id", source_lang: "auto", output_format: "same-as-source", engine: "fallback",
   fidelity: "auto", layout: "auto", ocr_engine: "auto", register: "auto",
-  bilingual: false, quality: false, localize: false, pages: "",
+  bilingual: false, quality: true, localize: false, pages: "",
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {

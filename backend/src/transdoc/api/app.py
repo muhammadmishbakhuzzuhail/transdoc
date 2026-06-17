@@ -97,7 +97,7 @@ async def translate(
     layout: str = Form("auto"),
     ocr_engine: str = Form("auto"),
     bilingual: bool = Form(False),
-    quality: bool = Form(False),
+    quality: bool = Form(True),
     localize: bool = Form(False),
     pages: str = Form(""),
 ) -> dict:
@@ -124,7 +124,7 @@ async def batch(
     layout: str = Form("auto"),
     ocr_engine: str = Form("auto"),
     bilingual: bool = Form(False),
-    quality: bool = Form(False),
+    quality: bool = Form(True),
     localize: bool = Form(False),
     pages: str = Form(""),
 ) -> dict:
