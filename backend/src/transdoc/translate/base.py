@@ -12,7 +12,7 @@ import re
 from typing import Protocol
 
 from ..config import Config
-from ..ir import Block, Document
+from ..ir import Block, Document, Run
 
 
 class Translator(Protocol):
@@ -31,6 +31,18 @@ def _looks_untranslated(src: str, out: str) -> bool:
     if out.strip() != src.strip():
         return False
     return len(re.findall(r"[^\W\d_]{4,}", src)) >= 3
+
+
+def _restore_edge_ws(src: str, out: str) -> str:
+    """Re-apply the source run's leading/trailing whitespace to its translation. Engines strip edge
+    whitespace, which glues adjacent inline runs together when they're concatenated
+    ("international " + "Declaration" -> "internasionalDeklarasi"). A run with no edge space (a
+    styled mid-word like "Wiki"|"pedia") stays glued, as it should."""
+    if not out.strip():
+        return out
+    lead = src[:len(src) - len(src.lstrip())]
+    trail = src[len(src.rstrip()):]
+    return f"{lead}{out.strip()}{trail}"
 
 
 def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
@@ -368,7 +380,9 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
                 sink.flags["fuzzy_auto"] = "reused a near-identical past translation"
             elif src_text in fuzzy_sugg_src:
                 sink.flags["fuzzy_suggest"] = "a similar past translation exists (see report)"
-        else:  # Cell
+        else:  # Cell or Run
+            if isinstance(sink, Run):
+                translated = _restore_edge_ws(src_text, translated)
             sink.translated = translated
 
     doc.target_lang = target
