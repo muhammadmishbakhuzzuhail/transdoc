@@ -104,6 +104,20 @@ ROUTING: dict[str, list[str]] = {
     "Kannada": ["paddle", "tesseract", "easyocr"],
 }
 
+# Explicit source language -> its script, so an explicit non-Latin --source still gets the
+# script-optimised chain (paddle-first) instead of the tesseract-first default. Without this, e.g.
+# `--source hi` on a Devanagari scan routes to Tesseract, which is weak on Devanagari and returns
+# garbage at a falsely-high confidence (so it never escalates to Paddle, which OCRs it perfectly).
+# Latin-script languages are intentionally absent: they keep the tesseract-first DEFAULT_CHAIN.
+LANG_TO_SCRIPT: dict[str, str] = {
+    "hi": "Devanagari", "mr": "Devanagari", "ne": "Devanagari", "sa": "Devanagari",
+    "zh": "Han", "zh-hans": "Han", "zh-cn": "Han", "zh-hant": "Han", "zh-tw": "Han",
+    "ja": "Japanese", "ko": "Hangul",
+    "bn": "Bengali", "ta": "Tamil", "te": "Telugu", "th": "Thai", "kn": "Kannada",
+    "ru": "Cyrillic", "uk": "Cyrillic", "bg": "Cyrillic", "sr": "Cyrillic",
+    "ar": "Arabic", "fa": "Arabic", "ur": "Arabic", "he": "Hebrew", "el": "Greek",
+}
+
 
 class ScriptRoutedOCR:
     name = "auto"
@@ -121,11 +135,14 @@ class ScriptRoutedOCR:
         return self._cache[name]
 
     def _chain(self, img: bytes, cfg: Config) -> list[str]:
-        # An explicit source language means we trust Tesseract's lang pack — keep it primary.
-        if cfg.source_lang and cfg.source_lang != "auto":
-            return DEFAULT_CHAIN
-        script = detect_script(img)
-        return ROUTING.get(script, DEFAULT_CHAIN)
+        src = (cfg.source_lang or "auto").lower()
+        if src != "auto":
+            # An explicit NON-Latin source still needs its script-optimised chain (paddle-first) —
+            # Tesseract is weak on Devanagari/CJK/Indic even with the lang pack. A Latin/unknown
+            # explicit source keeps the tesseract-first default (fast, and the lang pack is good).
+            script = LANG_TO_SCRIPT.get(src)
+            return ROUTING.get(script, DEFAULT_CHAIN) if script else DEFAULT_CHAIN
+        return ROUTING.get(detect_script(img), DEFAULT_CHAIN)
 
     def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
         engines = [self._engine(n) for n in self._chain(img, cfg)]

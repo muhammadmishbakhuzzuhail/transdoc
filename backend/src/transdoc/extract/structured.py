@@ -162,7 +162,7 @@ def _pick_text(digital: str, content: str) -> tuple[str, bool]:
 def extract_structured(path: str, cfg: Config) -> Document:
     import fitz
 
-    from ..layout.structure import get_structure_extractor
+    from ..layout.structure import get_structure_extractor, paddle_lang
 
     doc = fitz.open(path)
     out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
@@ -182,7 +182,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
     from .pdf import _parse_pages
     selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
     pnos = [p for p in range(doc.page_count) if selected is None or p in selected]
-    regions_by_page = get_structure_extractor().extract_pages(doc, pnos)
+    regions_by_page = get_structure_extractor(paddle_lang(cfg.source_lang)).extract_pages(doc, pnos)
 
     from .annots import capture as _capture_annots
     from .vectors import capture as _capture_vectors

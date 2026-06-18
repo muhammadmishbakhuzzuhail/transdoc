@@ -37,7 +37,7 @@ def _pdf(tmp_path):
 
 def test_structured_builds_ir(monkeypatch, tmp_path):
     monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
-                        lambda: _FakeExtractor())
+                        lambda *a, **k: _FakeExtractor())
     doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
 
     by_type = {}
@@ -72,7 +72,7 @@ class _TableExtractor:
 def test_table_html_parsed_to_cells(monkeypatch, tmp_path):
     pytest.importorskip("bs4")
     monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
-                        lambda: _TableExtractor())
+                        lambda *a, **k: _TableExtractor())
     doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
     tables = [b for b in doc.blocks if b.type == BlockType.TABLE]
     assert len(tables) == 1
@@ -154,7 +154,7 @@ class _InlineMathExtractor:
 
 def test_inline_math_uses_latex_content(monkeypatch, tmp_path):
     monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
-                        lambda: _InlineMathExtractor())
+                        lambda *a, **k: _InlineMathExtractor())
     doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
     paras = [b for b in doc.blocks if b.type == BlockType.PARAGRAPH]
     assert any("$d_{k}$" in b.text for b in paras)   # inline LaTeX kept, not flattened
@@ -171,7 +171,7 @@ class _DupExtractor:
 
 def test_dedup_keeps_longer_overlapping(monkeypatch, tmp_path):
     monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
-                        lambda: _DupExtractor())
+                        lambda *a, **k: _DupExtractor())
     doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
     paras = [b for b in doc.blocks if b.type == BlockType.PARAGRAPH]
     assert len(paras) == 1
@@ -241,7 +241,7 @@ class _SpacedFormulaExtractor:
 
 def test_formula_and_inline_latex_cleaned(monkeypatch, tmp_path):
     monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
-                        lambda: _SpacedFormulaExtractor())
+                        lambda *a, **k: _SpacedFormulaExtractor())
     doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
     f = next(b for b in doc.blocks if b.type == BlockType.FORMULA)
     assert f.text == r"\operatorname{softmax}(x)"
@@ -268,7 +268,7 @@ def test_structured_ir_renders_to_pdf_reconstruct(monkeypatch, tmp_path):
     from transdoc.regenerate.pdf_out import render_reconstruct
 
     monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
-                        lambda: _PdfMixExtractor())
+                        lambda *a, **k: _PdfMixExtractor())
     src = _pdf(tmp_path)
     doc = extract_structured(src, Config(target_lang="id", layout="paddle"))
     # echo "translation": leave output_text == source (no translator in this test)
