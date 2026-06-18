@@ -27,13 +27,15 @@ def main(argv: list[str]) -> int:
     if len(argv) < 3:
         sys.stderr.write("usage: structure_detect <pdf> <out.json> <pno> [<pno> ...]\n")
         return 2
-    pdf_path, out_path = argv[0], argv[1]
-    pnos = [int(x) for x in argv[2:]]
+    lang = next((a.split("=", 1)[1] for a in argv if a.startswith("--lang=")), None)
+    rest = [a for a in argv if not a.startswith("--lang=")]
+    pdf_path, out_path = rest[0], rest[1]
+    pnos = [int(x) for x in rest[2:]]
 
     import fitz
     from paddleocr import PPStructureV3
 
-    pipe = PPStructureV3()
+    pipe = PPStructureV3(lang=lang) if lang else PPStructureV3()
     doc = fitz.open(pdf_path)
     try:
         result = {pno: _regions_for_page(pipe, doc[pno]) for pno in pnos}

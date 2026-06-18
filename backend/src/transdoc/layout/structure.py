@@ -86,14 +86,27 @@ def parse_regions(root: dict, scale: float = _SCALE) -> list[dict]:
     return out
 
 
+def paddle_lang(source_lang: str | None) -> str:
+    """Map a transdoc source language to the PaddleOCR language model code PP-StructureV3 should
+    OCR with. PP-StructureV3 defaults to the Chinese model, which turns any non-Chinese scan to
+    garbage (e.g. Devanagari -> stray CJK), so we always pass an explicit code: the mapped source
+    language when known, else 'en' (Latin is the common case — a saner default than Chinese)."""
+    src = (source_lang or "auto").lower()
+    if src == "auto":
+        return "en"
+    from ..ocr.paddle import PADDLE_LANG
+    return PADDLE_LANG.get(src, src)
+
+
 class _InProcess:
-    def __init__(self):
+    def __init__(self, lang: str | None = None):
         self._pipe = None
+        self._lang = lang
 
     def _get(self):
         if self._pipe is None:
             from paddleocr import PPStructureV3
-            self._pipe = PPStructureV3()
+            self._pipe = PPStructureV3(lang=self._lang) if self._lang else PPStructureV3()
         return self._pipe
 
     def extract_pages(self, fdoc, pnos) -> dict[int, list[StructRegion]]:
@@ -111,8 +124,9 @@ class _InProcess:
 
 
 class _Subprocess:
-    def __init__(self, python_exe: str):
+    def __init__(self, python_exe: str, lang: str | None = None):
         self.python_exe = python_exe
+        self._lang = lang
 
     def extract_pages(self, fdoc, pnos) -> dict[int, list[StructRegion]]:
         import json
@@ -131,6 +145,8 @@ class _Subprocess:
         try:
             cmd = [self.python_exe, "-m", "transdoc.layout.structure_detect",
                    pdf_path, out_path, *[str(p) for p in pnos]]
+            if self._lang:
+                cmd.append(f"--lang={self._lang}")
             proc = subprocess.run(cmd, capture_output=True, text=True)
             if proc.returncode != 0:
                 raise RuntimeError(
@@ -147,14 +163,15 @@ class _Subprocess:
                 for p, regs in raw.items()}
 
 
-def get_structure_extractor():
+def get_structure_extractor(lang: str | None = None):
     """In-process PP-StructureV3 if paddle is importable here, else the isolated subprocess.
-    Raises if neither is available (caller decides whether to fall back)."""
+    `lang` is the PaddleOCR language code to OCR with (see paddle_lang); None keeps PP-StructureV3's
+    default. Raises if neither is available (caller decides whether to fall back)."""
     if importlib.util.find_spec("paddle") is not None:
-        return _InProcess()
+        return _InProcess(lang)
     py = _layout_python()
     if py:
-        return _Subprocess(py)
+        return _Subprocess(py, lang)
     raise RuntimeError(
         "structured extraction needs paddle (PP-StructureV3): install the [paddleocr] extra or "
         "set TRANSDOC_LAYOUT_PYTHON to an isolated paddle venv.")

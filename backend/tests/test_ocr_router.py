@@ -47,11 +47,18 @@ def test_routes_by_detected_script(monkeypatch):
     assert o._chain(b"x", CFG) == R.ROUTING["Han"]
 
 
-def test_explicit_source_keeps_default_chain(monkeypatch):
-    o = R.ScriptRoutedOCR()
-    monkeypatch.setattr(R, "detect_script", lambda img: "Han")   # would route Han...
-    cfg = Config(target_lang="id", source_lang="zh")             # ...but explicit source wins
-    assert o._chain(b"x", cfg) == R.DEFAULT_CHAIN
+def test_explicit_latin_source_keeps_default_chain():
+    # An explicit LATIN source trusts Tesseract's lang pack (tesseract-first).
+    assert R.ScriptRoutedOCR()._chain(b"x", Config(target_lang="id", source_lang="en")) \
+        == R.DEFAULT_CHAIN
+
+
+def test_explicit_non_latin_source_routes_paddle_first():
+    # An explicit NON-Latin source still needs its script chain (paddle-first), not the
+    # tesseract-first default — the bug that turned `--source hi/zh` scans to garbage.
+    for lang in ("zh", "hi", "ja", "ko"):
+        chain = R.ScriptRoutedOCR()._chain(b"x", Config(target_lang="id", source_lang=lang))
+        assert chain[0] == "paddle", (lang, chain)
 
 
 def test_unavailable_engines_collapse_to_tesseract(monkeypatch):
