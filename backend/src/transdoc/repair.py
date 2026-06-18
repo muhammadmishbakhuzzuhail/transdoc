@@ -50,4 +50,5 @@ def repair_ocr(doc, cfg) -> int:
         b.flags["ocr_repaired"] = "llm"
         doc.repairs.append(Repair(block_id=b.id, before=before, after=after, reason="ocr-llm"))
         n += 1
+    tr.unload(cfg)            # free the LLM from (V)RAM before later GPU work (COMET QE)
     return n

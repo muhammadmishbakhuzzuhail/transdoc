@@ -244,6 +244,20 @@ class OllamaTranslator:
                 out.append(s)
         return out[:n]
 
+    def unload(self, cfg: Config) -> None:
+        """Best-effort: evict the model from (V)RAM now instead of letting Ollama keep it resident
+        (~5min by default). On a 6 GB GPU the ~5.5 GB the LLM squats causes 'device memory nearly
+        full' OOM when the next GPU consumer (COMET QE / paddle OCR) also wants the card. Call after
+        an LLM phase so only one big model is resident at a time."""
+        body = json.dumps({"model": cfg.ollama_model, "keep_alive": 0}).encode("utf-8")
+        try:
+            req = urllib.request.Request(self._host(cfg) + "/api/generate", data=body,
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=cfg.ollama_timeout):
+                pass
+        except Exception:
+            pass
+
     def correct_ocr(self, text: str, cfg: Config, src: str | None = None) -> str:
         """Conservatively fix OCR errors in `text` WITHOUT translating or paraphrasing — same
         language, same content, only obvious scanning mistakes (l/1, rn/m, merged/split words, stray

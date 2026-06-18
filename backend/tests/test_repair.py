@@ -29,6 +29,7 @@ def _cfg():
 def _stub(monkeypatch, fn):
     monkeypatch.setattr(OllamaTranslator, "correct_ocr",
                         lambda self, text, cfg, src=None: fn(text))
+    monkeypatch.setattr(OllamaTranslator, "unload", lambda self, cfg: None)   # no network in tests
 
 
 def test_repairs_low_conf_block_and_logs(monkeypatch):
