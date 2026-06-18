@@ -89,6 +89,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     with _stage(timings, "extract"):
         doc = extract_ir(det, cfg)
 
+    # Optional: re-rank reading order with the Surya layout VLM (PDF only, opt-in, slow). The
+    # default XY-cut order is already set by the extractor; this overrides it when requested.
+    if cfg.reading_order_engine == "surya":
+        with _stage(timings, "reading_order"):
+            from .extract.surya_order import surya_reading_order
+            surya_reading_order(doc, cfg)
+
     # Normalize extracted text: de-hyphenate line breaks, fold ligatures, NFC. PyMuPDF leaves
     # words split across line breaks ("inter-\nnational") and most ligatures intact, which
     # degrade both fidelity and translation. (research 2026-06-15)
