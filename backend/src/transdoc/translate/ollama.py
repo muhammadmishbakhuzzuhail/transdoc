@@ -105,15 +105,18 @@ class OllamaTranslator:
             "with exactly one entry per item id given."
         )
 
-    def _call(self, cfg: Config, system: str, user: str, temperature: float = 0.0) -> str:
-        body = json.dumps({
+    def _call(self, cfg: Config, system: str, user: str, temperature: float = 0.0,
+              fmt: str | None = "json") -> str:
+        payload = {
             "model": cfg.ollama_model,
             "messages": [{"role": "system", "content": system},
                          {"role": "user", "content": user}],
             "stream": False,
-            "format": "json",
             "options": {"temperature": temperature, "num_ctx": cfg.ollama_num_ctx},
-        }).encode("utf-8")
+        }
+        if fmt:                       # JSON-mode for the structured calls; plain text (fmt=None) for
+            payload["format"] = fmt   # free-form output like OCR correction
+        body = json.dumps(payload).encode("utf-8")
         url = self._host(cfg) + "/api/chat"
         last: Exception | None = None
         for attempt in range(self._RETRIES + 1):
@@ -240,6 +243,25 @@ class OllamaTranslator:
                 seen.add(s)
                 out.append(s)
         return out[:n]
+
+    def correct_ocr(self, text: str, cfg: Config, src: str | None = None) -> str:
+        """Conservatively fix OCR errors in `text` WITHOUT translating or paraphrasing — same
+        language, same content, only obvious scanning mistakes (l/1, rn/m, merged/split words, stray
+        punctuation). Returns the corrected text, or the original on any failure / declined edit."""
+        lang = src or "the original"
+        system = (
+            "You are an OCR post-corrector. The text was extracted from a scanned document and may "
+            "contain OCR errors: swapped/merged/split characters (l/1, rn/m), broken words, stray "
+            f"punctuation. Fix ONLY obvious OCR mistakes and keep the original {lang} language. Do "
+            "NOT translate, do NOT paraphrase, do NOT add, remove, or reorder content, do NOT "
+            "explain. If the text already looks correct or you are unsure, return it unchanged. "
+            "Output only the corrected text, nothing else."
+        )
+        try:
+            out = self._call(cfg, system, text, fmt=None).strip()   # free-form, not JSON-mode
+        except OllamaError:
+            return text
+        return out or text
 
     def translate_batch(self, texts: list[str], cfg: Config,
                         src: str | None = None) -> list[str]:

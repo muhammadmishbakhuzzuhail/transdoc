@@ -107,6 +107,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         normalize_doc(doc)
         drop_repeated(doc)
 
+    # OCR repair (opt-in): conservatively LLM-correct residual OCR errors in low-confidence scanned
+    # blocks, in the source language, before diagnose/translate. Logs every edit to doc.repairs.
+    if cfg.repair:
+        with _stage(timings, "repair"):
+            from .repair import repair_ocr
+            repair_ocr(doc, cfg)
+
     # --- Phase 1: Diagnose ---
     with _stage(timings, "diagnose"):
         diagnose(doc, det, cfg)
@@ -116,8 +123,8 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         _cleanup_tmp(doc)
         return Result(doc, None, None, report, timings)
 
-    # --- Phase 2: Reconstruct (OCR repair) — applied inline in extractors today;
-    #     dedicated repair pass is a TODO hook here. ---
+    # --- Phase 2: Reconstruct — emit the repaired source in the requested format, no translation.
+    #     OCR repair runs above (normalize + the opt-in LLM repair_ocr pass). ---
     if cfg.mode == Mode.RECONSTRUCT:
         # emit the reconstructed source in the requested format, no translation
         outp = _resolve_out(input_path, cfg, out_path)
