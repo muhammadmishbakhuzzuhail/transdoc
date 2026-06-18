@@ -100,7 +100,11 @@ ROUTING: dict[str, list[str]] = {
     "Bengali": ["paddle", "tesseract", "easyocr"],
     "Tamil": ["paddle", "tesseract", "easyocr"],
     "Telugu": ["paddle", "tesseract", "easyocr"],
-    "Thai": ["paddle", "tesseract", "easyocr"],
+    # Tesseract mangles Thai — it inserts spurious spaces between syllable clusters
+    # ("ปฏิญญา" -> "ป ฏิ ญ ญ า") yet reports high confidence, so it wins escalation over the
+    # correct-but-lower-confidence Paddle pass and wrecks the translation. Drop it from the chain;
+    # Paddle leads and EasyOCR (no spurious spacing) backs it up.
+    "Thai": ["paddle", "easyocr"],
     "Kannada": ["paddle", "tesseract", "easyocr"],
 }
 
