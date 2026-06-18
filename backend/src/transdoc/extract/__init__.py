@@ -38,8 +38,12 @@ def extract(det: Detection, cfg: Config) -> Document:
         # output the reconstruct renderer crops formulas/figures verbatim and rebuilds tables
         # as translatable grids from the structured IR. Falls back to the standard extractor
         # if paddle is absent. SAME resolves to PDF here (this branch is PDF source).
+        # An explicit non-Latin source skips PP-StructureV3: it re-OCRs the rendered page (ignoring
+        # the PDF's own text layer) and its non-Latin OCR is rough — on the Arabic UDHR it returned
+        # disconnected isolated letters where the clean text layer reads perfectly. The digital
+        # extractor uses that text layer directly.
         from ..config import OutputFormat
-        if (_structured_enabled(cfg)
+        if (_structured_enabled(cfg) and not _is_non_latin_source(cfg)
                 and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX,
                                           OutputFormat.PDF, OutputFormat.SAME, OutputFormat.PLAIN)):
             try:

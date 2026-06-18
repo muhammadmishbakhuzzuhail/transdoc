@@ -21,8 +21,8 @@ def test_is_non_latin_source():
     assert not _is_non_latin_source(Config(target_lang="id", source_lang="auto"))
 
 
-def _route(monkeypatch, source_lang):
-    """Dispatch a PDF_SCAN with the given source and report which extractor ran."""
+def _route(monkeypatch, source_lang, kind=Kind.PDF_SCAN):
+    """Dispatch a PDF of the given kind+source and report which extractor ran."""
     pdf = Path("corpus/real/scanned_pdf/udhr_hindi_scan.pdf")
     if not pdf.exists():
         pytest.skip("corpus scan not present")
@@ -42,13 +42,23 @@ def _route(monkeypatch, source_lang):
     monkeypatch.setattr(struct_mod, "extract_structured", _struct)
     monkeypatch.setattr(pdf_mod, "extract", _digital)
 
-    det = Detection(kind=Kind.PDF_SCAN, mime="application/pdf", path=pdf, notes="")
+    det = Detection(kind=kind, mime="application/pdf", path=pdf, notes="")
     extract(det, Config(target_lang="id", source_lang=source_lang, layout="paddle"))
     return called["who"]
 
 
 def test_non_latin_scan_routes_to_digital(monkeypatch):
     assert _route(monkeypatch, "hi") == "digital"
+
+
+def test_non_latin_digital_routes_to_digital(monkeypatch):
+    # a non-Latin DIGITAL PDF also skips PP-StructureV3 (its non-Latin re-OCR mangles the clean
+    # text layer — e.g. Arabic came out as disconnected letters).
+    assert _route(monkeypatch, "ar", kind=Kind.PDF_DIGITAL) == "digital"
+
+
+def test_latin_digital_keeps_structured(monkeypatch):
+    assert _route(monkeypatch, "en", kind=Kind.PDF_DIGITAL) == "structured"
 
 
 def test_latin_scan_keeps_structured(monkeypatch):
