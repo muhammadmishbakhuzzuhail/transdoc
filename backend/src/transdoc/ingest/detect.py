@@ -79,17 +79,17 @@ def _sniff_mime(path: Path) -> str:
         }.get(ext, "application/octet-stream")
 
 
-# A page with this many vector strokes (field underlines, boxes, rule lines) is a form, not
-# flowing prose. Articles sit near 0 (arxiv≈3, plain text=0); forms are far above (W-9≈71,
-# IRS-1040≈445). The gap is wide, so the exact value isn't delicate.
-_FORM_STROKES = 25
-
-
 def is_form_pdf(path: str | Path, max_pages: int = 3) -> bool:
-    """True if the PDF is form-like — its pages carry many vector lines/boxes (a grid of
-    fields), not reflowable prose. Such pages must be translated by the OVERLAY renderer
-    (redact text in place, keep the vector form) rather than rebuilt from scratch, which would
-    discard every field line and box. Probes the first few pages only."""
+    """True if the PDF is an interactive (AcroForm) form — it carries form-field widgets. Such a
+    PDF must be translated by the OVERLAY renderer (redact text in place, keep the field grid)
+    rather than rebuilt from scratch, which would discard the fields.
+
+    Detection by vector-stroke count was removed: it false-positived on figure-heavy papers (arXiv
+    diagram lines), bordered tables (e.g. a Wikipedia infobox = 192 rects) and scans (stray rule
+    lines), forcing them into the overlay renderer where the longer translation overflowed its
+    boxes into an unreadable, overlapping mess. AcroForm/widget presence is the definitive signal
+    (W-9: 23 widgets; arXiv/Wikipedia/scans: 0). A flat (non-AcroForm) printed form now reflows via
+    the reconstruct path instead — readable, if without the original rule lines."""
     try:
         import fitz
     except Exception:
@@ -99,10 +99,10 @@ def is_form_pdf(path: str | Path, max_pages: int = 3) -> bool:
     except Exception:
         return False
     try:
+        if getattr(doc, "is_form_pdf", False):
+            return True
         for page in list(doc)[:max_pages]:
-            strokes = sum(1 for d in page.get_drawings() for it in d["items"]
-                          if it[0] in ("l", "re", "qu"))
-            if strokes >= _FORM_STROKES:
+            if next(iter(page.widgets() or []), None) is not None:
                 return True
     finally:
         doc.close()
