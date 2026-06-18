@@ -19,6 +19,15 @@ def _structured_enabled(cfg: Config) -> bool:
     return getattr(cfg, "layout", "off") in ("paddle", "auto")
 
 
+def _is_non_latin_source(cfg: Config) -> bool:
+    """True when the source is an explicit non-Latin language. PP-StructureV3's region OCR is rougher
+    on non-Latin (merges words, more errors) than the digital det+rec path, so a non-Latin SCAN is
+    better served by the line-OCR extractor. Explicit source only — an `auto` source isn't re-routed
+    (its script isn't known until OCR)."""
+    from ..ocr.router import LANG_TO_SCRIPT
+    return (cfg.source_lang or "auto").lower() in LANG_TO_SCRIPT
+
+
 def extract(det: Detection, cfg: Config) -> Document:
     k = det.kind
     p = str(det.path)
@@ -44,7 +53,9 @@ def extract(det: Detection, cfg: Config) -> Document:
         # PP-StructureV3 also OCRs each region, so a scan gets the same structure-aware layout
         # (regions/tables/formula/reading-order) as a digital PDF — far better than line-OCR.
         # Falls back to the heuristic OCR path when paddle isn't reachable.
-        if _structured_enabled(cfg):
+        # EXCEPT non-Latin scans: PP-StructureV3's region OCR is rougher there (word-merging, errors)
+        # than the digital det+rec path, so route an explicit non-Latin source to line-OCR instead.
+        if _structured_enabled(cfg) and not _is_non_latin_source(cfg):
             try:
                 from .structured import extract_structured
                 return extract_structured(p, cfg)
