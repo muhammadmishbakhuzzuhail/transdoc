@@ -37,7 +37,10 @@ nmt = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2", "sacremoses>=0.
 quant = ["bitsandbytes>=0.43", "accelerate>=0.30"]
 # Commercial-safe light offline engine
 argos = ["argostranslate>=1.9"]
-# Modern OCR: layout + reading order + strong non-Latin. pip install -e ".[surya]"
+# Modern OCR + layout reading order (cfg.reading_order_engine="surya"), strong non-Latin.
+# NOTE: surya-ocr >=0.20 is a foundation VLM that spawns an external inference server (vLLM+Docker
+# or a llama-server binary) — not in-process CPU — so reading-order via Surya needs a Docker/GPU
+# host. On the CPU-only box the XY-cut default already scores tau 1.0, so this stays optional.
 surya = ["surya-ocr>=0.6"]
 # EasyOCR: strong multilingual OCR (80+ langs, box+conf), torch-based (no paddlepaddle clash).
 # The router's escalation engine for non-Latin scans. pip install -e ".[easyocr]"

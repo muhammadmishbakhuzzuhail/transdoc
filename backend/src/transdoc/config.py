@@ -133,6 +133,11 @@ class Config(BaseModel):
                                                 # paddle if installed, else the isolated layout_venv
                                                 # subprocess (TRANSDOC_LAYOUT_PYTHON / ./layout_venv).
                                                 # "off" = heuristics.
+    reading_order_engine: str = "xycut"          # "xycut" = the deterministic recursive-whitespace
+                                                # cut (extract/reading_order.py, default, CPU-free).
+                                                # "surya" = re-rank blocks by the Surya layout VLM's
+                                                # reading position (PDF only, slow, needs surya-ocr).
+                                                # Falls back to xycut when Surya is unavailable.
 
     engine: Engine = Engine.GOOGLE             # benchmark winner (chrF 85.1); personal/local, no fallback chain
     ocr_engine: OCREngine = OCREngine.AUTO
