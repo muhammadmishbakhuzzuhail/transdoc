@@ -56,12 +56,12 @@ def rasterize(pdf: Path, out: Path, dpi: int = 150) -> None:
         src.close()
 
 
-def ocr_text(raster: Path, layout: str) -> str:
-    from transdoc.config import Config
+def ocr_text(raster: Path, layout: str, ocr: str = "auto") -> str:
+    from transdoc.config import Config, OCREngine
     from transdoc.extract import extract
     from transdoc.ingest.detect import detect
 
-    cfg = Config(target_lang="id", layout=layout)
+    cfg = Config(target_lang="id", layout=layout, ocr_engine=OCREngine(ocr))
     doc = extract(detect(str(raster)), cfg)
     return _norm(" ".join(b.text for b in doc.ordered_blocks() if b.text.strip()))
 
@@ -74,12 +74,17 @@ def main(argv: list[str]) -> int:
         i = argv.index("--layout")
         layout = argv[i + 1]
         argv = argv[:i] + argv[i + 2:]
+    ocr = "auto"
+    if "--ocr" in argv:
+        i = argv.index("--ocr")
+        ocr = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
     show = "--show" in argv
     if show:
         argv = [a for a in argv if a != "--show"]
     langs = argv or GOLD_LANGS
 
-    print(f"OCR eval (layout={layout})  —  CER/WER vs the source text layer\n")
+    print(f"OCR eval (layout={layout}, ocr={ocr})  —  CER/WER vs the source text layer\n")
     print(f"{'lang':12} {'chars':>7} {'CER%':>7} {'WER%':>7}")
     print("-" * 36)
     cers, wers = [], []
@@ -95,7 +100,7 @@ def main(argv: list[str]) -> int:
                 continue
             raster = Path(td) / f"{lang}.pdf"
             rasterize(pdf, raster)
-            got = ocr_text(raster, layout)
+            got = ocr_text(raster, layout, ocr)
             c, w = cer(gold, got) * 100, wer(gold, got) * 100
             cers.append(c)
             wers.append(w)
