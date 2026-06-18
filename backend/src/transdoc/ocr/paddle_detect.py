@@ -10,13 +10,20 @@ writes the recognized lines (text + score + polygon) as JSON. Invoked as:
 from __future__ import annotations
 
 import json
+import os
 import sys
+
+# Disable paddle's oneDNN/mkldnn CPU kernels: they raise
+# NotImplementedError(ConvertPirAttribute2RuntimeAttribute) on this build's CPU path. This only
+# affects the CPU code path — on a GPU it's a no-op — so device stays auto (GPU when available,
+# plain CPU otherwise) and the CPU fallback no longer crashes.
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
 
 
 def _make_ocr(lang: str):
     from paddleocr import PaddleOCR
     kw = dict(use_doc_orientation_classify=False, use_doc_unwarping=False,
-              use_textline_orientation=False)
+              use_textline_orientation=False, enable_mkldnn=False)
     try:
         return PaddleOCR(lang=lang, **kw)
     except Exception:

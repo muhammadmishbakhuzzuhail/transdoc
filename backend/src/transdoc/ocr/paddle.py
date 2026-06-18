@@ -112,15 +112,17 @@ class PaddleOCREngine:
     def _engine(self, lang: str):
         if lang not in self._cache:
             from paddleocr import PaddleOCR
+            # enable_mkldnn=False: paddle's oneDNN CPU kernels raise NotImplementedError on this
+            # build; disabling them only affects the CPU path (no-op on GPU), so device stays auto.
             try:
                 self._cache[lang] = PaddleOCR(
                     lang=lang, use_doc_orientation_classify=False,
-                    use_doc_unwarping=False, use_textline_orientation=False)
+                    use_doc_unwarping=False, use_textline_orientation=False, enable_mkldnn=False)
             except Exception:
                 # unknown language model -> fall back to English so we still produce output
                 self._cache[lang] = PaddleOCR(
                     lang="en", use_doc_orientation_classify=False,
-                    use_doc_unwarping=False, use_textline_orientation=False)
+                    use_doc_unwarping=False, use_textline_orientation=False, enable_mkldnn=False)
         return self._cache[lang]
 
     def recognize_image_bytes(self, img: bytes, cfg: Config, page: int = 0) -> list[Block]:
