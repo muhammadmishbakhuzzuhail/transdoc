@@ -9,6 +9,8 @@ dist/
 
 # pipeline outputs + caches
 out/
+# generated validation artifacts (regenerate via scripts/regen_validate.py)
+out_validate/
 .cache/
 .pytest_cache/
 .ruff_cache/
