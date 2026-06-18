@@ -116,6 +116,11 @@ class Config(BaseModel):
                                                 # the local doc-context LLM (Ollama). Opt-in (needs
                                                 # Ollama); best-effort — keeps the NMT output if the
                                                 # LLM call fails. The accuracy lever where it matters.
+    repair: bool = False                         # LLM OCR repair pass: conservatively fix obvious
+                                                # OCR errors in low-confidence scanned blocks via the
+                                                # local LLM (Ollama) BEFORE translation. Opt-in (needs
+                                                # Ollama); every edit is logged to doc.repairs. Keeps
+                                                # the original text on any failure / uncertain block.
     verify: bool = False                        # re-extract the rendered output and diff its
                                                 # structure (block/table/figure counts, text
                                                 # length) against the source IR -> report warnings
