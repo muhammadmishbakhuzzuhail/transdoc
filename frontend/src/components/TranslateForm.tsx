@@ -25,6 +25,7 @@ export interface FormValues {
   bilingual: boolean
   quality: boolean
   localize: boolean
+  align: boolean
   pages: string
 }
 
@@ -32,7 +33,7 @@ export interface FormValues {
 const DEFAULTS: FormValues = {
   target_lang: "id", source_lang: "auto", output_format: "same-as-source", engine: "fallback",
   fidelity: "auto", layout: "auto", ocr_engine: "auto", register: "auto",
-  bilingual: false, quality: true, localize: false, pages: "",
+  bilingual: false, quality: true, localize: false, align: true, pages: "",
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -159,7 +160,7 @@ export function TranslateForm({ health, busy, onSubmit }: {
                 </Field>
               </div>
               <div className="flex flex-wrap gap-6">
-                {([["bilingual", "Bilingual"], ["quality", "Quality flags"], ["localize", "Localize"]] as const).map(
+                {([["bilingual", "Bilingual"], ["quality", "Quality flags"], ["localize", "Localize"], ["align", "Style alignment"]] as const).map(
                   ([k, lbl]) => (
                     <label key={k} className="flex items-center gap-2 text-sm">
                       <Switch checked={v[k]} onCheckedChange={(c) => set(k, c)} />

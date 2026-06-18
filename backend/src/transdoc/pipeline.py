@@ -152,6 +152,14 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         from .textdir import apply_text_direction
         apply_text_direction(doc, cfg)
 
+    # Phase 5a'': word-alignment style transfer — redistribute inline run styles (bold/italic/...)
+    # onto the whole-block translation so a styled span tracks the right words after reorder/
+    # expansion. Falls back to the per-run translation when the aligner is unavailable/too sparse.
+    if cfg.align_styles and getattr(tr, "cacheable", True):   # skip echo/non-real engines
+        with _stage(timings, "align"):
+            from .translate.align import restyle_runs
+            restyle_runs(doc, cfg)
+
     # Phase 5a': document-level consistency — force identical source text to one translation
     # (confirmed > majority > first). Before QA so the harmonised output is what gets checked.
     if cfg.consistency:
