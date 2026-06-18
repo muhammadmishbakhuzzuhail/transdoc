@@ -59,4 +59,5 @@ def escalate_weak(doc, cfg: Config, findings) -> int:
         b.translated = _apply_glossary(out, glossary)
         b.flags["llm_escalated"] = cfg.ollama_model
         n += 1
+    tr.unload(cfg)            # free the LLM from (V)RAM once escalation is done
     return n

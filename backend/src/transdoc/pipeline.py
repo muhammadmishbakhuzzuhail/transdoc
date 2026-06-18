@@ -191,8 +191,12 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # Runs before escalation so a low COMET score can also trigger the gate.
     if cfg.quality_check:
         with _stage(timings, "quality_check"):
-            from .translate.quality import annotate_quality
+            from .translate.quality import QualityEstimator, annotate_quality
             annotate_quality(doc, cfg)
+            # free the QE model's GPU memory before the LLM escalation loads (~5.5GB) — on a 6GB
+            # card the two together overflow VRAM ('device memory nearly full').
+            if cfg.escalate:
+                QualityEstimator.release()
 
     # Phase 5d: hybrid QE-gate (opt-in) -> re-translate the weak segments with the local doc-context
     # LLM, then re-run QA so the report reflects the improved output.

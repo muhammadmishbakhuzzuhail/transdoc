@@ -42,6 +42,19 @@ class QualityEstimator:
             return [None] * len(pairs)
 
 
+    @classmethod
+    def release(cls) -> None:
+        """Drop the QE model and free its GPU memory after scoring, so the LLM escalation phase has
+        the small shared GPU to itself (avoids 'device memory nearly full' on a 6 GB card)."""
+        cls._model = None
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
+
 def _has_cuda() -> bool:
     try:
         import torch
