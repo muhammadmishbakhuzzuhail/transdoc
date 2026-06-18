@@ -20,6 +20,34 @@ def _mixed_block():
     return d
 
 
+def test_restore_edge_ws_keeps_run_boundaries():
+    from transdoc.translate.base import _restore_edge_ws
+    # engine strips edge whitespace; we re-apply the source run's so adjacent runs don't glue
+    assert _restore_edge_ws("international ", "internasional") == "internasional "
+    assert _restore_edge_ws(" now", "sekarang") == " sekarang"
+    # a styled mid-word fragment (no edge space) stays glued
+    assert _restore_edge_ws("Wiki", "Wiki") == "Wiki"
+    assert _restore_edge_ws("pedia", "pedia") == "pedia"
+
+
+def test_translated_runs_dont_merge():
+    # per-run translation strips trailing spaces; the fix keeps a boundary space between runs so
+    # concatenated output reads "... internasional Deklarasi" not "...internasionalDeklarasi".
+    from transdoc.config import Engine
+    from transdoc.translate import get_translator, translate_document
+    d = Document(source_path="x", mime="docx")
+    bb = BBox(x0=0, y0=0, x1=1, y1=1)
+    b = Block(id="1", type=BlockType.PARAGRAPH, text="international Declaration", bbox=bb,
+              confidence=Confidence(), runs=[
+                  Run(text="international ", style=Style()),
+                  Run(text="Declaration", style=Style(bold=True))])
+    d.blocks = [b]
+    cfg = Config(target_lang="id", engine=Engine.ECHO)
+    translate_document(d, get_translator(cfg), cfg)
+    joined = "".join(r.output_text for r in b.runs)
+    assert joined.count(" ") >= 1 and "  " not in joined   # boundary space survived, not doubled
+
+
 def test_markdown_inline_runs():
     from transdoc.regenerate.markdown import render
     md = render(_mixed_block(), Config(target_lang="id"))
