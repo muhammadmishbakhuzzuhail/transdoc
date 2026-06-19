@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """FastAPI app: upload -> async translate job -> poll -> download. Serves the web UI."""
 
 from __future__ import annotations
@@ -54,7 +57,8 @@ def health() -> dict:
 
 
 def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, domain, register,
-              layout, ocr_engine, bilingual, quality, localize, pages, align=True) -> Config:
+              layout, ocr_engine, bilingual, quality, localize, pages, align=True,
+              repair=False, escalate=False, verify=False) -> Config:
     """Build a Config from the upload form, raising HTTP 400 on a bad value. A fresh Config per
     job — the pipeline mutates cfg.fidelity/layout for some inputs, so jobs must not share one."""
     try:
@@ -64,7 +68,7 @@ def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, doma
             fidelity=Fidelity(fidelity), domain=domain, register=Register(register),
             ocr_engine=OCREngine(ocr_engine), layout=layout, bilingual=bilingual,
             quality_check=quality, localize=localize, pages=pages or None,
-            align_styles=align,
+            align_styles=align, repair=repair, escalate=escalate, verify=verify,
         )
     except ValueError as e:
         raise HTTPException(400, f"bad config: {e}")
@@ -101,13 +105,17 @@ async def translate(
     quality: bool = Form(True),
     localize: bool = Form(False),
     align: bool = Form(True),
+    repair: bool = Form(False),
+    escalate: bool = Form(False),
+    verify: bool = Form(False),
     pages: str = Form(""),
 ) -> dict:
     path = _save_upload(file)
     cfg = _make_cfg(target_lang=target_lang, source_lang=source_lang, output_format=output_format,
                     engine=engine, fidelity=fidelity, domain=domain, register=register,
                     layout=layout, ocr_engine=ocr_engine, bilingual=bilingual, quality=quality,
-                    localize=localize, align=align, pages=pages)
+                    localize=localize, align=align, repair=repair, escalate=escalate,
+                    verify=verify, pages=pages)
     job = store.create(path, meta={"filename": file.filename})
     store.run_async(job, cfg)
     return {"job_id": job.id, "status": job.status}
@@ -129,6 +137,9 @@ async def batch(
     quality: bool = Form(True),
     localize: bool = Form(False),
     align: bool = Form(True),
+    repair: bool = Form(False),
+    escalate: bool = Form(False),
+    verify: bool = Form(False),
     pages: str = Form(""),
 ) -> dict:
     """Batch upload: one independent job per file (DeepL-style), tied by a shared batch_id, applied
@@ -142,7 +153,8 @@ async def batch(
         cfg = _make_cfg(target_lang=target_lang, source_lang=source_lang,
                         output_format=output_format, engine=engine, fidelity=fidelity,
                         domain=domain, register=register, layout=layout, ocr_engine=ocr_engine,
-                        bilingual=bilingual, quality=quality, localize=localize, pages=pages)
+                        bilingual=bilingual, quality=quality, localize=localize, align=align,
+                        repair=repair, escalate=escalate, verify=verify, pages=pages)
         job = store.create(path, meta={"filename": file.filename}, batch_id=bid)
         store.run_async(job, cfg)
         out.append({"job_id": job.id, "filename": file.filename})

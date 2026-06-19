@@ -1,3 +1,6 @@
+// © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+// Proprietary — source-available for reference only; no use, copying, or
+// distribution without written permission. See LICENSE.
 import { AlertCircle, Languages, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
@@ -31,6 +34,7 @@ export default function App() {
 
   async function submit(files: File[], v: FormValues) {
     setError(null); setAnalysis(null); setJob(null); setBatchId(null)
+    if (poll.current) clearInterval(poll.current)   // stop any prior single-job poll (incl. before a batch)
     const fd = new FormData()
     Object.entries(v).forEach(([k, val]) => fd.append(k, String(val)))
     // more than one file -> batch (one job per file, polled as a list); one file -> review-first
@@ -47,16 +51,22 @@ export default function App() {
     fd.append("file", files[0])
     try {
       const { job_id } = await startTranslate(fd)
-      if (poll.current) clearInterval(poll.current)
       poll.current = window.setInterval(async () => {
-        const j = await getJob(job_id)
-        setJob(j)
-        if (j.status === "done") {
+        // a poll request can fail (network blip, backend restart); without this guard the
+        // rejection is unhandled, the interval keeps firing, and the UI hangs on the progress bar.
+        try {
+          const j = await getJob(job_id)
+          setJob(j)
+          if (j.status === "done") {
+            clearInterval(poll.current!)
+            getAnalysis(job_id).then(setAnalysis).catch(() => {})
+          } else if (j.status === "error") {
+            clearInterval(poll.current!)
+            setError(j.message || "translation failed")
+          }
+        } catch (e) {
           clearInterval(poll.current!)
-          getAnalysis(job_id).then(setAnalysis).catch(() => {})
-        } else if (j.status === "error") {
-          clearInterval(poll.current!)
-          setError(j.message || "translation failed")
+          setError(e instanceof Error ? e.message : "lost connection to the backend")
         }
       }, 700)
     } catch (e) {

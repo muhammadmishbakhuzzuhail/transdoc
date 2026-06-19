@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translator factory."""
 
 from __future__ import annotations
@@ -46,7 +49,7 @@ def get_translator(cfg: Config) -> Translator:
     if cfg.engine == Engine.NLLB:
         from .nllb import NLLBTranslator
 
-        return NLLBTranslator()
+        return NLLBTranslator(cfg.nllb_model)
     if cfg.engine == Engine.INDICTRANS:
         from .indictrans import IndicTransTranslator
 

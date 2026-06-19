@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Pipeline orchestrator. Runs the phases from the agent spec over the IR.
 
 DIAGNOSE -> (RECONSTRUCT) -> TERMINOLOGY -> TRANSLATE -> SELF-REVIEW -> REGENERATE+REPORT,
@@ -163,7 +166,7 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         # Phase 5a0: residual foreign-script cleanup — re-translate non-Latin runs the engine left
         # behind in a Latin-target output (mixed-script source, e.g. inline 中文/العربية in an EN
         # doc). Real engines only; no-op when nothing foreign remains.
-        if getattr(tr, "cacheable", True):
+        if not getattr(tr, "is_noop", False):
             from .translate.residual import retranslate_foreign_runs
             retranslate_foreign_runs(doc, tr, cfg)
         # Phase 5a: recompute text direction from the TRANSLATED text. An LTR source translated
@@ -175,7 +178,7 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # Phase 5a'': word-alignment style transfer — redistribute inline run styles (bold/italic/...)
     # onto the whole-block translation so a styled span tracks the right words after reorder/
     # expansion. Falls back to the per-run translation when the aligner is unavailable/too sparse.
-    if cfg.align_styles and getattr(tr, "cacheable", True):   # skip echo/non-real engines
+    if cfg.align_styles and not getattr(tr, "is_noop", False):   # skip echo/no-op engines
         with _stage(timings, "align"):
             from .translate.align import restyle_runs
             restyle_runs(doc, cfg)
@@ -213,6 +216,10 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
                 qa_findings = run_qa(doc, cfg)
 
     # --- Phase 6: Regenerate + Report ---
+    # Re-assert caption→media adjacency via the durable anchor_id link: the reorder/merge stages
+    # above renumber reading_order and can separate a caption from its figure/table.
+    from .extract.base import snap_captions
+    snap_captions(doc)
     outp = _resolve_out(input_path, cfg, out_path)
     with _stage(timings, "regenerate"):
         regenerate(doc, cfg, outp)

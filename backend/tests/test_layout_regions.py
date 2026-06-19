@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Layout-model integration: a detected non-text region drops the text blocks inside it and
 adds a crop_region block (rendered as a verbatim source crop). Uses a fake detector — no
 paddle needed in CI."""
@@ -99,7 +102,7 @@ def test_subprocess_detector_parses_regions(monkeypatch):
 
     from transdoc.layout.paddle_layout import Region, SubprocessLayoutDetector
 
-    def fake_run(cmd, capture_output, text):
+    def fake_run(cmd, capture_output, text, timeout=None):
         with open(cmd[4], "w") as fh:
             json.dump({"0": [["table", 1, 2, 3, 4]], "3": [["formula", 5, 6, 7, 8]]}, fh)
         return types.SimpleNamespace(returncode=0, stderr="")

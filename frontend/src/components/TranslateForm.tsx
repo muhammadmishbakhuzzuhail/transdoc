@@ -1,3 +1,6 @@
+// © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+// Proprietary — source-available for reference only; no use, copying, or
+// distribution without written permission. See LICENSE.
 import { ChevronDown, FileUp, Loader2, Settings2 } from "lucide-react"
 import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -26,6 +29,8 @@ export interface FormValues {
   quality: boolean
   localize: boolean
   align: boolean
+  escalate: boolean
+  repair: boolean
   pages: string
 }
 
@@ -33,7 +38,7 @@ export interface FormValues {
 const DEFAULTS: FormValues = {
   target_lang: "id", source_lang: "auto", output_format: "same-as-source", engine: "fallback",
   fidelity: "auto", layout: "auto", ocr_engine: "auto", register: "auto",
-  bilingual: false, quality: true, localize: false, align: true, pages: "",
+  bilingual: false, quality: true, localize: false, align: true, escalate: false, repair: false, pages: "",
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -160,7 +165,7 @@ export function TranslateForm({ health, busy, onSubmit }: {
                 </Field>
               </div>
               <div className="flex flex-wrap gap-6">
-                {([["bilingual", "Bilingual"], ["quality", "Quality flags"], ["localize", "Localize"], ["align", "Style alignment"]] as const).map(
+                {([["bilingual", "Bilingual"], ["quality", "Quality flags"], ["localize", "Localize"], ["align", "Style alignment"], ["escalate", "LLM escalation"], ["repair", "OCR repair"]] as const).map(
                   ([k, lbl]) => (
                     <label key={k} className="flex items-center gap-2 text-sm">
                       <Switch checked={v[k]} onCheckedChange={(c) => set(k, c)} />

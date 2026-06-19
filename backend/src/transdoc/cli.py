@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """transdoc CLI.
 
   transdoc translate input.pdf --to docx --lang id
@@ -47,7 +50,7 @@ def translate(
                                     "nllb|openrouter|anthropic|echo "
                                     "(default: google = benchmark winner; nllb for offline/private; "
                                     "fallback = google->mymemory->libretranslate if you want backstops)"),
-    ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|paddle|surya"),
+    ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|paddle|easyocr|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),
     localize: bool = typer.Option(False, "--localize"),
@@ -55,6 +58,12 @@ def translate(
     pages: str = typer.Option(None, "--pages", "-p", help='e.g. "3-7,10"'),
     bilingual: bool = typer.Option(False, "--bilingual", "-b", help="source + translation"),
     quality: bool = typer.Option(False, "--quality", "-q", help="QE: score+flag weak segments"),
+    align: bool = typer.Option(True, "--align/--no-align",
+                               help="word-alignment style transfer: carry inline bold/italic across "
+                                    "translated run boundaries ([align] extra; falls back gracefully)"),
+    repair: bool = typer.Option(False, "--repair",
+                                help="LLM OCR repair: conservatively fix obvious OCR errors in "
+                                     "low-confidence scanned blocks before translating (needs Ollama)"),
     escalate: bool = typer.Option(False, "--escalate",
                                   help="hybrid QE-gate: re-translate QA-weak segments with the "
                                        "local doc-context LLM (Ollama)"),
@@ -75,15 +84,17 @@ def translate(
     glossary: str = typer.Option(None, "--glossary", "-g",
                                  help='JSON file of {source term: target term} to enforce'),
     layout: str = typer.Option("off", "--layout",
-                               help="auto|off|paddle — PP-DocLayout region detection: crop "
-                                    "figures/math/charts verbatim. auto = use it when paddle "
-                                    "is reachable, else fall back to heuristics ([paddleocr])"),
+                               help="auto|off|paddle — PP-StructureV3 structured extraction: "
+                                    "regions/tables/formula-LaTeX + crop figures/math verbatim. "
+                                    "auto = use it when paddle is reachable, else heuristics ([paddleocr])"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
     cfg = _cfg(lang, source, to, engine, ocr, fidelity, domain, localize, register, pages)
     cfg.bilingual = bilingual
     cfg.quality_check = quality
+    cfg.align_styles = align
+    cfg.repair = repair
     cfg.escalate = escalate
     cfg.verify = verify
     cfg.review = review

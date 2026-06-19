@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Extractor protocol + shared helpers. Each extractor produces an IR Document."""
 
 from __future__ import annotations
@@ -62,6 +65,29 @@ def associate_captions(doc: Document) -> None:
         return
     # renumber to dense integers, captions sitting next to their anchor via the fractional key
     ordered = sorted(doc.blocks, key=lambda b: nudged.get(b.id, float(b.reading_order)))
+    for i, b in enumerate(ordered):
+        b.reading_order = i
+
+
+def snap_captions(doc: Document) -> None:
+    """Re-assert caption→media adjacency at render time using the durable ``anchor_id`` link.
+
+    ``associate_captions`` sets ``anchor_id`` and nudges reading order at extraction, but the
+    intervening stages (reading-order re-rank, flow merges, vertical-reorder, cross-page merge) all
+    renumber ``reading_order`` and can drift a caption away from its figure/table. ``anchor_id``
+    survives those renumberings, so just before regeneration we snap each caption back to sit
+    immediately after (caption below) or before (caption above) its anchor. Idempotent; no-op when
+    no block carries an ``anchor_id``."""
+    by_id = {b.id: b for b in doc.blocks}
+    anchored = [b for b in doc.blocks if getattr(b, "anchor_id", None) in by_id]
+    if not anchored:
+        return
+    key: dict[str, float] = {}
+    for cap in anchored:
+        media = by_id[cap.anchor_id]
+        below = bool(cap.bbox and media.bbox and cap.bbox.y0 >= media.bbox.y0)
+        key[cap.id] = media.reading_order + (0.5 if below else -0.5)
+    ordered = sorted(doc.blocks, key=lambda b: key.get(b.id, float(b.reading_order)))
     for i, b in enumerate(ordered):
         b.reading_order = i
 
