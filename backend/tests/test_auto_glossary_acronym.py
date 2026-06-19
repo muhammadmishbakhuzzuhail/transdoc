@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Auto-glossary must keep ALL-CAPS acronyms literal, not let the engine mistranslate them into
 false-friend common words (TIN->TIMAH=tin metal, ZIP->RITSLETING=zipper) on a tax form."""
 

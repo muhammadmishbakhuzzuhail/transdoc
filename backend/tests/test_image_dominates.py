@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PDF scan detection: a page whose only digital text is a title, sitting over a scanned
 image holding the real content, must be treated as a scan (OCR'd) — not read as digital and
 have its body dropped as a figure. Regression for the UDHR Thai scan: a 47-char English title

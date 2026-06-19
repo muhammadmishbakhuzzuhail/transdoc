@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Hybrid QE-gate (Area A3): re-translate only the QA-weak segments with the local doc-context LLM.
 
 Validation showed full-document LLM translation is impractical on a small GPU (slow) and risky

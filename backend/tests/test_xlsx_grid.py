@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """XLSX extraction shape depends on the output format.
 
 * Round-trip (xlsx / same-as-source): one block per text cell, keyed by coordinate, so the

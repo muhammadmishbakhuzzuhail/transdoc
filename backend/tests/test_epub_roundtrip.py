@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """EPUB round-trip: translate in place without crashing on the NCX write.
 
 Regression guard: ebooklib drops navPoint ids on read->write, so write_epub raised

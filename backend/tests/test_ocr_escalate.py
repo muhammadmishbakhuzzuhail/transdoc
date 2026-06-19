@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """AUTO OCR escalation: clean Tesseract pages are kept; low-confidence pages escalate to the
 stronger engine and the more-confident result wins."""
 

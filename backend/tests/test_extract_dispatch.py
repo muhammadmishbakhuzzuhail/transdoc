@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Scan routing: a non-Latin scanned PDF goes to the digital line-OCR extractor (better non-Latin
 OCR), a Latin scan keeps the PP-StructureV3 structured path."""
 

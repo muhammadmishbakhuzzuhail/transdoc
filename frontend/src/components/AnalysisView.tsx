@@ -1,3 +1,6 @@
+// © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+// Proprietary — source-available for reference only; no use, copying, or
+// distribution without written permission. See LICENSE.
 import { Download, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

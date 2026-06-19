@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Side-by-side engine benchmark: round-trip back-translation chrF for two engines on the same
 sentences, so the NLLB-vs-Google default decision is made on numbers, not assumptions.
 

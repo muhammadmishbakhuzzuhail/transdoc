@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """LAYOUT overlay fidelity: page background (logos/graphics) survives, and character
 styling (bold/italic/colour/size) is captured from the source and carried to the overlay.
 """

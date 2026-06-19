@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PDF extraction via PyMuPDF.
 
 Digital PDFs: pull text blocks with bbox + font/size so we can infer headings and keep

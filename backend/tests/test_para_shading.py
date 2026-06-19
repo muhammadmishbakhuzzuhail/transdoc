@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Paragraph shading + border (callout/boxed paragraphs): captured from DOCX, rendered to
 both DOCX and PDF-HTML."""
 

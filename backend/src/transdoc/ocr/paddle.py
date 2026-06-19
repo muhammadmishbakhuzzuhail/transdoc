@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PaddleOCR (PP-OCRv5/v6) engine — lightweight det+rec, opt-in.
 
 Benchmarked far stronger than Tesseract on degraded and non-Latin scans (Devanagari 0.95 vs

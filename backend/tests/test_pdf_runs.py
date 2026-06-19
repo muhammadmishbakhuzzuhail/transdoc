@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PDF inline runs: capture mixed-style spans from a block + render styled <span> in pdf html."""
 
 from __future__ import annotations

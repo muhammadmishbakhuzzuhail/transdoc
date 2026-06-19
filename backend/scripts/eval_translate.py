@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translation-quality eval: chrF against the FLORES-200 benchmark.
 
 FLORES-200 is the standard multilingual MT benchmark — 997 dev sentences professionally

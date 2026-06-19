@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """The persistent TM must not be poisoned by a no-op engine: echo marks itself
 non-cacheable, so its '[id] ...' placeholders are never written to the cross-run cache."""
 

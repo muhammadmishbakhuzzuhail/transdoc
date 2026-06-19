@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """LLM-as-judge eval: Claude vision scores the pipeline's extraction against the source image.
 
 This automates the manual vision-QA audit. For each document it renders the source to an image,

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translation-quality regression gate CLI (Area: DeepL-style metrics).
 
 Translates the committed held-out set through the real engine, scores chrF, and compares to the

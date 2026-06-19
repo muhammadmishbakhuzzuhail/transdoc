@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """SQLite connection, schema + versioned migrations, and one-time import of the legacy TM cache.
 
 One file holds the whole persistence layer (translation memory now; glossary + corrections in

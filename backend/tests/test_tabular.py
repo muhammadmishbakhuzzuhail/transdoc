@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Numeric table rows the PDF parser merged into one block are preserved verbatim, so the
 grid survives instead of reflowing into running text when translated."""
 

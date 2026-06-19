@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translate hardening: CJK sentence-aware splitting + don't cache whitespace-only translations."""
 
 from __future__ import annotations

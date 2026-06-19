@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """End-to-end pipeline on a text file with the offline echo engine (no network)."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Tesseract auto-script detection: a non-Latin scan with source=auto must pick the matching
 lang pack (via OSD) instead of defaulting to 'eng' and returning Latin gibberish."""
 

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Heading detection beyond the font-size ratio: numbered sections and short bold lines are
 headings; bold author bylines (with an email) and ordinary sentences are not."""
 

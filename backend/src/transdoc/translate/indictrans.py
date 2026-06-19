@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """IndicTrans2 translator — offline neural MT for 22 scheduled Indic languages (multi-script).
 
 LICENSE: AI4Bharat IndicTrans2 weights are MIT (commercial-safe), unlike NLLB (CC-BY-NC). This

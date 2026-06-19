@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Residual foreign-script cleanup: re-translate non-Latin runs the engine left behind.
 
 A segment declared as one source language but containing inline OTHER scripts (e.g. an English doc

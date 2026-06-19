@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Deterministic, digital-only eval fixtures for the CI regression gate.
 
 CI can't run the OCR/paddle paths (non-deterministic, heavy), so the committed baseline is

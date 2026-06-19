@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Table row heights + uniform cell padding (margin): captured from DOCX, rendered docx + pdf."""
 
 from __future__ import annotations

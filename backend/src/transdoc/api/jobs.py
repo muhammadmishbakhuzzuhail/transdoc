@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Async job store with SQLite persistence.
 
 Jobs survive a server restart and are visible across processes/uvicorn workers: the SQLite

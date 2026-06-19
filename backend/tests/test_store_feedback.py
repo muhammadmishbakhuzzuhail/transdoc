@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Feedback loop (PR-3): correct -> confirmed TM / authoritative glossary, the corrections audit
 trail, review-sidecar import (mechanism 3), edit-reimport alignment (mechanism 2), suggestion
 accept, and the tm confirm/stats/purge maintenance."""

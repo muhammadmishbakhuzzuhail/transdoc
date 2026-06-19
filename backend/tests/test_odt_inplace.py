@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """In-place ODT translation: an .odt source -> same-as-source mutates the document, swapping
 text while keeping headings, lists and tables. Also: docx/odt same-as-source map correctly."""
 

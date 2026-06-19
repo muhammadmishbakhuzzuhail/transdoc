@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """All-caps run styling captured (docx) + rendered (md/docx/pdf)."""
 
 from __future__ import annotations

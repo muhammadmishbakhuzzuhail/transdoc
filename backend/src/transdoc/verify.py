@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Post-render verification (opt-in via cfg.verify).
 
 The methodology the project leans on: don't trust the render — re-read it and compare. This

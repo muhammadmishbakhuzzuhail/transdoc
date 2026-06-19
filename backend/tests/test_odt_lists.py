@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """ODT list extraction: <text:list> items must become LIST_ITEM blocks, not be dropped.
 
 Regression guard: the ODT extractor only handled top-level h/p/table nodes, so list

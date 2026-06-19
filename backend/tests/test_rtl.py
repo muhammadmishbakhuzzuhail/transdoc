@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """RTL / bidi support: detect direction from the TRANSLATED text + target language, propagate
 Style.rtl, and emit the right direction markers per renderer (DOCX w:bidi/w:rtl, EPUB dir,
 PDF raw-draw reshaping).

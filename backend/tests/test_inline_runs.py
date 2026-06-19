@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Inline run-level styling: capture mixed-style docx paragraph -> translate per-run -> render
 bold/super/link inline in markdown + docx. Uniform paragraphs keep runs empty (no change)."""
 

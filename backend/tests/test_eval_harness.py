@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Eval harness: run the pipeline over a tiny corpus (echo engine, deterministic) and gate a
 regression against a saved baseline."""
 

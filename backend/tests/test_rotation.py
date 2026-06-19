@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Page rotation (/Rotate) round-trip.
 
 PyMuPDF reports a rotated page's rect + text coordinates in the *visual* (rotated) space, so:

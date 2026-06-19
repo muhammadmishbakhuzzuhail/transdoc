@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Document-level translation consistency (DeepL-style).
 
 A per-segment translator can render the SAME source sentence two different ways in one document

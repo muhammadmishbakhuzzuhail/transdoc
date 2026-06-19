@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Fallback router — the resilient default for the free public service.
 
 Tries a chain of engines in order; if one raises (rate-limit, IP-block, network), it moves

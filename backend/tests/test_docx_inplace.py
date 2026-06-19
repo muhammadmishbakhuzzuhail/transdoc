@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """In-place DOCX translation (DeepL strategy): a .docx source is mutated, swapping text while
 keeping every paragraph style, list, and table — not rebuilt from the IR."""
 

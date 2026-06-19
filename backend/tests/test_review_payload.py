@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """build_review payload (PR-6): segments carry bbox (PDF points) + page sizes so the review UI can
 map a clicked segment onto the rasterised page preview. Ordered by reading order."""
 

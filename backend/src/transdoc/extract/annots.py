@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Markup annotation capture (highlight / underline / strikeout).
 
 The overlay renderer keeps the original page so its annotations survive untouched. The

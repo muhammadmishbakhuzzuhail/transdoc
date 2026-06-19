@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translation QA-rate eval: how often does the rule-based QA suite fire on real translations?
 
 Runs curated sentences (entity-dense + length-varied) through the FULL translate path with a real

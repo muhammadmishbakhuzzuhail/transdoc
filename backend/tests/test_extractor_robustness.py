@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Corrupt office/PDF inputs raise a clean ValueError (not a raw library traceback), matching
 the docx/pdf behavior — so the pipeline can report 'unreadable or corrupt' uniformly."""
 

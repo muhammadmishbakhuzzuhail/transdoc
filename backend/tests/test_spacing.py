@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Glyph-gap word spacing (research item F): pure join logic + the safety merge."""
 
 from __future__ import annotations

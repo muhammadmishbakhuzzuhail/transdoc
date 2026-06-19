@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """SRT / WebVTT renderer — round-trip. Re-parse the source, swap each cue's TEXT lines with
 its translation (by cue id), keep every timestamp/header verbatim, re-serialize."""
 

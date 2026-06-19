@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """OCR engine routing (ScriptRoutedOCR._chain): an explicit non-Latin source language must get the
 script-optimised paddle-first chain, not the tesseract-first default — the bug that turned
 `--source hi` on a Devanagari scan into garbage."""

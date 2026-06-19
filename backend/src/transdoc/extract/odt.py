@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """ODT extraction via odfpy. Headings, paragraphs, lists, tables in document order."""
 
 from __future__ import annotations

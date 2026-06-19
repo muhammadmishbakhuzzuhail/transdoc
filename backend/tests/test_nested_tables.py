@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Nested tables: a table inside a cell — captured, translated (recursive), rendered."""
 
 from __future__ import annotations

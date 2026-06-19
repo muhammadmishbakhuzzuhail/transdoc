@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Digital PDF table recovery: FLOW output rebuilds a real Table/Cell grid via find_tables;
 the LAYOUT overlay path is left on its per-text-block route (no cell tables)."""
 

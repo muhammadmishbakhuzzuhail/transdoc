@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "Document Intelligence & Translation Agent — OCR repair, translate, regenerate any document to any language."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
-license = { text = "Apache-2.0" }
-authors = [{ name = "transdoc contributors" }]
+license = { text = "Proprietary — all rights reserved (see LICENSE)" }
+authors = [{ name = "Muhammad Mishbakhuz Zuhail", email = "muhammadmishbakhuzzuhail@gmail.com" }]
 keywords = ["translation", "ocr", "document", "nllb", "deepl", "docx", "pdf"]
 
 # Core deps: lightweight path that works on CPU, no heavy ML.

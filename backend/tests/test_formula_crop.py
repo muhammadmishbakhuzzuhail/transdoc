@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Math fidelity: formula blocks are placed as a pixel-perfect crop of the source region
 (fractions / super- & subscripts survive), not as get_text-flattened linear text."""
 

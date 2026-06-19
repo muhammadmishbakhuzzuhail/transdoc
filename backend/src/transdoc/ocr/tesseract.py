@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Tesseract OCR — CPU fallback, always available.
 
 Groups word-level boxes into line/paragraph blocks, carries OCR confidence so the QA

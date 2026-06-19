@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Hyperlink capture — populate Block.style.link so links survive translation (audit P1).
 
 PDF: fitz page.get_links() gives URI links with a 'from' rectangle; attach the URI to the

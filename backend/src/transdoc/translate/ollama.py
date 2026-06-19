@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Ollama local-LLM translator — document-level, context-aware (zero-cost, offline, private).
 
 Unlike the segment-independent NMT engines, this carries a sliding window of neighbours so the

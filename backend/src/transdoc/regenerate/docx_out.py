@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """DOCX renderer (flow fidelity). Rebuilds an editable Word doc from the IR.
 
 Layout = logical structure (headings, paragraphs, lists, tables), not pixel-exact — the

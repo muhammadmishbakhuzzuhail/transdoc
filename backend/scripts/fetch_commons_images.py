@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Fetch script-diverse real document images from Wikimedia Commons via the search API.
 
 Wikimedia requires a descriptive User-Agent. Saves into corpus/real/full_image/.

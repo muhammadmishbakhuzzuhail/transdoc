@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Feedback: turn a human correction into a persisted, reused fix (PR-3).
 
 The correction loop is what makes the system learn — a term the user fixes once (e.g. the 1917

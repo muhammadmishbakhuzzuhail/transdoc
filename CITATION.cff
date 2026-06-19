@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+title: "transdoc — Document Intelligence & Translation Agent"
+message: >-
+  This is proprietary, source-available software. All rights reserved.
+  If you reference this work, you must attribute it to the author below.
+type: software
+authors:
+  - family-names: Zuhail
+    given-names: Muhammad Mishbakhuz
+    email: muhammadmishbakhuzzuhail@gmail.com
+repository-code: "https://github.com/muhammadmishbakhuzzuhail/transdoc"
+license: LicenseRef-Proprietary
+copyright: "© 2026 Muhammad Mishbakhuz Zuhail. All rights reserved."

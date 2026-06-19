@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Layout region-match metric (IoU + detection P/R/F1 + label accuracy)."""
 
 from __future__ import annotations

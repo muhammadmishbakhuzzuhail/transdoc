@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Reference-free QE annotation (COMET-Kiwi). The model is heavy/gated, so these tests stub the
 estimator and exercise the wiring: scores -> confidence, qe_threshold -> low-quality flag, and
 graceful no-op when the model is unavailable."""

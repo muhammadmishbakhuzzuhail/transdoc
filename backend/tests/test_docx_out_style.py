@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """DOCX flow renderer carries IR character style (font/size/bold/italic/colour) + alignment —
 previously dropped (plain 12pt black)."""
 

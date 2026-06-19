@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """EasyOCR engine — multilingual neural OCR (80+ languages, box + confidence).
 
 The strong escalation engine for the script router: where Tesseract collapses on a non-Latin

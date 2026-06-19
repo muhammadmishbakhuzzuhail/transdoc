@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Legibility floor: when a translation only fits by shrinking below ~6pt, the overlay flags
 the block 'illegible' (instead of silently shipping unreadable text), and the report counts
 it and suggests a reflow."""

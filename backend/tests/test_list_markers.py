@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Ordered-vs-bullet list markers + nesting level round-trip (audit P2)."""
 
 from __future__ import annotations

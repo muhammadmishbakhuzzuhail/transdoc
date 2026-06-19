@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Cross-page paragraph continuation (Area D, D3), flow output only. A paragraph split by a page
 break is rejoined before translation; complete sentences and structural blocks are left alone."""
 

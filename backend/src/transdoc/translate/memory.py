@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translation memory — exact-match reuse for consistency + fewer engine calls.
 
 Identical source segments translate once and reuse everywhere (a document repeats headers,

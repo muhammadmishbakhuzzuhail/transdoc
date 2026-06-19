@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """--pages selection: the LAYOUT overlay output contains ONLY the selected pages, not a mix
 of translated + untranslated original pages."""
 

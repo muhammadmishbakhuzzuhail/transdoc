@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Subtitle extraction (SRT / WebVTT).
 
 A cue = index/timestamp header lines + one or more text lines. We only ever touch the TEXT

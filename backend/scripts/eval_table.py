@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Table-structure accuracy eval (TEDS-Struct).
 
 The structure gate counts table cells, but the count is invariant to catastrophic grid errors —

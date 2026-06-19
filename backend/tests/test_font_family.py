@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Source font family is mapped to a CSS generic (serif/sans-serif/monospace) so a thin serif
 source renders serif, not a heavy sans default. The exact face isn't embeddable here."""
 

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """DOCX/PPTX -> PDF via LibreOffice headless (industry standard), keeping native layout instead
 of reflowing to A4. Falls back to the flow renderer when soffice is unavailable (e.g. CI)."""
 

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Compare formatting-feature preservation between an original PDF and its translation.
 
 Extracts per-page span features (count, bold, italic, coloured, font sizes) from both files

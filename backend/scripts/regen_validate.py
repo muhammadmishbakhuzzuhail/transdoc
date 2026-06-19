@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Regenerate the manual validation set into out_validate/: run the full pipeline on a
 representative spread of corpus docs (digital, non-Latin scans, RTL, a form, a docx) and write each
 translated output plus side-by-side source/output page-0 PNGs. Visual proof the pipeline is healthy

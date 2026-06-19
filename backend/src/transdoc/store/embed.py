@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Optional sentence-embedding backend for fuzzy TM reranking (PR-4).
 
 Fuzzy TM match is source→source and monolingual (find a past source segment similar to the current

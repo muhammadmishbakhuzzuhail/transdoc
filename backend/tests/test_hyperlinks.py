@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Hyperlinks captured from PDF + rendered to markdown / docx / pdf (audit P1, end-to-end)."""
 
 from __future__ import annotations

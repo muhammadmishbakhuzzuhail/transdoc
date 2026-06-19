@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Pipeline cleans intermediate crop temp dirs after rendering (audit: per-run /tmp leak)."""
 
 from __future__ import annotations

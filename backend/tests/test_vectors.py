@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Vector line-art capture + redraw: reconstruct keeps rules/dividers/boxes it used to drop."""
 
 from __future__ import annotations

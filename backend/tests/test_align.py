@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Word-alignment style transfer. The mBERT aligner is heavy, so these tests stub WordAligner.align
 with hand-built alignments and check the run-rebuild: styles follow the aligned target words, the
 target text is reproduced losslessly, consecutive same-style words merge, and a failed/sparse

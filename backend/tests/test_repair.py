@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """LLM OCR repair pass. The Ollama call is stubbed; these cover the gating, the low-confidence
 targeting, the hallucination guard, and the doc.repairs logging."""
 

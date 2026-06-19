@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PDF renderers.
 
 render_overlay (LAYOUT fidelity) — the differentiator. Reopen the source PDF, redact the

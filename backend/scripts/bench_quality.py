@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Formal MT quality benchmark via round-trip back-translation + chrF.
 
 For each target language: EN -> lang -> EN through the production engine, then score the

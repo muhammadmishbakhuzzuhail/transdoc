@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """DOCX extraction via python-docx.
 
 Walks the document body in order, mapping Word styles to IR block types and capturing
