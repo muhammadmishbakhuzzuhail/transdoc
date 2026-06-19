@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translation-quality evaluation harness.
 
 Turns "the output looks good" into measurable, reproducible numbers: structure preservation

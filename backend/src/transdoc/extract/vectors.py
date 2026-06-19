@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Vector line-art capture (PyMuPDF get_drawings) -> simple IR primitives.
 
 The reconstruct renderer rebuilds a fresh page from text + image crops, so without this it

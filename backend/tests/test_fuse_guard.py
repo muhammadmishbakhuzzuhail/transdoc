@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """reconcile: drop small labels inside a figure, but KEEP (and flag) a large text block a
 mis-sized region happens to cover — never silently lose real prose."""
 

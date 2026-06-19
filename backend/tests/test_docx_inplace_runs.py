@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """In-place DOCX keeps intra-paragraph run styling (a bold word) on translation, instead of
 flattening the whole paragraph to run-0."""
 

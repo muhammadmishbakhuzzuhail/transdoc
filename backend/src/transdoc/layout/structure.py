@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PP-StructureV3 structured extraction: regions with content (text / LaTeX / table HTML) and
 reading order. Like the plain layout detector it runs in-process when paddle is importable,
 else delegates to the isolated paddle interpreter via subprocess. See structure_detect.py and
@@ -147,7 +150,13 @@ class _Subprocess:
                    pdf_path, out_path, *[str(p) for p in pnos]]
             if self._lang:
                 cmd.append(f"--lang={self._lang}")
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            # Bound the subprocess: a wedged paddle (model-download hang, GPU deadlock) would
+            # otherwise block the worker forever and, since jobs are serialised, stall the queue.
+            timeout = float(os.environ.get("TRANSDOC_LAYOUT_TIMEOUT", "0")) or max(300.0, 120.0 * len(pnos))
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            except subprocess.TimeoutExpired as e:
+                raise RuntimeError(f"structure subprocess timed out after {timeout:.0f}s") from e
             if proc.returncode != 0:
                 raise RuntimeError(
                     f"structure subprocess failed (exit {proc.returncode}): {proc.stderr[-500:]}")

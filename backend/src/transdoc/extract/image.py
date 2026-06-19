@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Image extraction: preprocess (deskew/denoise) -> OCR -> IR document.
 
 Handles the "document is just a photo/scan" case. Preprocessing is best-effort and

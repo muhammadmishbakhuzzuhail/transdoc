@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Positioned PDF reconstruction (the DeepL approach): the output keeps the SOURCE page
 count, page size, block positions and images — only the text is translated. This is the
 PDF->PDF AUTO default."""

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """NLLB-200 translator — offline neural MT, 200 languages.
 
 LICENSE: NLLB-200 weights are CC-BY-NC-4.0 (non-commercial, "not for production").
@@ -22,15 +25,16 @@ class NLLBTranslator:
     _model = None
     _tok = None
 
-    def __init__(self):
+    def __init__(self, model: str | None = None):
         if NLLBTranslator._model is None:
             import os
 
             import torch
             from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-            # quality knob: distilled-600M (fast) | distilled-1.3B | 3.3B (best, ~6GB)
-            name = os.environ.get("NLLB_MODEL", "facebook/nllb-200-distilled-600M")
+            # quality knob: distilled-600M (fast) | distilled-1.3B | 3.3B (best, ~6GB).
+            # Precedence: NLLB_MODEL env var > cfg.nllb_model (passed in) > default.
+            name = os.environ.get("NLLB_MODEL") or model or "facebook/nllb-200-distilled-600M"
             NLLBTranslator._tok = AutoTokenizer.from_pretrained(name)
             kwargs = {}
             if torch.cuda.is_available():

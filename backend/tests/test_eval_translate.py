@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """FLORES chrF eval — non-network parts (lang map, FLORES_DIR override, line reader, arg
 validation). The translation loop needs network + an online engine and is not exercised here."""
 

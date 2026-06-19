@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Source metadata (title/author) written to output PDF + DOCX (audit ◐ -> ✓)."""
 
 from __future__ import annotations

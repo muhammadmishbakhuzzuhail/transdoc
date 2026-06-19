@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PP-StructureV3 OCR language selection. The structured extractor must OCR in the source
 language, not PP-StructureV3's Chinese default (which turned non-Chinese scans to garbage)."""
 

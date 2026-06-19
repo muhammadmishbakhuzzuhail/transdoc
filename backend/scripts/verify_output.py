@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Verify a generated PDF actually renders readable target-language text — by OCR'ing the
 rendered pixels, not trusting block counts.
 

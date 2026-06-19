@@ -1,0 +1,33 @@
+Copyright © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+
+PROPRIETARY — SOURCE-AVAILABLE, NO LICENSE GRANTED
+
+This source code is published publicly for reference, transparency, and review
+ONLY. Publication here does NOT place the work in the public domain and does NOT
+grant any license to it.
+
+No permission is granted to any person to use, copy, modify, merge, publish,
+distribute, sublicense, sell, host, deploy, or create derivative works of this
+software or any portion of it, in source or compiled form, for any purpose
+(commercial or non-commercial), without the prior written permission of the
+copyright holder.
+
+Viewing the source and cloning the repository for the sole purpose of reading it
+are permitted; nothing further is. Forking to develop, redistribute, or operate
+the software is NOT permitted.
+
+The author retains all copyright and all other rights. Authorship and the
+chronology of authorship are evidenced by this repository's Git history.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Third-party dependencies and model weights bundled or referenced by this project
+remain under their own respective licenses (e.g. PyMuPDF/AGPL, NLLB-200/CC-BY-NC,
+Surya/CC-BY-NC); those licenses govern only those third-party components, not this
+project's own source code.
+
+To request a license or permission, contact: muhammadmishbakhuzzuhail@gmail.com

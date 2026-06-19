@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Deeper FLOW reconstruction: embedded images are reflowed back, list items are grouped in
 a <ul>, and block-level styling (bold/colour/align) is carried into the output."""
 

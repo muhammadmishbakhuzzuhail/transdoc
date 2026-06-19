@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """LLM OCR repair pass (Gap C) — `cfg.repair`, opt-in, runs BEFORE translation.
 
 The extractor routes CID-garbage / scanned pages to OCR, and textnorm fixes hyphenation/ligatures,

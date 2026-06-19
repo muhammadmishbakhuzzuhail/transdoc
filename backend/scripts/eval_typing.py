@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Block-typing accuracy eval (Area D, D2).
 
 eval_layout scores the layout MODEL's region labels; this scores the FINAL IR block types after the

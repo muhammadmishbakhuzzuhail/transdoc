@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """bidi_mixed flag: detect mixed RTL+LTR lines and flag them in the overlay.
 
 insert_htmlbox shapes each script but can misorder a line that mixes RTL + LTR runs

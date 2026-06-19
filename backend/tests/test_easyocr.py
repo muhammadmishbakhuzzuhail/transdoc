@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """EasyOCR engine: result parsing (polygon->bbox, conf) + language selection. The model itself
 is heavy/optional, so these cover the pure glue (parse_results, _langs)."""
 

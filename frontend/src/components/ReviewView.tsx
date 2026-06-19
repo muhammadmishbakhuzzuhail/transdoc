@@ -1,3 +1,6 @@
+// © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+// Proprietary — source-available for reference only; no use, copying, or
+// distribution without written permission. See LICENSE.
 import { AlertCircle, Check, Loader2, Sparkles, Wand2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"

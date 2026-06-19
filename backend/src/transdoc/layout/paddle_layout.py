@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PP-DocLayout (PaddleOCR) region detector — Apache-2.0, GPU ~80 ms/page.
 
 Detects a page's regions and returns them in PDF points so the extractor can decide which
@@ -93,7 +96,13 @@ class SubprocessLayoutDetector:
         try:
             cmd = [self.python_exe, "-m", "transdoc.layout.subprocess_detect",
                    pdf_path, out_path, *[str(p) for p in pnos]]
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            # Bound the subprocess so a wedged paddle can't block the worker (and thus the
+            # serialised job queue) indefinitely.
+            timeout = float(os.environ.get("TRANSDOC_LAYOUT_TIMEOUT", "0")) or max(300.0, 120.0 * len(pnos))
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            except subprocess.TimeoutExpired as e:
+                raise RuntimeError(f"layout subprocess timed out after {timeout:.0f}s") from e
             if proc.returncode != 0:
                 raise RuntimeError(
                     f"layout subprocess failed (exit {proc.returncode}): {proc.stderr[-500:]}")

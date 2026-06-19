@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translator interface + shared logic that every engine reuses.
 
 The translate phase walks the IR: translatable blocks get their text translated (and table
@@ -256,12 +259,12 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     #    pin ONE rendering for each across the whole document. Sentence MT translates each segment
     #    independently, so a product/org name can drift (measured: id "Transdoc" rendered
     #    differently in every context). Conservative — proper nouns only (common-noun inflection is
-    #    legitimate), only when the engine is real (echo is non-cacheable), and only when the
+    #    legitimate), only when the engine is real (the echo no-op sets is_noop), and only when the
     #    canonical rendering actually differs from the source. User glossary entries always win.
     #    The mined terms are applied THIS run for intra-document consistency but are NOT persisted to
     #    the glossary table — they are recorded as *suggestions* (pending queue + report) for the user
     #    to confirm; only a confirmation (PR-3) promotes a suggestion to an applied entry (PR-2).
-    if getattr(cfg, "auto_glossary", True) and getattr(tr, "cacheable", True):
+    if getattr(cfg, "auto_glossary", True) and not getattr(tr, "is_noop", False):
         auto = [t for t in _auto_glossary_terms(texts, src=doc.source_lang) if t not in glossary]
         if auto:
             # ALL-CAPS acronyms (TIN, ZIP, ITIN, MISC, ...) are abbreviations that must stay literal:

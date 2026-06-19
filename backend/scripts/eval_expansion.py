@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Text-expansion fidelity eval (Area C).
 
 Translations run longer than the source — DE/FI/RU expand ~30%, and a verbose register more. The

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Overlay carries block-level char styles it used to drop: strikethrough, small-caps, highlight,
 all-caps — and still renders inline runs."""
 

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Serialise the full analysis of a finished job to a plain dict (-> analysis.json) so the UI
 can render all of it: document profile, flagged items, glossary, reconstruction notes,
 rendering-quality warnings and layout-region counts."""

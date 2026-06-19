@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Surya reading-order re-ranking (PR-3, opt-in) — `cfg.reading_order_engine == "surya"`.
 
 The default reading order is the deterministic XY-cut (extract/reading_order.py): fast, CPU-free,

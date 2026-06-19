@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """XLSX renderer — round-trip. Reopen the workbook, write translations back to the same
 cell coordinates, keeping styles, widths, merges, and formulas untouched."""
 

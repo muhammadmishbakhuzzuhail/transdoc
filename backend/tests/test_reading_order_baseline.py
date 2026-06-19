@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Reading-order regression: the default XY-cut + FLOW reorder must keep the hard two-column arXiv
 pages in perfect reading order. This is the committed baseline that closes the 'no reading-order
 eval' gap and is the number any alternative ordering engine (e.g. Surya) has to beat — measured at

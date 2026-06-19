@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Surya reading-order re-ranking. The Surya VLM is heavy/optional, so these tests exercise the
 pure re-rank logic (_reorder_page) with hand-built boxes and the no-op guards (wrong engine,
 non-PDF, predictor unavailable)."""

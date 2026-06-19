@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Cross-source region reconciliation for the IR.
 
 The structured extractor fuses several sources onto one page — PP-StructureV3 regions (labels,

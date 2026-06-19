@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Terminology-consistency eval — measure BEFORE building force-consistency (glossary auto-extract).
 
 Sentence MT translates each segment independently, so a term repeated across a document can come

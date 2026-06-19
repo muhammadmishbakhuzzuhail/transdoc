@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PaddleOCR engine: maps rec_texts/rec_scores/rec_polys -> Block IR (text + bbox + conf),
 without needing paddleocr installed (a fake recognizer is injected)."""
 

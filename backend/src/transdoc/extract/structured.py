@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Structured PDF extraction via PP-StructureV3: build the IR straight from detected regions,
 keeping **formulas as LaTeX** and figures/tables/seals as verbatim crops. Text regions use the
 digital text layer when present (perfect), falling back to the region's OCR content (scans).
@@ -165,33 +168,34 @@ def extract_structured(path: str, cfg: Config) -> Document:
     from ..layout.structure import get_structure_extractor, paddle_lang
 
     doc = fitz.open(path)
-    out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
-    out.metadata = {k: v for k, v in (doc.metadata or {}).items() if v}
     try:
+      out = Document(source_path=path, mime="application/pdf", page_count=doc.page_count)
+      out.metadata = {k: v for k, v in (doc.metadata or {}).items() if v}
+      try:
         from ..ir import TocEntry
         out.toc = [TocEntry(level=int(lv), title=str(ti), page=int(pg))
                    for lv, ti, pg in (doc.get_toc() or [])]
-    except Exception:
+      except Exception:
         pass
-    for pno, page in enumerate(doc):
+      for pno, page in enumerate(doc):
         out.page_sizes[pno] = (page.rect.width, page.rect.height)
         rot = int(getattr(page, "rotation", 0) or 0)   # carry /Rotate so review flags it
         if rot:
             out.page_rotation[pno] = rot
 
-    from .pdf import _parse_pages
-    selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
-    pnos = [p for p in range(doc.page_count) if selected is None or p in selected]
-    regions_by_page = get_structure_extractor(paddle_lang(cfg.source_lang)).extract_pages(doc, pnos)
+      from .pdf import _parse_pages
+      selected = _parse_pages(getattr(cfg, "pages", None), doc.page_count)
+      pnos = [p for p in range(doc.page_count) if selected is None or p in selected]
+      regions_by_page = get_structure_extractor(paddle_lang(cfg.source_lang)).extract_pages(doc, pnos)
 
-    from .annots import capture as _capture_annots
-    from .vectors import capture as _capture_vectors
-    from .vectors import page_background as _page_bg
+      from .annots import capture as _capture_annots
+      from .vectors import capture as _capture_vectors
+      from .vectors import page_background as _page_bg
 
-    img_dir = Path(tempfile.mkdtemp(prefix="transdoc_struct_"))
-    out.tmp_dirs.append(str(img_dir))
-    cidx = 0
-    for pno in pnos:
+      img_dir = Path(tempfile.mkdtemp(prefix="transdoc_struct_"))
+      out.tmp_dirs.append(str(img_dir))
+      cidx = 0
+      for pno in pnos:
         page = doc[pno]
         out.page_drawings[pno] = _capture_vectors(page)
         ann = _capture_annots(page)
@@ -262,11 +266,11 @@ def extract_structured(path: str, cfg: Config) -> Document:
             if not digital_ok:
                 blk.flags["ocr_text"] = "text from PP-OCR (digital layer garbage/absent here)"
             out.blocks.append(blk)
-    from .links import attach_pdf_links
-    for pno in pnos:
+      from .links import attach_pdf_links
+      for pno in pnos:
         attach_pdf_links(doc[pno], [b for b in out.blocks if b.page == pno])
-
-    doc.close()
+    finally:
+        doc.close()
     from .fuse import reconcile
     out.blocks = reconcile(out.blocks)
     # Recompute reading order geometrically (XY-cut) rather than trusting PP-StructureV3's order,

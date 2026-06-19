@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Text normalization: de-hyphenation across line breaks, ligature folding, NFC, zero-width."""
 
 from __future__ import annotations

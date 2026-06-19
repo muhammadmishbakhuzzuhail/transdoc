@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Text-markup annotations (highlight/underline/strikeout): captured from the source PDF and
 repainted in reconstruct (overlay keeps them natively)."""
 

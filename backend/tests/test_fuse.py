@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Cross-source reconcile: drop text inside a non-text region (anti-overwrite) + dedup text."""
 
 from __future__ import annotations

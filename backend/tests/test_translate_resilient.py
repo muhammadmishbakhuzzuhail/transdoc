@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Per-segment resilience: if the batch translate fails (one segment every engine rejects),
 the document still completes — good segments translate, the failed one keeps its source and
 is flagged 'untranslated', instead of the whole document erroring out."""

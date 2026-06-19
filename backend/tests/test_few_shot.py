@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Feedback flywheel (PR): the user's most similar CONFIRMED corrections are injected as few-shot
 examples into the LLM prompt. No model call — exercises retrieval + prompt assembly."""
 

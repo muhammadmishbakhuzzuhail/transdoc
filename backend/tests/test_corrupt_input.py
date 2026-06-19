@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Corrupt/unreadable input -> clear ValueError, not a raw library crash (audit edge-case)."""
 
 from __future__ import annotations

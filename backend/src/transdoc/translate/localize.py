@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Locale-aware number formatting (opt-in via cfg.localize).
 
 Many target languages write decimals with a comma and group thousands with a dot/space

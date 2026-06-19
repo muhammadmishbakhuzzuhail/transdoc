@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Glossary store — persisted term→rendering enforcement over the shared SQLite database (PR-2).
 
 A glossary entry pins how a source term is rendered in the target, document-wide and across runs,

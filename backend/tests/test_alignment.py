@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PDF paragraph alignment inference from block position (centered titles, right-aligned
 runs); the reflow renderer turns it into text-align CSS."""
 

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """EPUB renderer — round-trip. Reopen the book, re-walk each XHTML document identically to
 the extractor, replace each translated text node in place, and write the book back out —
 markup, CSS, images, and spine order preserved."""

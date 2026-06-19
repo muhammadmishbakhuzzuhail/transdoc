@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """LLM alternative-translation endpoint (review aid). Ollama is mocked — no real model call."""
 
 from __future__ import annotations

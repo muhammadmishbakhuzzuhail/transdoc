@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Glossary enforcement through translate_document: a supplied source->target term overrides
 the engine output and is applied consistently (keys are protected verbatim, then mapped)."""
 

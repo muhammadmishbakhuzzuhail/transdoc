@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Geometry-preserving image cleanup for OCR — a zero-extra-dependency CPU win for noisy /
 low-contrast scans and dense form cells where Tesseract collapses.
 

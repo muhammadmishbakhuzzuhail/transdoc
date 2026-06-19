@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Google web-endpoint translator — the DocTranslator economics model.
 
 Proxies the free public Google Translate web endpoint via ``deep-translator`` (MIT). The

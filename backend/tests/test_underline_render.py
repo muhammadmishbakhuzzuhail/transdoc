@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Underline renders in markdown + pdf (captured in DOCX extract + docx_out already)."""
 
 from __future__ import annotations

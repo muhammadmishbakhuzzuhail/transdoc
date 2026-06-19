@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Unified store TMStore: legacy-cache migration, (src_lang, domain) scoping, confirmed-immunity."""
 
 from __future__ import annotations

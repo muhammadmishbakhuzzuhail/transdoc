@@ -91,8 +91,12 @@ docs/        documentation + design notes
 
 ## License
 
-Code is **Apache-2.0**. Because this is a personal, non-commercial, local-use project, bundled
-dependencies and model weights are used without license restriction — including AGPL (PyMuPDF) and
-CC-BY-NC weights (NLLB-200, Surya). For a **commercial** fork those constraints return: swap
-PyMuPDF→pypdfium2 (Apache) and NLLB→MADLAD/Opus-MT (commercial-safe). See
-[docs/TRANSLATION.md](docs/TRANSLATION.md).
+**Proprietary — source-available, all rights reserved.** © 2026 Muhammad Mishbakhuz Zuhail.
+
+The source is published for **reference and review only**. You may read it and clone the repo to
+read it; you may **not** use, copy, modify, redistribute, host, or fork it for development without
+prior written permission. See [LICENSE](LICENSE). Authorship is evidenced by this repository's Git
+history. To request permission: muhammadmishbakhuzzuhail@gmail.com
+
+Third-party dependencies and model weights (PyMuPDF/AGPL, NLLB-200·Surya/CC-BY-NC, …) remain under
+their own licenses, which govern only those components — not this project's own source.

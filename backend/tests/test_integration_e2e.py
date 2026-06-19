@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """End-to-end integration: a synthetic multi-element PDF (title, heading, paragraph, list,
 table, image) runs through the whole pipeline into several output formats without crashing,
 with structure preserved and text translated. Uses the echo engine (no network)."""

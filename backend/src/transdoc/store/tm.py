@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Translation memory store — exact-match reuse over the shared SQLite database.
 
 Replaces ``translate.memory.PersistentTM`` (which now re-exports this). Same public surface

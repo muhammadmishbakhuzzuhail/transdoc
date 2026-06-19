@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Table cell font size + span render (audit P2: pdf-flow hardcoded 8pt; spans ignored)."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """OpenRouter LLM translator (default for real use).
 
 Uses the OpenAI SDK pointed at OpenRouter, with model failover across the comma-separated

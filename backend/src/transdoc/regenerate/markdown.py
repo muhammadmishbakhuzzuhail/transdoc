@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Markdown renderer (flow fidelity). Mirrors logical structure from the IR."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Image-overlay output: photo/image source keeps the original image and overlays the
 translation at the OCR bbox (Google-Lens-style), instead of flattening to a flow page."""
 

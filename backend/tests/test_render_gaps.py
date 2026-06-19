@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Render-gap fixes: table cell alignment + list nesting (docx), PDF output /Lang."""
 
 from __future__ import annotations

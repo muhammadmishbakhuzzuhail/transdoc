@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Overlay box-expand: a long translation in a short box grows down into empty space (keeps
 font size, no shrink flag); if a block sits right below, it can't grow and shrinks instead."""
 

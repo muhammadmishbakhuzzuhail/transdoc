@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """PaddleOCR worker — runs inside the isolated layout_venv.
 
 paddlepaddle and torch collide (nccl) in one process, so when paddleocr isn't importable in the

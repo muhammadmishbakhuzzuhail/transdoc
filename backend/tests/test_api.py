@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """API surface for the React UI: enriched /api/health, translate with the new options, and
 the /api/analysis endpoint that backs the analysis panels. Uses the echo engine (no network)."""
 

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Rule-based translation QA — deterministic, model-free, always-on.
 
 The memoQ/Xbench-style checks a document translator needs, complementing the optional model-based

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """In-place DOCX translation — the DeepL strategy for Office files.
 
 Re-open the *source* .docx and swap the translated text into the existing paragraphs and

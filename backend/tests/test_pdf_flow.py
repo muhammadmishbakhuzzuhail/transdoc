@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """render_flow: paginates without crashing and keeps tables (regression guards).
 
 Two bugs lived here: the multi-page loop assumed insert_htmlbox returns leftover HTML

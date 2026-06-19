@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Richer extraction variables: DOCX merged-cell dedup, PDF metadata + page rotation capture."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Argos Translate translator — offline, MIT-licensed (commercial-safe fallback).
 
 Wraps OpenNMT models via CTranslate2. Lower quality than NLLB but permissively licensed,

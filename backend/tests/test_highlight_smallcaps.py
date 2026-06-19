@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Highlight + small-caps captured (docx) + rendered (md/docx/pdf), run-level."""
 
 from __future__ import annotations

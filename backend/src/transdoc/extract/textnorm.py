@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Text normalization for extracted content — de-hyphenation, ligature folding, Unicode NFC.
 
 Research-driven (deep-research 2026-06-15): PyMuPDF's `dehyphenate` flag is OFF for all

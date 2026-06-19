@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Confidence escalation primitive shared by the OCR router.
 
 `run_with_escalation` runs an ordered list of engines: the primary first, a cheap cleaned-image

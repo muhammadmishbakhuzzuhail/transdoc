@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """EPUB extraction via ebooklib + BeautifulSoup.
 
 EPUB is a zip of XHTML documents. We walk every text node (skipping script/style) in document

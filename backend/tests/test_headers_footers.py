@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """DOCX section header/footer content: captured (body walk misses it), translated, and
 re-emitted into the output section's header/footer."""
 

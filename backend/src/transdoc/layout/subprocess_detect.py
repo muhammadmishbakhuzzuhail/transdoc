@@ -1,3 +1,6 @@
+# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
+# Proprietary — source-available for reference only; no use, copying, or
+# distribution without written permission. See LICENSE.
 """Run PP-DocLayout in a SEPARATE interpreter and write the regions as JSON.
 
 paddlepaddle-gpu and torch cannot share one venv (their nvidia-nccl wheels collide), so the
