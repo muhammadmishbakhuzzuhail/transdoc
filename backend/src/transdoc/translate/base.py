@@ -255,9 +255,17 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
     if getattr(cfg, "auto_glossary", True) and getattr(tr, "cacheable", True):
         auto = [t for t in _auto_glossary_terms(texts, src=doc.source_lang) if t not in glossary]
         if auto:
+            # ALL-CAPS acronyms (TIN, ZIP, ITIN, MISC, ...) are abbreviations that must stay literal:
+            # a general engine mistranslates them into false-friend common words (TIN->TIMAH=tin metal,
+            # ZIP->RITSLETING=zipper). Pin them to themselves so the protector keeps them verbatim,
+            # and don't suggest them. Only Capitalized proper-name words go through the engine.
+            acronyms = [t for t in auto if t.isalpha() and t.isupper() and len(t) >= 2]
+            names = [t for t in auto if t not in set(acronyms)]
+            for a in acronyms:
+                glossary[a] = a                          # keep literal document-wide (protected)
             suggestions: list[tuple[str, str]] = []
             try:
-                for term, ren in zip(auto, tr.translate_batch(auto, cfg, src=doc.source_lang)):
+                for term, ren in zip(names, tr.translate_batch(names, cfg, src=doc.source_lang)):
                     ren = (ren or "").strip()
                     if ren and ren != term:
                         glossary[term] = ren            # apply this run (document-wide consistency)
