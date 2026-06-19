@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """PDF scan detection: a page whose only digital text is a title, sitting over a scanned
 image holding the real content, must be treated as a scan (OCR'd) — not read as digital and
 have its body dropped as a figure. Regression for the UDHR Thai scan: a 47-char English title

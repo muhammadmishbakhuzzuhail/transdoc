@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Structured PDF extraction (PP-StructureV3 path): regions -> IR with formulas as LaTeX,
 text from the digital layer, figures/tables as crops. Uses a fake extractor — no paddle."""
 

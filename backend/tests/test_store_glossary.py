@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """GlossaryStore (PR-2): precedence (locked > user > confirmed > auto), domain-then-global,
 -g overlay vs locked, suggestion queue, TSV/JSON import-export, and protect→restore-target."""
 

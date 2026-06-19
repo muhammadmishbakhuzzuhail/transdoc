@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Digital PDF table recovery: FLOW output rebuilds a real Table/Cell grid via find_tables;
 the LAYOUT overlay path is left on its per-text-block route (no cell tables)."""
 

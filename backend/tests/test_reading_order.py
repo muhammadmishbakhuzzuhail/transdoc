@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """XY-cut reading order (Area D, D1). Generalises the old equal-width band split: cuts at the
 widest whitespace gutter, so it also handles UNEQUAL columns, nested structure and floats that the
 fixed 3/2-col split couldn't. Plus the reading_order_match eval metric."""

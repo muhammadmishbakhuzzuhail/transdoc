@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Convenience launcher for the web UI + REST API: `python server.py` == `transdoc serve`.
 
 Run from the `backend/` directory (with the venv active). Host/port default to 127.0.0.1:8000

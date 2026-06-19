@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """EPUB renderer — round-trip. Reopen the book, re-walk each XHTML document identically to
 the extractor, replace each translated text node in place, and write the book back out —
 markup, CSS, images, and spine order preserved."""

@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Structured PDF extraction via PP-StructureV3: build the IR straight from detected regions,
 keeping **formulas as LaTeX** and figures/tables/seals as verbatim crops. Text regions use the
 digital text layer when present (perfect), falling back to the region's OCR content (scans).

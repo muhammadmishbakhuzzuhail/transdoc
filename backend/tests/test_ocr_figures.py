@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """OCR-in-figure: text inside a large embedded image (a scan dropped on a digital page) is
 recovered as translatable OCR blocks only when cfg.ocr_figures is set (default off = no
 perf cost), and its bbox is mapped onto the page."""

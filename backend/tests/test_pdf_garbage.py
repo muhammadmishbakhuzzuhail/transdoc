@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """CID-font garbage detection: untrusted digital text is routed to OCR.
 
 Some PDFs embed CID fonts with no ToUnicode CMap, so get_text() returns raw glyph ids

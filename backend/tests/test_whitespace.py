@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Whitespace fidelity on the part we control — extraction. The normalizer must NOT collapse
 non-breaking spaces, tabs, or runs of spaces (only de-hyphenate line breaks + fold ligatures +
 strip zero-width). Inter-word spacing in the translated output is the MT engine's to decide."""

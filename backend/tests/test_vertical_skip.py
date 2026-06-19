@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Vertical/rotated text (e.g. an arXiv ID sidebar) is left untranslated in the PDF overlay
 instead of being redacted and shrunk to an illegible sliver."""
 

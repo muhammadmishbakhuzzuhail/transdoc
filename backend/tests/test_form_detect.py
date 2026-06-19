@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Form detection: an interactive AcroForm (field widgets) is a form (must be overlaid, not
 rebuilt). Vector strokes alone are NOT a form — figures, bordered tables and scans have strokes too
 and were wrongly forced into the overflow-prone overlay renderer."""

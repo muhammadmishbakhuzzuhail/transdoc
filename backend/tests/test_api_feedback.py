@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """REST feedback API (PR-5): glossary CRUD, suggestion accept, correction, tm stats/confirm/purge,
 and the per-job review payload. Localhost-trust; every write mirrors the CLI/store behaviour."""
 

@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """IndicTrans2 engine: code mapping, direction selection, factory wiring. The model itself is
 an optional heavy dep (lazy-loaded in translate_batch), so these cover the pure routing logic."""
 

@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Layout region-accuracy eval (IoU + detection P/R/F1 + label accuracy).
 
 Counts say "5 regions"; they can't say whether those regions are in the RIGHT PLACES with the

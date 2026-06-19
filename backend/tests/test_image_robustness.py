@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Image-extraction robustness (audit fixes):
   #1 OSD coarse-orientation — a 90/180/270 rotated page is turned upright before OCR.
   #3 render downscale — large pages are capped so PP-StructureV3 fits in GPU memory.

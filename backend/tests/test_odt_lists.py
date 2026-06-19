@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """ODT list extraction: <text:list> items must become LIST_ITEM blocks, not be dropped.
 
 Regression guard: the ODT extractor only handled top-level h/p/table nodes, so list

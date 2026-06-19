@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """PP-StructureV3 structured extraction: regions with content (text / LaTeX / table HTML) and
 reading order. Like the plain layout detector it runs in-process when paddle is importable,
 else delegates to the isolated paddle interpreter via subprocess. See structure_detect.py and

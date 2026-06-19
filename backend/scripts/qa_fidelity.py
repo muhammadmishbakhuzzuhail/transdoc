@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Reproducible output-fidelity QA. For each output PDF it flags, per page:
   - OVERWRITE: a text span whose bbox overlaps an embedded image (raster/crop) — text drawn
     on top of a figure/table crop ("menimpa tidak rapi").
