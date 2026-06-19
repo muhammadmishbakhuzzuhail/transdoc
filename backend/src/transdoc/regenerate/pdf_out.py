@@ -504,11 +504,14 @@ def _table_html(table) -> str:
 
 def _norm_rect(b):
     """Block bbox -> PDF points. OCR blocks carry 300-dpi pixels (page was rasterised); digital
-    blocks are already in points."""
+    blocks are already in points. x0 is clamped to >= 0: RTL extraction (e.g. Arabic) sometimes
+    yields a negative left edge, which placed the text off the LEFT page edge where it was clipped
+    unreadable in the reconstruct render."""
     import fitz
     s = 72.0 / 300.0 if b.confidence.source == "ocr" else 1.0
     bb = b.bbox
-    return fitz.Rect(bb.x0 * s, bb.y0 * s, bb.x1 * s, bb.y1 * s)
+    x0 = max(0.0, bb.x0 * s)
+    return fitz.Rect(x0, bb.y0 * s, bb.x1 * s, bb.y1 * s)
 
 
 _HIGHLIGHT_CSS = {
