@@ -45,6 +45,9 @@ def _restore_edge_ws(src: str, out: str) -> str:
     return f"{lead}{out.strip()}{trail}"
 
 
+_URL_EMAIL_RE = re.compile(r'https?://[^\s<>"]+|www\.[^\s<>"]+|[\w.+-]+@[\w.-]+\.\w+')
+
+
 def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
     """Enforce term consistency. Longest terms first to avoid partial overlaps."""
     for term in sorted(glossary, key=len, reverse=True):
@@ -53,9 +56,15 @@ def _apply_glossary(text: str, glossary: dict[str, str]) -> str:
         repl = glossary[term]
         # Word-boundary match for ASCII alphanumeric terms so "cat" doesn't fire inside
         # "category". CJK / punctuation-edged terms have no \w boundary, so fall back to a
-        # plain substring replace for those.
+        # plain substring replace for those (URLs are ASCII, so CJK terms never sit inside one).
         if term.isascii() and term[0].isalnum() and term[-1].isalnum():
-            text = re.sub(rf"(?<!\w){re.escape(term)}(?!\w)", lambda _m, r=repl: r, text)
+            # don't rewrite a term that sits INSIDE a URL/email — e.g. glossary "Forms" must not
+            # turn "www.irs.gov/Forms" into "www.irs.gov/Formulir". Spans recomputed per term
+            # because earlier replacements shift offsets.
+            skip = [(m.start(), m.end()) for m in _URL_EMAIL_RE.finditer(text)]
+            text = re.sub(rf"(?<!\w){re.escape(term)}(?!\w)",
+                          lambda m, r=repl, sk=skip:
+                          m.group(0) if any(s <= m.start() < e for s, e in sk) else r, text)
         elif term in text:
             text = text.replace(term, repl)
     return text
