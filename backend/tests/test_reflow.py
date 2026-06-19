@@ -19,9 +19,21 @@ from transdoc.config import Config  # noqa: E402
 from transdoc.ir import BBox, Block, BlockType, Confidence, Document, Style  # noqa: E402
 from transdoc.regenerate.pdf_out import (  # noqa: E402
     _columns,
+    _norm_rect,
     _reflow,
     render_reconstruct,
 )
+
+
+def test_norm_rect_clamps_negative_x0():
+    # RTL extraction (Arabic) can yield a negative left edge; the reconstruct render must clamp it
+    # to the page so text isn't placed off the LEFT edge and clipped.
+    neg = Block(id="n", type=BlockType.PARAGRAPH, bbox=BBox(x0=-5, y0=10, x1=293, y1=40),
+                confidence=Confidence(source="digital"))
+    assert _norm_rect(neg).x0 == 0.0
+    pos = Block(id="p", type=BlockType.PARAGRAPH, bbox=BBox(x0=72, y0=10, x1=300, y1=40),
+                confidence=Confidence(source="digital"))
+    assert _norm_rect(pos).x0 == 72.0          # positive left edge unchanged
 
 
 def _item(bid, x0, y0, x1, y1, need, ro=0):
