@@ -33,19 +33,32 @@ Two design rules follow from that:
 ```
 backend/    Python package (transdoc): pipeline, CLI, FastAPI API, tests, scripts
 frontend/   React UI (Vite + TypeScript + Tailwind + shadcn-style)
-docs/        design notes (RESEARCH, RISKS)
+docs/        design notes (ARCHITECTURE, FIDELITY, RESEARCH, RISKS, TRANSLATION)
 ```
-Run the backend from `backend/` (`pip install -e ".[dev,formats]"`, then `transdoc serve`)
-and the frontend from `frontend/` (`npm install && npm run dev`). See `backend/README.md`
-and `frontend/README.md`.
+**Run it.** Backend (web UI + REST API):
+```bash
+cd backend
+python3.11 -m venv .venv && source .venv/bin/activate   # first time only
+pip install -e ".[dev,formats,api]"                     # first time only
+python server.py                                        # → http://127.0.0.1:8000
+```
+Frontend dev server, in a second terminal:
+```bash
+cd frontend && npm install && npm run dev               # → http://localhost:5173
+```
+`python server.py` is a thin launcher for the API (`transdoc serve` is the equivalent CLI
+command, and `make serve` / `make dev` from the repo root do the same). The web API needs the
+`api` extra (FastAPI + uvicorn), installed above; `/docs` serves the interactive API. See
+`backend/README.md` and `frontend/README.md` for details.
 
 ## Why it's different
-- **Form-aware PDF rendering.** PDF→PDF auto-detects **forms** (grids of vector field-lines/
-  boxes — IRS W-9/1040) and renders them with the **overlay** path (redact source text in place
-  on the original page, keeping every line/box/checkbox), while reflowable documents use
-  **reconstruct** (rebuild a fresh page at the source page size, blocks at their original
-  positions). `-f flow` forces a clean single-column reflow (best for →DOCX/MD); `-f layout`
-  forces overlay.
+- **Form-aware PDF rendering.** PDF→PDF auto-detects real **AcroForm forms** (an `/AcroForm`
+  dictionary or page `widgets()` — IRS W-9/1040) and renders them with the **overlay** path
+  (redact source text in place on the original page, keeping every line/box/checkbox), while
+  reflowable documents — including figure-heavy papers and infographics that a stroke-counting
+  heuristic used to misclassify — use **reconstruct** (rebuild a fresh page at the source page
+  size, blocks at their original positions). `-f flow` forces a clean single-column reflow
+  (best for →DOCX/MD); `-f layout` forces overlay.
 - **Any input.** Digital PDF, scanned PDF, photos, DOCX, ODT, legacy DOC, images.
 - **Any script.** Latin, Arabic (RTL), CJK, Cyrillic, Devanagari, Thai — full Noto coverage.
 - **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.
@@ -84,6 +97,7 @@ output format without touching the rest.
 ```bash
 python3.11 -m venv .venv && . .venv/bin/activate
 pip install -e .                 # core (CPU path)
+pip install -e ".[api]"          # web UI + REST API (needed for `transdoc serve`)
 pip install -e ".[surya]"        # GPU OCR
 pip install -e ".[nmt]"          # offline NMT (MADLAD/Opus-MT/NLLB)
 pip install -e ".[llm]"          # OpenRouter/Anthropic engines
@@ -101,6 +115,7 @@ transdoc translate sign.jpg   --lang id --to pdf            # photo → OCR → 
 transdoc translate scan.png   --lang en --ocr tesseract     # image → OCR → translate
 transdoc translate hindi.pdf  --lang id --source hi          # non-English scan: pass --source for the right OCR model
 transdoc translate paper.pdf  --lang id --glossary terms.json # enforce {source term: target term} consistently
+transdoc translate report.pdf --lang id -q --escalate       # COMET-Kiwi QE: flag + LLM-re-translate weak segments
 transdoc translate doc.pdf    --lang ar --to pdf -f layout  # layout-preserving overlay
 transdoc translate x.pdf      --lang id -e libretranslate   # privacy/offline (self-host backstop)
 transdoc convert  in.pdf      --to docx                     # OCR/convert only, no translation
@@ -121,6 +136,16 @@ docx/odt/pptx/xlsx/epub/srt/vtt · **form-aware** PDF: overlay for forms, recons
 image overlay) + report. See `docs/ARCHITECTURE.md` for the fidelity strategy and
 `docs/RISKS.md` for known limits. Quality is measured by the eval harness
 (`python -m transdoc.eval.harness`, structure/fidelity/CER/WER/chrF + baseline regression gate).
+
+**Quality pipeline** (CPU + local models, layered on top of the engine): **COMET-Kiwi QE**
+(`-q` / web "Quality flags", on by default in the UI) scores every segment and flags weak ones;
+`--escalate` re-translates QA-weak segments with a local doc-context LLM (Ollama Gemma). **Word
+-alignment style transfer** ("Style alignment", on by default in the UI) carries bold/italic/run
+styling across the translated run boundaries. Scanned input gets **reading-order normalisation**
+(XY-cut, Surya optional) and **opt-in LLM OCR repair** of low-confidence blocks (conservative,
+logged, never invents). A final **residual-script pass** re-translates any non-Latin runs the
+engine left behind when the target is Latin-script. Non-Latin source documents are routed to
+script-aware OCR/extraction (digital text-layer over re-OCR; per-script engine chains).
 
 **Quality tooling** (verify the *rendered* output, not block counts): `scripts/verify_output.py`
 (OCR a generated PDF, flag wrong-language pages), `scripts/compare_features.py` (bold/italic/
