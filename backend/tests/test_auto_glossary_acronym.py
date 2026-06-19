@@ -42,3 +42,13 @@ def test_acronyms_not_in_glossary_suggestions(monkeypatch):
     translate_document(d, _FalseFriendEngine(), Config(source_lang="en", target_lang="id"))
     sug_terms = {t for t, _r, _k in getattr(d, "glossary_suggestions", [])}
     assert "TIN" not in sug_terms and "ZIP" not in sug_terms
+
+
+def test_glossary_does_not_rewrite_inside_urls():
+    from transdoc.translate.base import _apply_glossary
+    # a mined term must not corrupt a URL/email containing it as a path/segment
+    assert _apply_glossary("Go to www.irs.gov/Forms now", {"Forms": "Formulir"}) \
+        == "Go to www.irs.gov/Forms now"
+    assert _apply_glossary("mail x@forms.org", {"forms": "formulir"}) == "mail x@forms.org"
+    # but a real standalone occurrence is still enforced
+    assert _apply_glossary("see Forms here", {"Forms": "Formulir"}) == "see Formulir here"
