@@ -1,149 +1,98 @@
 # transdoc — Document Intelligence & Translation Agent
 
-Translate documents of **any** form to **any** language while **preserving layout**.
-Not just translation — it diagnoses, reconstructs (OCR repair), translates, verifies, and
-regenerates a clean, faithful document plus a full report.
+Translate documents of **any** format into **any** language while **preserving layout**. transdoc
+diagnoses, reconstructs (OCR repair), translates, verifies, and regenerates a clean, faithful
+document — plus a full report. Think DeepL-style translation + iLovePDF-style document tooling +
+OCR-to-editable-document, on a **CPU-first**, local machine.
 
-Combines **DeepL-style translation + iLovePDF-style document tooling +
-OCR-to-editable-document**, built on a format-agnostic Intermediate Representation (IR) so any
-input maps to any output.
+It is built on a format-agnostic **Intermediate Representation (IR)**: any input maps to the IR,
+translation edits the IR, any renderer turns the IR back into a document — so you can swap engines,
+OCR backends, or output formats without touching the rest.
 
-## Scope: personal & local — not commercial
+---
 
-This is a **personal, local-use** project. It is **not distributed or commercialized**, so
-**software/model licenses are not a constraint**: AGPL (PyMuPDF), CC-BY-NC weights (NLLB-200,
-Surya), and other non-commercial assets are all fair game. The only goals that matter here are
-**maximum fidelity and quality**, on a **CPU-only** machine.
+## Quickstart
 
-Two design rules follow from that:
+```bash
+# 1. Setup (first time)
+make setup                  # backend .venv + frontend deps
 
-- **Extraction is the hard part** (the output is rebuilt from scratch), so it is **NOT locked
-  to one library** — it fuses the best tool for each sub-task: PyMuPDF for digital text +
-  vector graphics + images, an AcroForm parser for form fields, PP-StructureV3 for
-  layout/tables/formula-LaTeX/OCR. Best extractor per region, merged into the IR.
-- **Translation: one engine, chosen by measurement — Google, no fallback chain.** A
-  round-trip-chrF benchmark (`scripts/bench_engines.py`) settled it: the **Google web endpoint
-  wins** (avg chrF 85.1 vs NLLB-200-600M 83.8 across id/ar/zh/de), so the default is plain
-  **`google`**. For a personal, low-volume tool with a persistent TM cache (each segment sent
-  once) and Google's own retry/backoff, a backstop chain isn't worth the complexity — if Google
-  is ever blocked, switch with `-e`. `-e nllb` for offline/private; `-e fallback` if you do want
-  the google→mymemory→libretranslate backstops.
+# 2. Run the web UI + REST API
+cd backend
+source .venv/bin/activate
+python server.py            # → http://127.0.0.1:8000   (API docs at /docs)
+```
 
-## Repository layout
+Open <http://127.0.0.1:8000>, upload a document, pick a target language, download the translation.
+
+Prefer the command line?
+
+```bash
+cd backend && source .venv/bin/activate
+transdoc translate report.pdf --lang id --to docx     # PDF → translated Word
+```
+
+→ Full run guide (all formats, CLI, REST API): **[docs/USAGE.md](docs/USAGE.md)**
+
+---
+
+## Features
+
+- **Any input.** Digital PDF, scanned PDF, photos, DOCX, ODT, legacy DOC, PPTX, XLSX, EPUB,
+  subtitles, images.
+- **Any script.** Latin, Arabic (RTL), CJK, Cyrillic, Devanagari, Thai — full Noto coverage.
+- **Layout-faithful PDF.** Auto-detects real **AcroForm forms** and renders them with an overlay
+  (every line/box/checkbox kept); reflowable documents are rebuilt at the source page size with
+  blocks in place. `-f flow` forces clean single-column reflow; `-f layout` forces overlay.
+- **In-place Office round-trip.** DOCX/PPTX/XLSX/EPUB/SRT/VTT keep all original formatting.
+- **Measured translation.** Default engine is **Google** (benchmark winner, chrF 85.1, CPU-only,
+  no model); offline/private NMT (`-e nllb`) and local-LLM (`-e ollama`) engines are selectable.
+- **A real quality pipeline.** Reference-free QE (COMET-Kiwi), LLM escalation of weak segments,
+  word-alignment style transfer, reading-order normalisation, OCR repair, and a learning feedback
+  flywheel (glossary + translation memory). → [docs/QUALITY.md](docs/QUALITY.md)
+- **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.
+
+---
+
+## Documentation
+
+| Document | What's in it |
+|----------|--------------|
+| [docs/USAGE.md](docs/USAGE.md) | Running transdoc: web UI, CLI (every command + flag), REST API, examples per input type |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every config field, all engines, all environment variables |
+| [docs/QUALITY.md](docs/QUALITY.md) | The quality pipeline: QE, escalation, alignment, OCR repair, feedback flywheel |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Dev setup, tests, the evaluation harness, the example corpus, code layout |
+| [docs/EXAMPLES.md](docs/EXAMPLES.md) | Input → output gallery (preview of real results) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Pipeline architecture and the IR |
+| [docs/FIDELITY.md](docs/FIDELITY.md) | Layout-fidelity strategy (reconstruct / overlay / flow) |
+| [docs/TRANSLATION.md](docs/TRANSLATION.md) | Engine selection, the benchmark, licensing |
+| [docs/RESEARCH.md](docs/RESEARCH.md) · [docs/RISKS.md](docs/RISKS.md) | Verified rationale and known limits |
+
 ```
 backend/    Python package (transdoc): pipeline, CLI, FastAPI API, tests, scripts
 frontend/   React UI (Vite + TypeScript + Tailwind + shadcn-style)
-docs/        design notes (RESEARCH, RISKS)
-```
-Run the backend from `backend/` (`pip install -e ".[dev,formats]"`, then `transdoc serve`)
-and the frontend from `frontend/` (`npm install && npm run dev`). See `backend/README.md`
-and `frontend/README.md`.
-
-## Why it's different
-- **Form-aware PDF rendering.** PDF→PDF auto-detects **forms** (grids of vector field-lines/
-  boxes — IRS W-9/1040) and renders them with the **overlay** path (redact source text in place
-  on the original page, keeping every line/box/checkbox), while reflowable documents use
-  **reconstruct** (rebuild a fresh page at the source page size, blocks at their original
-  positions). `-f flow` forces a clean single-column reflow (best for →DOCX/MD); `-f layout`
-  forces overlay.
-- **Any input.** Digital PDF, scanned PDF, photos, DOCX, ODT, legacy DOC, images.
-- **Any script.** Latin, Arabic (RTL), CJK, Cyrillic, Devanagari, Thai — full Noto coverage.
-- **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.
-
-## Architecture
-```
-INGEST → EXTRACT → OCR(if needed) → DIAGNOSE → [IR] → TRANSLATE → REGENERATE → REPORT
-                                                 ↑ glossary + TM + confidence
-```
-The **IR** (`src/transdoc/ir.py`) is the single canonical model. Every extractor writes IR;
-every renderer reads IR; translation edits IR in place. Swap any OCR/translation engine or
-output format without touching the rest.
-
-## Stack (see `docs/RESEARCH.md` for the verified rationale)
-| Layer | Default | Fallback |
-|-------|---------|----------|
-| OCR + layout | PP-StructureV3 (PaddleOCR) for layout/tables/formula-LaTeX + Tesseract (CPU, 100+ langs) with geometry-preserving cleanup + auto-escalation on low-confidence pages. Install `tesseract-data-<lang>` and pass `--source` for non-English scans. | Surya OCR 2 (CC-BY-NC model — fine for personal use) |
-| Language detect | langdetect (core, tiny) | lingua low-accuracy mode (`[detect]` extra — 100% vs 91% acc, deterministic, ~1.2GB RAM) |
-| PDF parse | PyMuPDF | — |
-| Office parse | python-docx · odfpy · python-pptx · openpyxl · ebooklib · LibreOffice | — |
-| Translate | **`google`** — web endpoint, best measured quality (chrF 85.1), CPU-only, no model, no fallback chain | `-e nllb` offline/private (≈Google, 83.8) · `-e fallback` adds mymemory/libretranslate backstops · madlad/opusmt/argos/openrouter/anthropic also `-e`-selectable |
-| Translation memory | persistent SQLite cache (cross-run, cuts engine calls) | in-memory dedupe |
-| Regenerate | **in-place** text swap for Office (docx/pptx/xlsx/epub/srt/vtt) — keeps all formatting, the DeepL strategy · PDF/image reflow (reconstruct) · `-f layout` overlay opt-in | Markdown |
-
-> **Default = `google`, chosen by benchmark.** `scripts/bench_engines.py` (round-trip chrF)
-> found Google best (85.1) vs offline NLLB-200-600M (83.8) on id/ar/zh/de. This is a personal,
-> low-volume tool: a persistent SQLite TM sends each segment at most once and Google has its own
-> retry/backoff, so the default is plain Google with **no fallback chain**.
->
-> ⚠️ Google's web endpoint is unofficial/network-dependent; if it's ever blocked, translation
-> fails (no backstop). Switch then with `-e fallback` (adds MyMemory + self-hosted LibreTranslate)
-> or go offline/private with `-e nllb`. A bigger NLLB (1.3B/3.3B) may beat Google but is much
-> slower on CPU — re-run the benchmark before committing.
-
-## Install
-```bash
-python3.11 -m venv .venv && . .venv/bin/activate
-pip install -e .                 # core (CPU path)
-pip install -e ".[surya]"        # GPU OCR
-pip install -e ".[nmt]"          # offline NMT (MADLAD/Opus-MT/NLLB)
-pip install -e ".[llm]"          # OpenRouter/Anthropic engines
-pip install -e ".[formats]"      # subtitles · EPUB · PowerPoint · Excel
-pip install -e ".[detect]"       # lingua language detection (more accurate, ~1.2GB RAM)
+docs/        documentation + design notes
 ```
 
-## Usage
-```bash
-transdoc translate input.pdf  --lang id --to docx           # PDF → translated Word (free Google chain)
-transdoc translate deck.pptx  --lang id --to same-as-source # PowerPoint, layout preserved in place
-transdoc translate book.epub  --lang id --to same-as-source # EPUB round-trip
-transdoc translate subs.srt   --lang id --to same-as-source # subtitles, timing untouched
-transdoc translate sign.jpg   --lang id --to pdf            # photo → OCR → translation overlaid on the original image (Lens-style)
-transdoc translate scan.png   --lang en --ocr tesseract     # image → OCR → translate
-transdoc translate hindi.pdf  --lang id --source hi          # non-English scan: pass --source for the right OCR model
-transdoc translate paper.pdf  --lang id --glossary terms.json # enforce {source term: target term} consistently
-transdoc translate doc.pdf    --lang ar --to pdf -f layout  # layout-preserving overlay
-transdoc translate x.pdf      --lang id -e libretranslate   # privacy/offline (self-host backstop)
-transdoc convert  in.pdf      --to docx                     # OCR/convert only, no translation
-transdoc diagnose input.pdf                                 # profile only
-transdoc serve                                              # web UI + REST API
-```
+---
 
-Engines (`-e`): `google` (default — benchmark winner) · `fallback` (google→mymemory→libretranslate
-backstops) · `mymemory` · `libretranslate` · `madlad` · `opusmt` · `argos` · `nllb` (offline/private) ·
-`openrouter` · `anthropic` · `echo`.
+## Scope & limits
 
-## Status
-Core pipeline + IR + extractors (PDF/DOCX/ODT/PPTX/XLSX/EPUB/SRT/VTT/image/text) +
-OCR (Tesseract default, auto-escalating to PaddleOCR on low-confidence pages; Surya optional) +
-translate (default `google`, benchmark-selected, no fallback chain; offline NMT/LLM engines
-selectable via `-e`; persistent SQLite TM, brand/math/token protection) + regenerate (**in-place** Office:
-docx/odt/pptx/xlsx/epub/srt/vtt · **form-aware** PDF: overlay for forms, reconstruct otherwise ·
-image overlay) + report. See `docs/ARCHITECTURE.md` for the fidelity strategy and
-`docs/RISKS.md` for known limits. Quality is measured by the eval harness
-(`python -m transdoc.eval.harness`, structure/fidelity/CER/WER/chrF + baseline regression gate).
+- **Personal, local, non-commercial.** Not distributed or commercialised, so software/model
+  licenses are not a constraint here — AGPL (PyMuPDF) and CC-BY-NC weights (NLLB-200, Surya) are all
+  fair game. The only goals are **maximum fidelity and quality on a CPU-only machine**.
+- **North star:** output ≡ input, only the language changes. Cross-format conversion (e.g. PDF→DOCX
+  as a *feature*) is deliberately out of scope; format is preserved, not transformed.
+- **Privacy:** the default `google` engine sends text to Google's public endpoint (off-device).
+  For confidential documents use `-e nllb` (offline NMT) or a self-hosted `-e libretranslate`. See
+  [docs/CONFIGURATION.md](docs/CONFIGURATION.md#environment-variables).
 
-**Quality tooling** (verify the *rendered* output, not block counts): `scripts/verify_output.py`
-(OCR a generated PDF, flag wrong-language pages), `scripts/compare_features.py` (bold/italic/
-colour preservation original vs translated), `scripts/bench_quality.py` (round-trip chrF —
-avg **88.2** across 9 languages).
-
-Test corpus under `corpus/` — `corpus/real/` (real downloads) + `corpus/synthetic/` (generated
-ground-truth); see `corpus/README.md`.
-
-## Privacy
-The default `fallback`/`google` engine sends document text to Google's public endpoint
-(off-device) — don't use it for confidential documents. For **fully on-device** translation use
-`-e nllb` (offline NMT, ≈Google quality) or a self-hosted `-e libretranslate`; text never leaves
-your machine. A persistent SQLite TM caches every segment locally (each sent at most once).
-
-## Limits
-Uploads are bounded against malicious/pathological input (env-overridable in `limits.py`):
-`TRANSDOC_MAX_FILE_MB` (300), `TRANSDOC_MAX_PAGES` (5000), `TRANSDOC_MAX_IMAGE_MP` (300),
-`TRANSDOC_MAX_ZIP_MB` (1000) + a decompression-ratio cap (zip-bomb guard for office/EPUB).
+---
 
 ## License
-Code is Apache-2.0, but this is a **personal, non-commercial, local-use** project, so bundled
-dependencies and model weights are used **without license restriction** — including AGPL
-(PyMuPDF) and CC-BY-NC weights (NLLB-200, Surya). If you ever fork this for **commercial**
-distribution, those constraints come back: swap PyMuPDF→pypdfium2 (Apache) and
-NLLB→MADLAD/Opus-MT (commercial-safe). See `docs/TRANSLATION.md`.
+
+Code is **Apache-2.0**. Because this is a personal, non-commercial, local-use project, bundled
+dependencies and model weights are used without license restriction — including AGPL (PyMuPDF) and
+CC-BY-NC weights (NLLB-200, Surya). For a **commercial** fork those constraints return: swap
+PyMuPDF→pypdfium2 (Apache) and NLLB→MADLAD/Opus-MT (commercial-safe). See
+[docs/TRANSLATION.md](docs/TRANSLATION.md).
