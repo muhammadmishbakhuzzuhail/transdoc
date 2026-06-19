@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Caption <-> figure/table association: a caption binds to its nearest media in the same
 column band and is reordered to sit adjacent to it, even when a body paragraph slotted between."""
 

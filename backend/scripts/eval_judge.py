@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """LLM-as-judge eval: Claude vision scores the pipeline's extraction against the source image.
 
 This automates the manual vision-QA audit. For each document it renders the source to an image,

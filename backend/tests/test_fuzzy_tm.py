@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Fuzzy TM (PR-4): lexical scoring, the auto-apply safety gate (near-identical + same protected
 tokens), the 75–95% suggestion tier, and end-to-end reuse through translate_document. The embedding
 backend is optional, so these tests exercise the lexical path (no sentence-transformers needed)."""

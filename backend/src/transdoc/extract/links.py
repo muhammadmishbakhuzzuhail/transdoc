@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Hyperlink capture — populate Block.style.link so links survive translation (audit P1).
 
 PDF: fitz page.get_links() gives URI links with a 'from' rectangle; attach the URI to the

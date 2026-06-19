@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """LAYOUT overlay fidelity: page background (logos/graphics) survives, and character
 styling (bold/italic/colour/size) is captured from the source and carried to the overlay.
 """

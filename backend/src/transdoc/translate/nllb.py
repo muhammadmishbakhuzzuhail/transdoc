@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """NLLB-200 translator — offline neural MT, 200 languages.
 
 LICENSE: NLLB-200 weights are CC-BY-NC-4.0 (non-commercial, "not for production").

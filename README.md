@@ -91,12 +91,15 @@ docs/        documentation + design notes
 
 ## License
 
-**Proprietary — source-available, all rights reserved.** © 2026 Muhammad Mishbakhuz Zuhail.
+**GNU AGPL-3.0** — free and open source. © 2026 Muhammad Mishbakhuz Zuhail.
 
-The source is published for **reference and review only**. You may read it and clone the repo to
-read it; you may **not** use, copy, modify, redistribute, host, or fork it for development without
-prior written permission. See [LICENSE](LICENSE). Authorship is evidenced by this repository's Git
-history. To request permission: muhammadmishbakhuzzuhail@gmail.com
+You may use, study, modify, and redistribute this software under the terms of the
+[GNU Affero General Public License v3.0](LICENSE). The AGPL is **strong copyleft**: any modified
+version — including one you run as a network/web service — must also be released under the AGPL with
+its source and **must keep the original copyright and attribution**. It cannot be taken closed or
+re-claimed as someone else's work. Every source file carries an `SPDX-License-Identifier:
+AGPL-3.0-only` header.
 
-Third-party dependencies and model weights (PyMuPDF/AGPL, NLLB-200·Surya/CC-BY-NC, …) remain under
-their own licenses, which govern only those components — not this project's own source.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (DCO sign-off + CLA). Third-party
+dependencies and model weights (PyMuPDF/AGPL, NLLB-200·Surya/CC-BY-NC, …) remain under their own
+licenses.

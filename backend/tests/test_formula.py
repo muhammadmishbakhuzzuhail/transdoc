@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Formula detection: equation lines are typed FORMULA (preserved verbatim), prose is not.
 
 Guards the academic-PDF case where translating `head_i = Attention(...)` scrambled the

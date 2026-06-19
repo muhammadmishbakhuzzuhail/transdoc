@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Opus-MT / Marian translator — MIT-licensed, commercial-safe, no API key.
 
 Helsinki-NLP per-pair models (e.g. Helsinki-NLP/opus-mt-en-id). Tiny, fast on CPU, ideal

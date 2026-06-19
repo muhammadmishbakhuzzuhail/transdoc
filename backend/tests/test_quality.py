@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Reference-free QE annotation (COMET-Kiwi). The model is heavy/gated, so these tests stub the
 estimator and exercise the wiring: scores -> confidence, qe_threshold -> low-quality flag, and
 graceful no-op when the model is unavailable."""

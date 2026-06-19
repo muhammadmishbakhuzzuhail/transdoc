@@ -1,6 +1,5 @@
-// © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-// Proprietary — source-available for reference only; no use, copying, or
-// distribution without written permission. See LICENSE.
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 import { AlertCircle, CheckCircle2, Download, Loader2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"

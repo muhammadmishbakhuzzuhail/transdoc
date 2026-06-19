@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Inline run-level styling: capture mixed-style docx paragraph -> translate per-run -> render
 bold/super/link inline in markdown + docx. Uniform paragraphs keep runs empty (no change)."""
 

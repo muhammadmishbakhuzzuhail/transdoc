@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """PPTX renderer — round-trip. Reopen the source deck, walk it identically to the extractor,
 and write each translated paragraph into its first run (clearing the rest), preserving the
 deck's theme, layout, and positioning."""

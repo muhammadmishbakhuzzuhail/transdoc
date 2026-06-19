@@ -1,6 +1,5 @@
-// © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-// Proprietary — source-available for reference only; no use, copying, or
-// distribution without written permission. See LICENSE.
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 // Thin client for the transdoc FastAPI backend. In dev, /api is proxied by Vite to :8000;
 // in a deployed build set VITE_API_BASE to the backend origin.
 const BASE = import.meta.env.VITE_API_BASE ?? ""

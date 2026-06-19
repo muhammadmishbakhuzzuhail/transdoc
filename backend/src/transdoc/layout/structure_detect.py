@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Run PaddleOCR PP-StructureV3 in the isolated paddle interpreter and write structured
 regions as JSON. Companion to subprocess_detect.py (plain layout) — this one also returns each
 region's CONTENT: OCR text for prose, **LaTeX for formulas**, **HTML for tables**, plus the

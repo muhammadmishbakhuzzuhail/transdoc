@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Document layout analysis — detect a page's regions (text / title / figure / table /
 formula / chart …) so non-text regions can be cropped verbatim (pixel-perfect math, diagrams,
 charts) and only the text regions are translated and reflowed. This is the BabelDOC/DeepL

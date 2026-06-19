@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Feedback flywheel (PR): the user's most similar CONFIRMED corrections are injected as few-shot
 examples into the LLM prompt. No model call — exercises retrieval + prompt assembly."""
 

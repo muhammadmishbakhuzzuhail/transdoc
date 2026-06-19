@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Glossary store — persisted term→rendering enforcement over the shared SQLite database (PR-2).
 
 A glossary entry pins how a source term is rendered in the target, document-wide and across runs,

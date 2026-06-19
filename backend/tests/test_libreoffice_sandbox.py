@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Legacy-format conversion via LibreOffice is sandboxed: isolated throwaway profile, CPU +
 output-size rlimits, and the profile is cleaned up. Skipped where soffice isn't installed."""
 

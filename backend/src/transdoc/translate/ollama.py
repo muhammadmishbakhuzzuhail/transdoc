@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Ollama local-LLM translator — document-level, context-aware (zero-cost, offline, private).
 
 Unlike the segment-independent NMT engines, this carries a sliding window of neighbours so the

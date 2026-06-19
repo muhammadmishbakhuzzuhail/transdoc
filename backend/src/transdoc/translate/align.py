@@ -1,6 +1,5 @@
-# © 2026 Muhammad Mishbakhuz Zuhail. All rights reserved.
-# Proprietary — source-available for reference only; no use, copying, or
-# distribution without written permission. See LICENSE.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
 """Word-alignment style transfer (PR-2): keep inline run styling aligned with the right words.
 
 A mixed-style paragraph arrives as runs ("the ", **"red"**, " car"). Translating each run in
