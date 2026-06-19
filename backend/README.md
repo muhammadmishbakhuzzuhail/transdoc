@@ -1,50 +1,43 @@
 # transdoc backend
 
 The Python package (`transdoc`): the document pipeline, CLI, and FastAPI API that the
-`../frontend` talks to. Project overview is in the repo-root `README.md`.
+`../frontend` talks to. Project overview is in the repo-root [`README.md`](../README.md); full
+documentation is under [`../docs/`](../docs).
 
 ## Install & run
 
 ```bash
 cd backend
-python3.11 -m venv .venv && . .venv/bin/activate
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,formats,api]"      # core + tests + extra formats + web API
 
 python server.py                          # web UI + REST API → http://127.0.0.1:8000
-transdoc translate input.pdf --lang id --to pdf      # CLI, one-shot
-pytest                                                # offline test suite (echo engine)
+transdoc translate input.pdf --lang id    # CLI, one-shot
+pytest                                     # offline test suite (echo engine)
 ```
 
-`python server.py` launches the web UI + REST API (it's a thin wrapper around the same app —
-`transdoc serve` is the equivalent CLI command). It needs the `api` extra (FastAPI + uvicorn),
-installed above. API docs are at `http://127.0.0.1:8000/docs`; rebind with
-`python server.py 0.0.0.0 8080` (or `TRANSDOC_HOST`/`TRANSDOC_PORT`). From the repo root,
-`make serve` does the same thing.
+`python server.py` launches the web UI + REST API — a thin wrapper around the same app as
+`transdoc serve`. It needs the `api` extra (FastAPI + uvicorn), installed above. API docs are at
+`/docs`; rebind with `python server.py 0.0.0.0 8080` (or `TRANSDOC_HOST`/`TRANSDOC_PORT`).
 
-## Layout (`--layout paddle`)
+## Where to look next
 
-Structured extraction (PP-StructureV3) recovers layout regions, tables→HTML, formula→LaTeX and
-reading order, cropping figures/math verbatim. paddlepaddle and torch can't share a venv, so it
-runs out-of-process: create an isolated paddle venv and point `TRANSDOC_LAYOUT_PYTHON` at its
-python (default search: `./layout_venv/bin/python`).
+| Topic | Document |
+|-------|----------|
+| Running the tool (CLI/API/formats) | [../docs/USAGE.md](../docs/USAGE.md) |
+| Config fields, engines, env vars | [../docs/CONFIGURATION.md](../docs/CONFIGURATION.md) |
+| Quality pipeline | [../docs/QUALITY.md](../docs/QUALITY.md) |
+| Dev setup, tests, eval, paddle venv, code layout | [../docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) |
 
-```bash
-python3.11 -m venv layout_venv
-layout_venv/bin/pip install -e . "paddlepaddle-gpu==3.3.1" "paddleocr>=3.0"
-transdoc translate paper.pdf --lang id --to pdf --layout paddle
-```
-
-## Structure
+## Structure (summary)
 
 ```
 server.py        launcher for the web UI + REST API (== `transdoc serve`)
-src/transdoc/
-  cli.py config.py pipeline.py ir.py     entry, config, orchestrator, IR
-  ingest/ extract/ ocr/ diagnose/ translate/ regenerate/   pipeline phases
-  layout/        PP-StructureV3 structured extraction (in-process or subprocess)
-  api/           FastAPI app, async job store, analysis serializer
-  assets/ headers.py limits.py report.py
+src/transdoc/    cli · config · pipeline · ir · ingest · extract · ocr · diagnose
+                 · translate · regenerate · layout · api · eval
 tests/           pytest (offline)
-scripts/         dev/QA utilities (qa_fidelity, bench_quality, fetch_corpus, …)
-corpus/          test documents
+scripts/         dev/QA utilities (fetch_corpus, make_samples, bench_*, qa_fidelity, …)
+corpus/          local test documents (git-ignored)
 ```
+
+Full code-layout breakdown: [../docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md#code-layout).
