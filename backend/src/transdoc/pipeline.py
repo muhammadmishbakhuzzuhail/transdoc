@@ -160,6 +160,12 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     tr = get_translator(cfg)
     with _stage(timings, "translate"):
         translate_document(doc, tr, cfg)
+        # Phase 5a0: residual foreign-script cleanup — re-translate non-Latin runs the engine left
+        # behind in a Latin-target output (mixed-script source, e.g. inline 中文/العربية in an EN
+        # doc). Real engines only; no-op when nothing foreign remains.
+        if getattr(tr, "cacheable", True):
+            from .translate.residual import retranslate_foreign_runs
+            retranslate_foreign_runs(doc, tr, cfg)
         # Phase 5a: recompute text direction from the TRANSLATED text. An LTR source translated
         # into an RTL target (Arabic/Hebrew/...) must now flow right-to-left — set Style.rtl from
         # the output before rendering (the renderers already honour style.rtl).
