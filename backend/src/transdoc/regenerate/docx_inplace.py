@@ -95,4 +95,10 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
                     _set_cell(dc, tc.output_text)
 
     d.save(out_path)
+    # Footnotes/endnotes/comments live in zip parts python-docx doesn't model — rewrite them in the
+    # saved file (after save, so they survive it).
+    notes = {b.id: b.output_text for b in getattr(doc, "notes", [])}
+    if notes:
+        from ..extract.docx_notes import write_notes
+        write_notes(out_path, notes)
     return out_path

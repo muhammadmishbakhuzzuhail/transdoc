@@ -242,8 +242,9 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
                     items.append((r.text, r))
 
     # DOCX section header/footer paragraphs translate too (kept off `blocks` so they render into
-    # the output section's header/footer, not the body).
-    for b in (*doc.headers, *doc.footers):
+    # the output section's header/footer, not the body). Footnotes/endnotes/comments (doc.notes)
+    # likewise.
+    for b in (*doc.headers, *doc.footers, *getattr(doc, "notes", ())):
         if b.is_translatable:
             items.append((b.text, b))
 
