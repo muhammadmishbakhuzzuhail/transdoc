@@ -37,3 +37,9 @@ def test_factory_returns_indictrans_without_loading_model():
 def test_empty_batch_short_circuits():
     tr = IndicTransTranslator()
     assert tr.translate_batch([], Config(target_lang="hi")) == []
+
+
+def test_to_code_normalises_bcp47_and_case():
+    # regioned / uppercase codes must resolve, not silently fall through to the English default
+    assert to_code("hi") == to_code("hi-IN") == to_code("HI") == "hin_Deva"
+    assert to_code("ta-IN") == "tam_Taml"

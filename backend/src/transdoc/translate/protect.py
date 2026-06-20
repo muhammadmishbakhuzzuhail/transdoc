@@ -84,8 +84,11 @@ class Protector:
             # protected/glossary term like "Rev" would match inside "Revenue" and restore to its
             # rendering mid-word ("Revenue" -> "Putaranenue"). Add word boundaries on alphanumeric
             # edges (kept off for terms that start/end with punctuation, e.g. multi-word phrases).
-            lb = r"(?<!\w)" if ent[:1].isalnum() or ent[:1] == "_" else ""
-            rb = r"(?!\w)" if ent[-1:].isalnum() or ent[-1:] == "_" else ""
+            # Word boundary only when the edge is ASCII alnum. \w matches CJK/Thai too, so a
+            # boundary on a scriptio-continua term (no spaces, e.g. 中文 inside 这是中文文本) never
+            # matches and the term silently goes unprotected — there a substring match is correct.
+            lb = r"(?<!\w)" if (ent[:1].isascii() and ent[:1].isalnum()) or ent[:1] == "_" else ""
+            rb = r"(?!\w)" if (ent[-1:].isascii() and ent[-1:].isalnum()) or ent[-1:] == "_" else ""
             for m in re.finditer(lb + re.escape(ent) + rb, text):
                 spans.append((m.start(), m.end()))
         spans.sort(key=lambda s: (s[0], -(s[1] - s[0])))

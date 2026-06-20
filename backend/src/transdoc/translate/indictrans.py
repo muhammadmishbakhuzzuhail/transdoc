@@ -40,7 +40,9 @@ def to_code(lang: str | None, default: str = _EN) -> str:
     """ISO 639-1 -> IndicTrans2 code; unknown / auto -> default (English)."""
     if not lang or lang == "auto":
         return default
-    return INDIC_CODE.get(lang, default)
+    # Normalise BCP-47 / case (hi-IN, HI -> hi) like every other lang table; raw lookup here
+    # silently fell through to English default for regioned/uppercase codes.
+    return INDIC_CODE.get(lang.split("-")[0].lower(), default)
 
 
 def direction(src_code: str, tgt_code: str) -> str:

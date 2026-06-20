@@ -131,6 +131,13 @@ LANG_TO_SCRIPT: dict[str, str] = {
     "ru": "Cyrillic", "uk": "Cyrillic", "bg": "Cyrillic", "sr": "Cyrillic",
     "ar": "Arabic", "fa": "Arabic", "ur": "Arabic", "he": "Hebrew", "el": "Greek",
     "ml": "Malayalam", "gu": "Gujarati", "pa": "Gurmukhi", "or": "Oriya", "si": "Sinhala",
+    # RTL / non-Latin languages also tracked in RTL_LANGS (textdir). Without these, _script_of
+    # returned "Latin" for them, so en->ps/sd/ug/etc. skipped the cross-script FLOW reflow and
+    # rendered as broken RTL overlay with half-blank pages. Script choice only needs to be
+    # non-Latin so the reflow + residual passes fire; OCR routing falls back to DEFAULT_CHAIN.
+    "ps": "Arabic", "sd": "Arabic", "ug": "Arabic", "azb": "Arabic", "prs": "Arabic",
+    "ckb": "Arabic", "iw": "Hebrew", "yi": "Hebrew", "dv": "Thaana",
+    "syr": "Syriac", "arc": "Syriac", "nqo": "Nko",
 }
 
 

@@ -167,3 +167,13 @@ def test_extra_term_matches_whole_word_only():
     assert "Putaranenue" not in restored          # substring inside "Revenue" left alone
     assert "Revenue" in restored
     assert restored == "Internal Revenue Service (Putaran. 2024)"   # standalone "Rev" still applied
+
+
+def test_cjk_term_protected_without_spaces():
+    # scriptio-continua: a CJK glossary term has no space boundaries; a \w word-boundary guard
+    # never matches there, so the term must fall back to a substring match and still be protected.
+    p = Protector(extra=["中文"], renderings={"中文": "CHINESE"})
+    text = "这是中文文本"
+    protected, mapping = p.protect(text)
+    assert "中文" not in protected                                   # term was masked, not sent raw
+    assert Protector.restore(protected, mapping) == "这是CHINESE文本"  # restored to its pinned rendering
