@@ -155,3 +155,15 @@ def test_multiple_literal_placeholders_roundtrip():
     text = "[PH3] and [PH7] markers with https://a.com link"
     protected, mapping = p.protect(text)
     assert Protector.restore(protected, mapping) == text
+
+
+def test_extra_term_matches_whole_word_only():
+    # a short protected/glossary term must not match as a substring inside a longer word:
+    # "Rev" -> "Putaran" must NOT corrupt "Revenue" into "Putaranenue" (regression).
+    p = Protector(extra=["Rev"], renderings={"Rev": "Putaran"})
+    text = "Internal Revenue Service (Rev. 2024)"
+    protected, mapping = p.protect(text)
+    restored = Protector.restore(protected, mapping)
+    assert "Putaranenue" not in restored          # substring inside "Revenue" left alone
+    assert "Revenue" in restored
+    assert restored == "Internal Revenue Service (Putaran. 2024)"   # standalone "Rev" still applied

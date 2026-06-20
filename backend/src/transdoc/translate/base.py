@@ -172,6 +172,7 @@ def _auto_glossary_terms(texts: list[str], min_count: int = 2,
     c: Counter = Counter()
     lowered: set[str] = set()
     run_words: set[str] = set()
+    abbrev: set[str] = set()
     cap_words_signal_proper = (src or "").split("-")[0].lower() not in _NOUN_CAPS_LANGS
     for t in texts:
         for m in _WORD.findall(t):
@@ -179,13 +180,18 @@ def _auto_glossary_terms(texts: list[str], min_count: int = 2,
                 lowered.add(m)
         for m in _PROPER.findall(t):
             run_words.update(m.split())        # part of a multi-word name -> don't pin in isolation
+        # a short Capitalized token written with a trailing period is an abbreviation ("Rev.",
+        # "Cat.", "No.", "Inc."), not a proper noun — translating it standalone is wrong ("Rev" ->
+        # "Putaran"/round, and it then corrupts "Revenue"). Never mine it.
+        abbrev.update(re.findall(r"\b[A-Z][A-Za-z]{0,3}(?=\.)", t))
     for t in texts:
         for m in _ACRONYM.findall(t):
             c[m] += 1
         if not cap_words_signal_proper:
             continue
         for m in _CAP_WORD.findall(t):
-            if m not in _CAP_STOP and m.lower() not in lowered and m not in run_words:
+            if (m not in _CAP_STOP and m.lower() not in lowered and m not in run_words
+                    and m not in abbrev):
                 c[m] += 1
     return sorted((term for term, n in c.items() if n >= min_count), key=len, reverse=True)
 

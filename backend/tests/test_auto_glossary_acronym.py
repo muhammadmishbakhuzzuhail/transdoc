@@ -54,3 +54,13 @@ def test_glossary_does_not_rewrite_inside_urls():
     assert _apply_glossary("mail x@forms.org", {"forms": "formulir"}) == "mail x@forms.org"
     # but a real standalone occurrence is still enforced
     assert _apply_glossary("see Forms here", {"Forms": "Formulir"}) == "see Formulir here"
+
+
+def test_abbreviations_with_period_not_mined():
+    # a short Capitalized token written as an abbreviation ("Rev.", "Cat.", "No.") is not a proper
+    # noun — never mine it (it would translate standalone wrong and corrupt longer words).
+    from transdoc.translate.base import _auto_glossary_terms
+    texts = ["Form W-9 (Rev. March 2024)", "Cat. No. 10231X (Rev. 3-2024)",
+             "Internal Revenue Service", "See No. 5 and No. 6"]
+    mined = _auto_glossary_terms(texts, src="en")
+    assert "Rev" not in mined and "Cat" not in mined and "No" not in mined
