@@ -21,21 +21,13 @@ def _set_para(para, text: str) -> None:
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from pptx import Presentation
 
+    from ..extract.pptx import iter_text_paras   # one shared walk -> extract/render never drift
+
     m = {b.id: b.output_text for b in doc.blocks}
     prs = Presentation(doc.source_path)
-    for si, slide in enumerate(prs.slides):
-        for shi, shape in enumerate(slide.shapes):
-            if shape.has_text_frame:
-                for pi, para in enumerate(shape.text_frame.paragraphs):
-                    t = m.get(f"s{si}_sh{shi}_p{pi}")
-                    if t is not None:
-                        _set_para(para, t)
-            elif shape.has_table:
-                for ri, row in enumerate(shape.table.rows):
-                    for ci, cell in enumerate(row.cells):
-                        for pi, para in enumerate(cell.text_frame.paragraphs):
-                            t = m.get(f"s{si}_sh{shi}_t{ri}_{ci}_p{pi}")
-                            if t is not None:
-                                _set_para(para, t)
+    for bid, para, _si in iter_text_paras(prs):
+        t = m.get(bid)
+        if t is not None:
+            _set_para(para, t)
     prs.save(out_path)
     return out_path
