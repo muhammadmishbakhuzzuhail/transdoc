@@ -49,3 +49,19 @@ def test_skips_non_latin_target():
 def test_noop_when_no_foreign():
     d, b = _doc("Teks Indonesia biasa saja.")
     assert retranslate_foreign_runs(d, _Stub(), Config(source_lang="en", target_lang="id")) == 0
+
+
+def test_detects_late_indic_scripts():
+    # Kannada/Gujarati/Gurmukhi/Oriya/Sinhala were missing from the foreign-run ranges -> inline
+    # runs in these scripts went undetected and untranslated in a Latin-target output.
+    for s in ("ಕನ್ನಡ", "ગુજરાતી", "ਪੰਜਾਬੀ", "ଓଡ଼ିଆ", "සිංහල"):
+        assert _FOREIGN.search(s), s
+
+
+def test_skips_non_latin_target_derived():
+    # derived from LANG_TO_SCRIPT: sa (Sanskrit/Devanagari) and gu/or/si must be skipped so their
+    # own correct script output isn't re-translated as a foreign leftover.
+    from transdoc.translate.residual import _non_latin_targets
+    nl = _non_latin_targets()
+    assert {"sa", "gu", "pa", "or", "si", "kn", "ps", "dv"} <= nl
+    assert "id" not in nl and "en" not in nl

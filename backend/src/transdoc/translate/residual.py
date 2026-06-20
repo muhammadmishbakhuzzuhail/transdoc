@@ -25,14 +25,22 @@ from ..config import Config
 # detect only the dominant script and leave the other verbatim).
 _L = (r"Ͱ-ϿЀ-ԯ֐-׿؀-ۿݐ-ݿ"
       r"ऀ-ॿঀ-৿஀-௿ఀ-౿ഀ-ൿ"
-      r"฀-๿ᄀ-ᇿ぀-ヿ㄰-㆏㐀-䶿一-鿿가-힯")
+      r"฀-๿ᄀ-ᇿ぀-ヿ㄰-㆏㐀-䶿一-鿿가-힯"
+      # Gurmukhi, Gujarati, Oriya, Kannada, Sinhala — first-class in OCR/routing (#218) but were
+      # missing here, so inline runs in these scripts were never re-translated.
+      "਀-੿઀-૿଀-୿ಀ-೿඀-෿"
+      "܀-ݏހ-޿")  # Syriac, Thaana
 _FOREIGN = re.compile(rf"[{_L}][{_L}　。、，！？：；]*")
 
-# Targets whose own script is non-Latin — skip the pass for these (foreign script is the point).
-_NON_LATIN_TARGETS = {
-    "zh", "ja", "ko", "ar", "fa", "ur", "he", "hi", "mr", "ne", "bn", "ta", "te", "kn", "ml",
-    "th", "ru", "uk", "bg", "sr", "el",
-}
+
+def _non_latin_targets() -> set[str]:
+    """Target language bases whose own script is non-Latin — skip the pass for these (foreign
+    script is the point). Derived from the single LANG_TO_SCRIPT source of truth (every entry there
+    is a non-Latin script) so this can't drift out of sync with OCR/reflow routing, plus a few
+    Latin-coded languages that still emit non-Latin output."""
+    from ..ocr.router import LANG_TO_SCRIPT
+    base = {k.split("-")[0] for k in LANG_TO_SCRIPT}
+    return base | {"am", "ka", "hy"}  # Amharic/Georgian/Armenian: own scripts, not in routing table
 
 
 def _fields(doc):
@@ -56,7 +64,7 @@ def retranslate_foreign_runs(doc, tr, cfg: Config) -> int:
     """Re-translate leftover non-Latin runs in the translated text. Latin-script targets only.
     Returns the number of text fields changed. Best-effort: a failed batch leaves text as-is."""
     tgt = (cfg.target_lang or "").split("-")[0].lower()
-    if tgt in _NON_LATIN_TARGETS:
+    if tgt in _non_latin_targets():
         return 0
     fields = _fields(doc)
     runs = {m.group(0).strip() for _, t in fields for m in _FOREIGN.finditer(t)}
