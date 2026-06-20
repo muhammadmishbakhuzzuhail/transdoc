@@ -24,3 +24,20 @@ def test_tmp_dirs_removed_after_run(tmp_path):
                                output_format=OutputFormat.PDF), out_path=str(out))
     # any registered temp dirs must be gone + the list cleared
     assert res.doc.tmp_dirs == []
+
+
+def test_cleanup_unlinks_display_png():
+    # an image source's deskew/orient overlay background is a delete=False temp file outside
+    # tmp_dirs; _cleanup_tmp must unlink it (audit: per-image /tmp leak).
+    import os
+    import tempfile
+
+    from transdoc.ir import Document
+    from transdoc.pipeline import _cleanup_tmp
+    f = tempfile.NamedTemporaryFile(prefix="transdoc_disp_", suffix=".png", delete=False)
+    f.write(b"\x89PNG")
+    f.close()
+    doc = Document(source_path="x", mime="image")
+    doc.render_path = f.name
+    _cleanup_tmp(doc)
+    assert not os.path.exists(f.name)

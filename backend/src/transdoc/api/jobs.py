@@ -157,8 +157,8 @@ class JobStore:
         try:
             out_dir = self.work_dir / job.id
             out_dir.mkdir(exist_ok=True)
-            ext = {"markdown": ".md", "docx": ".docx", "pdf": ".pdf",
-                   "plain-text": ".txt"}.get(cfg.output_format.value, ".md")
+            from ..pipeline import output_ext
+            ext = output_ext(cfg, job.input_path)   # all formats, incl pptx/xlsx/epub/odt/same
             out_path = str(out_dir / f"translated{ext}")
             job.progress = 0.3
             job.message = "translating"

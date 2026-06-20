@@ -5,7 +5,17 @@
 from __future__ import annotations
 
 from transdoc.config import Config, Engine, Mode, OutputFormat
-from transdoc.pipeline import run
+from transdoc.pipeline import output_ext, run
+
+
+def test_output_ext_covers_all_formats():
+    # the API job runner builds its own out_path; output_ext must give the right ext for every
+    # format (regression: pptx/xlsx/epub/odt fell back to .md and wrote binary into a .md file).
+    assert output_ext(Config(target_lang="id", output_format=OutputFormat.PPTX), "x.pptx") == ".pptx"
+    assert output_ext(Config(target_lang="id", output_format=OutputFormat.EPUB), "x.epub") == ".epub"
+    assert output_ext(Config(target_lang="id", output_format=OutputFormat.ODT), "x.odt") == ".odt"
+    # same-as-source -> source extension
+    assert output_ext(Config(target_lang="id", output_format=OutputFormat.SAME), "x.xlsx") == ".xlsx"
 
 
 def test_text_to_markdown_end_to_end(tmp_path):

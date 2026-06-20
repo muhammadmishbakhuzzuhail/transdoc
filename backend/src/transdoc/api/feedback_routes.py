@@ -17,11 +17,33 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
 from ..store.glossary import GlossaryStore
 from ..store.tm import TMStore
 
 router = APIRouter(prefix="/api")
+
+
+async def _save_capped(file: UploadFile, suffix: str) -> str:
+    """Stream an upload to a temp file with a hard byte cap (HTTP 413), like app._save_upload.
+    The CSV/TMX import endpoints previously did `await file.read()` with no limit -> a large upload
+    could exhaust memory."""
+    from ..limits import MAX_FILE_MB
+    cap = MAX_FILE_MB * 1024 * 1024
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    written = 0
+    try:
+        with tmp as f:
+            while chunk := await file.read(1024 * 1024):
+                written += len(chunk)
+                if written > cap:
+                    raise HTTPException(413, f"file exceeds the {MAX_FILE_MB} MB limit")
+                f.write(chunk)
+    except Exception:
+        Path(tmp.name).unlink(missing_ok=True)
+        raise
+    return tmp.name
 
 
 def _glossary() -> GlossaryStore:
@@ -162,18 +184,19 @@ def glossary_export_csv(src_lang: str | None = None, tgt_lang: str | None = None
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
     tmp.close()
     export_glossary_csv(_glossary(), tmp.name, src_lang, tgt_lang)
-    return FileResponse(tmp.name, filename="glossary.csv", media_type="text/csv")
+    return FileResponse(tmp.name, filename="glossary.csv", media_type="text/csv",
+                        background=BackgroundTask(Path(tmp.name).unlink, missing_ok=True))
 
 
 @router.post("/glossary/import")
 async def glossary_import(file: UploadFile = File(...), src_lang: str = Form(""),
                           tgt_lang: str = Form(""), domain: str = Form("")) -> dict:
     from ..store.interchange import import_glossary_csv
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
-    tmp.write(await file.read())
-    tmp.close()
-    n = import_glossary_csv(_glossary(), tmp.name, src_lang, tgt_lang, domain)
-    Path(tmp.name).unlink(missing_ok=True)
+    name = await _save_capped(file, ".csv")
+    try:
+        n = import_glossary_csv(_glossary(), name, src_lang, tgt_lang, domain)
+    finally:
+        Path(name).unlink(missing_ok=True)
     return {"imported": n}
 
 
@@ -183,21 +206,22 @@ def tm_export_tmx():
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".tmx")
     tmp.close()
     export_tmx(_tm(), tmp.name)
-    return FileResponse(tmp.name, filename="tm.tmx", media_type="application/x-tmx+xml")
+    return FileResponse(tmp.name, filename="tm.tmx", media_type="application/x-tmx+xml",
+                        background=BackgroundTask(Path(tmp.name).unlink, missing_ok=True))
 
 
 @router.post("/tm/import")
 async def tm_import(file: UploadFile = File(...)) -> dict:
     from ..store.interchange import import_tmx
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".tmx")
-    tmp.write(await file.read())
-    tmp.close()
+    name = await _save_capped(file, ".tmx")
     try:
-        n = import_tmx(_tm(), tmp.name)
+        n = import_tmx(_tm(), name)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, f"bad TMX: {e}")
     finally:
-        Path(tmp.name).unlink(missing_ok=True)
+        Path(name).unlink(missing_ok=True)
     return {"imported": n}
 
 
