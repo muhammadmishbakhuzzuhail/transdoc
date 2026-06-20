@@ -289,6 +289,9 @@ class Document(BaseModel):
     # into the output section's header/footer, not the body. Other renderers ignore them.
     headers: list["Block"] = Field(default_factory=list)
     footers: list["Block"] = Field(default_factory=list)
+    # DOCX footnotes / endnotes / comments — separate XML parts python-docx doesn't model, kept
+    # apart from `blocks` so the in-place renderer's paragraph index-zip stays 1:1 with the body.
+    notes: list["Block"] = Field(default_factory=list)
     # Number of newspaper-style columns in the (first) DOCX section body. 1 = single column.
     section_columns: int = 1
     # Per-page text-markup annotations (highlight/underline/strikeout) — repainted in reconstruct

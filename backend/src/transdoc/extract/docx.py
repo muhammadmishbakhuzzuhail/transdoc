@@ -356,8 +356,20 @@ def extract(path: str, cfg: Config) -> Document:
             idx += 1
 
     _capture_headers_footers(d, out)
+    _capture_notes(d, out)
     reflow_order(out)
     return out
+
+
+def _capture_notes(d, out) -> None:
+    """Footnotes / endnotes / comments (separate XML parts python-docx ignores) — previously left
+    untranslated. Stored in out.notes (kept apart from out.blocks so the in-place renderer's body
+    index-zip stays 1:1)."""
+    from .docx_notes import read_notes
+    for nid, text, kind in read_notes(d):
+        btype = BlockType.FOOTNOTE if kind in ("footnote", "endnote") else BlockType.PARAGRAPH
+        out.notes.append(Block(id=nid, type=btype, text=text,
+                               confidence=Confidence(source="digital")))
 
 
 def _capture_headers_footers(d, out) -> None:
