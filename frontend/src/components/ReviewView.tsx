@@ -77,6 +77,11 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
   const [value, setValue] = useState(seg.translation)
   const [state, setState] = useState<SaveState>("idle")
   const saved = useRef(seg.translation)
+  // mirror of `value` so onBlur saves the LATEST text even when a button click (TM/alt) sets it
+  // and blurs in the same tick (the render-time `value` closure would still be stale -> a second
+  // postCorrection reverting to the old text).
+  const valueRef = useRef(seg.translation)
+  const setVal = (v: string) => { valueRef.current = v; setValue(v) }
   const [alts, setAlts] = useState<string[] | null>(null)
   const [loadingAlts, setLoadingAlts] = useState(false)
 
@@ -124,14 +129,14 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
         </span>
       </div>
       <p className="mb-2 whitespace-pre-wrap text-sm text-muted-foreground">{seg.source}</p>
-      <textarea value={value} onChange={(e) => setValue(e.target.value)}
-        onFocus={onSelect} onBlur={() => save(value)}
+      <textarea value={value} onChange={(e) => setVal(e.target.value)}
+        onFocus={onSelect} onBlur={() => save(valueRef.current)}
         rows={Math.min(6, Math.max(2, Math.ceil(value.length / 60)))}
         className="w-full resize-y rounded-md border bg-background p-2 text-sm
           focus:outline-none focus:ring-2 focus:ring-primary" />
       {match && (
         <button type="button"
-          onClick={() => { setValue(match.match_translation); save(match.match_translation) }}
+          onClick={() => { setVal(match.match_translation); save(match.match_translation) }}
           className="mt-1.5 flex items-center gap-1 text-xs text-primary hover:underline">
           <Sparkles className="h-3 w-3" />
           TM {Math.round(match.score * 100)}%: {match.match_translation}
@@ -151,7 +156,7 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
         <div className="mt-1 space-y-1">
           {alts.map((a, i) => (
             <button key={i} type="button"
-              onClick={() => { setValue(a); save(a); setAlts(null) }}
+              onClick={() => { setVal(a); save(a); setAlts(null) }}
               className="block w-full rounded border border-dashed px-2 py-1 text-left text-xs hover:border-primary hover:bg-primary/5">
               {a}
             </button>

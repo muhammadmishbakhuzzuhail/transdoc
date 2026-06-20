@@ -14,18 +14,22 @@ export function BatchView({ bid }: { bid: string }) {
   const poll = useRef<number | null>(null)
 
   useEffect(() => {
+    let alive = true
     const tick = async () => {
       try {
         const b = await getBatch(bid)
+        if (!alive) return                       // component unmounted mid-request
         setJobs(b.jobs)
-        if (b.jobs.every((j) => j.status === "done" || j.status === "error")) {
+        // stop only once there's at least one job AND all are terminal; an empty list ([].every
+        // is true) must keep polling, not clear the interval on the first tick.
+        if (b.jobs.length > 0 && b.jobs.every((j) => j.status === "done" || j.status === "error")) {
           if (poll.current) clearInterval(poll.current)
         }
       } catch { /* keep polling */ }
     }
     tick()
     poll.current = window.setInterval(tick, 1000)
-    return () => { if (poll.current) clearInterval(poll.current) }
+    return () => { alive = false; if (poll.current) clearInterval(poll.current) }
   }, [bid])
 
   const done = jobs.filter((j) => j.status === "done").length
