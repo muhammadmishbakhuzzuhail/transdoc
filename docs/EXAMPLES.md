@@ -1,37 +1,40 @@
 # Examples gallery
 
-Side-by-side **input → output** previews so visitors can see what transdoc produces before running
-it. Each row links the source document and its translated result, with a rendered thumbnail.
+Real **input → output** pairs produced by transdoc, so you can see what it does before running it.
+Each example translates a non-English source **to English** with `--to same-as-source` (format
+preserved). Source and output files are in [`examples/`](examples); the thumbnails show page 1.
 
-> **Status: placeholder.** The gallery is generated from the local example corpus. The previews
-> below are stubs — they are filled once the example documents have been processed end-to-end (a
-> deliberate, on-request step, since it runs the full translation pipeline). Until then, treat the
-> table structure as the template.
+> Reproduce any row:
+> ```bash
+> cd backend
+> transdoc translate <source> --lang en --to same-as-source
+> ```
+> Quality numbers are reference-free COMET-Kiwi QE (mean over scored segments). Sources are the
+> public-domain UN Universal Declaration of Human Rights (UDHR) plus one synthetic DOCX.
 
-## How this gallery is built
+| Example | Source | Output (English) |
+|---------|--------|------------------|
+| **Arabic — RTL digital PDF** → English · QE ≈ 0.74<br>[source](examples/arabic.src.pdf) · [output](examples/arabic.en.pdf) | ![](examples/arabic.src.png) | ![](examples/arabic.en.png) |
+| **Chinese — CJK digital PDF** → English · QE ≈ 0.78<br>[source](examples/chinese.src.pdf) · [output](examples/chinese.en.pdf) | ![](examples/chinese.src.png) | ![](examples/chinese.en.png) |
+| **Hindi — scanned PDF (OCR)** → English · QE ≈ 0.75<br>[source](examples/hindi-scan.src.pdf) · [output](examples/hindi-scan.en.pdf) | ![](examples/hindi-scan.src.png) | ![](examples/hindi-scan.en.png) |
+| **Multilingual DOCX** → English (round-trip)<br>[source](examples/mixed-docx.src.docx) · [output](examples/mixed-docx.en.docx) | ![](examples/mixed-docx.src.png) | ![](examples/mixed-docx.en.png) |
 
-1. The example inputs live in `backend/corpus/` (local, git-ignored) and
-   `backend/src/transdoc/eval/samples/` (committed).
-2. Each input is translated with `transdoc translate` (see [USAGE.md](USAGE.md)).
-3. Input + output (and a PNG thumbnail of each) are placed under `docs/examples/` and linked here.
+## What these show
 
-## Gallery
+- **Layout is preserved across scripts.** RTL Arabic and CJK Chinese reflow cleanly into English;
+  the Wikipedia logo, the Eleanor-Roosevelt figure, and its caption stay in place (caption
+  anchoring). Cross-script sources reflow (FLOW) instead of being force-fit into the source's
+  per-glyph geometry.
+- **Scanned documents work.** The Hindi example is an image-only PDF — OCR → translate → clean
+  English output, no source text layer required.
+- **In-place Office round-trip.** The DOCX keeps its headings, list, and table; only the language
+  changes (the multilingual line is normalised to English).
 
-| # | Input | Type | Source → Target | Output | Preview |
-|---|-------|------|-----------------|--------|---------|
-| 1 | _digital PDF_ | PDF (digital) | en → id | _pending_ | _pending_ |
-| 2 | _scanned PDF_ | PDF (scan) | hi → id | _pending_ | _pending_ |
-| 3 | _DOCX_ | Word | en → id | _pending_ | _pending_ |
-| 4 | _form_ | PDF (AcroForm) | en → ar | _pending_ | _pending_ |
-| 5 | _photo / image_ | JPG | zh → en | _pending_ | _pending_ |
-| 6 | _multilingual_ | PDF (RTL/CJK) | ar → id | _pending_ | _pending_ |
+## Notes & limits
 
-<!--
-To fill: for each example, add
-  ![input](examples/<name>.in.png)  ![output](examples/<name>.out.png)
-and link the actual input/output files. Keep thumbnails small (web-friendly).
--->
+- Quality is engine- and source-bound. Distant pairs (CJK/RTL → English) and noisy scans score
+  lower than same-script pairs; very poor scans (faint historical manuscripts) remain OCR-limited.
+- These are reference samples, not a benchmark. Run the [eval harness](DEVELOPMENT.md#evaluation-harness)
+  for measured quality.
 
----
-
-See also: [USAGE.md](USAGE.md) · [FIDELITY.md](FIDELITY.md)
+See also: [USAGE.md](USAGE.md) · [QUALITY.md](QUALITY.md) · [FIDELITY.md](FIDELITY.md)
