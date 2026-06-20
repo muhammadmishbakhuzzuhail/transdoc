@@ -62,6 +62,10 @@ _SCRIPT_TO_LANG = {
     "Devanagari": "hi", "Han": "zh", "Japanese": "ja", "Hangul": "ko", "Bengali": "bn",
     "Tamil": "ta", "Telugu": "te", "Thai": "th", "Cyrillic": "ru", "Arabic": "ar",
     "Hebrew": "he", "Greek": "el",
+    # Indic scripts Tesseract has packs for (Paddle/EasyOCR don't): without these, an auto-source
+    # scan in them stays 'auto' -> structured PP-StructureV3 on the English model -> garbage.
+    "Kannada": "kn", "Malayalam": "ml", "Gujarati": "gu", "Gurmukhi": "pa",
+    "Oriya": "or", "Sinhala": "si",
 }
 
 

@@ -108,6 +108,14 @@ ROUTING: dict[str, list[str]] = {
     # Paddle leads and EasyOCR (no spurious spacing) backs it up.
     "Thai": ["paddle", "easyocr"],
     "Kannada": ["paddle", "tesseract", "easyocr"],
+    # Indic scripts only Tesseract has models for (Paddle/EasyOCR lack them) -> tesseract leads,
+    # the others are no-ops that simply drop out of the chain. Explicit so routing is intentional,
+    # not an accident of DEFAULT_CHAIN.
+    "Malayalam": ["tesseract", "paddle", "easyocr"],
+    "Gujarati": ["tesseract", "paddle", "easyocr"],
+    "Gurmukhi": ["tesseract", "paddle", "easyocr"],
+    "Oriya": ["tesseract", "paddle", "easyocr"],
+    "Sinhala": ["tesseract", "paddle", "easyocr"],
 }
 
 # Explicit source language -> its script, so an explicit non-Latin --source still gets the
@@ -122,6 +130,7 @@ LANG_TO_SCRIPT: dict[str, str] = {
     "bn": "Bengali", "ta": "Tamil", "te": "Telugu", "th": "Thai", "kn": "Kannada",
     "ru": "Cyrillic", "uk": "Cyrillic", "bg": "Cyrillic", "sr": "Cyrillic",
     "ar": "Arabic", "fa": "Arabic", "ur": "Arabic", "he": "Hebrew", "el": "Greek",
+    "ml": "Malayalam", "gu": "Gujarati", "pa": "Gurmukhi", "or": "Oriya", "si": "Sinhala",
 }
 
 
