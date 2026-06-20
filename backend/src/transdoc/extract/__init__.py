@@ -145,7 +145,10 @@ def extract(det: Detection, cfg: Config) -> Document:
     if k in (Kind.SRT, Kind.VTT):
         from .subtitle import extract as ex
         return ex(p, cfg)
-    if k in (Kind.TEXT, Kind.HTML):
+    if k == Kind.HTML:
+        from .html import extract as ex
+        return ex(p, cfg)
+    if k == Kind.TEXT:
         from .text import extract as ex
         return ex(p, cfg)
 
