@@ -395,10 +395,19 @@ def _fuzzy_suggestions_report(doc) -> str:
 
 def _cleanup_tmp(doc) -> None:
     """Remove intermediate crop-image temp dirs after rendering (they leaked one per run)."""
+    import os
     import shutil
     for d in getattr(doc, "tmp_dirs", []):
         shutil.rmtree(d, ignore_errors=True)
     doc.tmp_dirs = []
+    # The deskew/orient display PNG (image source overlay background) is a delete=False temp file
+    # outside tmp_dirs; clean it too now that rendering is done.
+    rp = getattr(doc, "render_path", None)
+    if rp and os.path.basename(rp).startswith("transdoc_disp_"):
+        try:
+            os.unlink(rp)
+        except OSError:
+            pass
 
 
 _EXT = {"markdown": ".md", "plain-text": ".txt", "docx": ".docx", "pdf": ".pdf",
@@ -406,14 +415,19 @@ _EXT = {"markdown": ".md", "plain-text": ".txt", "docx": ".docx", "pdf": ".pdf",
         "odt": ".odt"}
 
 
+def output_ext(cfg: Config, input_path: str) -> str:
+    """Correct output file extension for cfg.output_format (same-as-source -> the source ext).
+    Shared so callers that build their own out_path (e.g. the API job runner) don't drift from the
+    format map and write, say, real PPTX bytes into a .md file."""
+    fmt = cfg.output_format.value
+    if fmt == "same-as-source":
+        return Path(input_path).suffix or ".md"
+    return _EXT.get(fmt, ".md")
+
+
 def _resolve_out(input_path: str, cfg: Config, out_path: str | None) -> str:
     if out_path:
         return out_path
     stem = Path(input_path).with_suffix("")
-    fmt = cfg.output_format.value
-    if fmt == "same-as-source":
-        ext = Path(input_path).suffix or ".md"
-    else:
-        ext = _EXT.get(fmt, ".md")
     tgt = cfg.target_lang or "out"
-    return f"{stem}.{tgt}{ext}"
+    return f"{stem}.{tgt}{output_ext(cfg, input_path)}"

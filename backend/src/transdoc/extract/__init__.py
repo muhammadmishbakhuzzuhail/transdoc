@@ -91,9 +91,12 @@ def extract(det: Detection, cfg: Config) -> Document:
         from .docx import extract as ex
         return ex(p, cfg)
     if k in (Kind.DOC, Kind.RTF):
-        out = convert_to_docx(det.path, Path(tempfile.mkdtemp()))
+        tmpdir = Path(tempfile.mkdtemp())
+        out = convert_to_docx(det.path, tmpdir)
         from .docx import extract as ex
-        return ex(str(out), cfg)
+        doc = ex(str(out), cfg)
+        doc.tmp_dirs.append(str(tmpdir))   # else the converted .docx temp dir leaks every run
+        return doc
     if k == Kind.ODT:
         from .odt import extract as ex
         return ex(p, cfg)
