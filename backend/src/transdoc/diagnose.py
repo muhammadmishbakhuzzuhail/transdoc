@@ -42,9 +42,10 @@ def detect_lang(text: str) -> str | None:
     if via:
         return via
     try:
-        from langdetect import detect
+        from langdetect import DetectorFactory, detect
 
-        return detect(text)
+        DetectorFactory.seed = 0   # langdetect is seeded-random; pin it so detection is
+        return detect(text)        # deterministic run-to-run (else OCR routing/glossary can flip)
     except Exception:
         return None
 
