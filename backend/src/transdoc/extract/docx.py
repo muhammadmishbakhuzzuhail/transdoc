@@ -242,11 +242,19 @@ def _build_table(item) -> Table:
     """Build an IR Table from a python-docx table, recursing into nested tables inside cells.
     Merged cells (repeated <w:tc>) are blanked at continuation positions."""
     rows: list[list[Cell]] = []
-    seen_tc: set[int] = set()
+    # A merged cell repeats the SAME <w:tc> element (horizontal gridSpan in the same row, or a
+    # vertical merge re-emitting the cell above). We blank the continuation positions, detecting
+    # "already seen" by element identity. NOTE: do NOT key this on id(c._tc) across the row loop —
+    # python-docx/lxml hands out throwaway proxy objects, and a freed proxy's id() gets recycled by
+    # an unrelated <w:tc>, so a later unique cell collides with an earlier id() and is wrongly
+    # blanked (GC-pressure dependent — silently drops most cell text in larger tables). Pin the
+    # actual element objects in a list so their ids can't be reused, then it is safe to use a set.
+    seen_objs: list = []
+    seen_ids: set[int] = set()
     for row in item.rows:
         cells: list[Cell] = []
         for c in row.cells:
-            tc = id(c._tc)
+            tc_el = c._tc
             size = bold = None
             for para in c.paragraphs:
                 for r in para.runs:
@@ -255,13 +263,15 @@ def _build_table(item) -> Table:
                             size = float(r.font.size.pt)
                         bold = bold or bool(r.font.bold)
             nested = getattr(c, "tables", None)
-            cont = tc in seen_tc
+            cont = id(tc_el) in seen_ids
             cell = Cell(text="" if (cont or nested) else c.text.strip(),
                         size=size, bold=bool(bold), shading=_cell_shading(c))
             if nested and not cont:
                 cell.table = _build_table(nested[0])
             cells.append(cell)
-            seen_tc.add(tc)
+            if not cont:
+                seen_objs.append(tc_el)       # pin the element so its id() can't be recycled
+                seen_ids.add(id(tc_el))
         rows.append(cells)
     col_widths: list[float] = []
     try:

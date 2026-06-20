@@ -50,6 +50,57 @@ def test_docx_extract_nested_table(tmp_path):
     assert blk.table.rows[0][0].table is not None
 
 
+def test_docx_table_cells_not_blanked_under_gc(tmp_path):
+    """Regression: _build_table keyed merge-continuation detection on id(c._tc). lxml hands out
+    throwaway proxy objects, so a freed proxy's id() gets recycled by an unrelated <w:tc> and a
+    later unique cell collided with an earlier id() -> silently blanked. GC-pressure dependent, so
+    force aggressive GC over a sizeable un-merged table: every cell text MUST survive."""
+    import gc
+
+    docx = pytest.importorskip("docx")
+    from transdoc.extract.docx import _build_table
+
+    dd = docx.Document()
+    t = dd.add_table(rows=30, cols=4)            # no merged cells anywhere
+    for ri, row in enumerate(t.rows):
+        for ci, c in enumerate(row.cells):
+            c.text = f"r{ri}c{ci}"
+    p = tmp_path / "big.docx"
+    dd.save(str(p))
+
+    old = gc.get_threshold()
+    gc.set_threshold(1, 1, 1)                     # maximise proxy churn / id recycling
+    try:
+        d2 = docx.Document(str(p))
+        tbl = _build_table(d2.tables[0])
+    finally:
+        gc.set_threshold(*old)
+
+    blanked = [(ri, ci) for ri, row in enumerate(tbl.rows)
+               for ci, cell in enumerate(row) if not cell.text]
+    assert blanked == [], f"un-merged cells wrongly blanked: {blanked}"
+
+
+def test_docx_merged_cells_blanked(tmp_path):
+    """Genuine merges (horizontal gridSpan + vertical merge) still blank their continuation cells."""
+    docx = pytest.importorskip("docx")
+    from transdoc.extract.docx import _build_table
+
+    dd = docx.Document()
+    t = dd.add_table(rows=3, cols=3)
+    for ri, row in enumerate(t.rows):
+        for ci, c in enumerate(row.cells):
+            c.text = f"r{ri}c{ci}"
+    t.cell(0, 0).merge(t.cell(0, 1))             # horizontal
+    t.cell(0, 2).merge(t.cell(1, 2))             # vertical
+    p = tmp_path / "m.docx"
+    dd.save(str(p))
+    tbl = _build_table(docx.Document(str(p)).tables[0])
+    assert tbl.rows[0][1].text == ""             # horizontal-merge continuation blanked
+    assert tbl.rows[1][2].text == ""             # vertical-merge continuation blanked
+    assert tbl.rows[2][0].text and tbl.rows[2][2].text   # unrelated cells intact
+
+
 def test_docx_render_nested(tmp_path):
     docx = pytest.importorskip("docx")
     from transdoc.regenerate.docx_out import render
