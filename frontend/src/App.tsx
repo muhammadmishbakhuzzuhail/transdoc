@@ -131,11 +131,13 @@ export default function App() {
             <TabsTrigger value="preview">Before & after</TabsTrigger>
             <TabsTrigger value="analysis">Analysis</TabsTrigger>
           </TabsList>
-          <TabsContent value="review"><ReviewView jid={job.job_id} /></TabsContent>
-          <TabsContent value="preview"><PreviewPanel jid={job.job_id} /></TabsContent>
+          {/* key on job id: force a clean remount per job so the panels' local state (review,
+              selections, edited segments, preview page) never bleeds from a previous document */}
+          <TabsContent value="review"><ReviewView key={job.job_id} jid={job.job_id} /></TabsContent>
+          <TabsContent value="preview"><PreviewPanel key={job.job_id} jid={job.job_id} /></TabsContent>
           <TabsContent value="analysis">
             {analysis
-              ? <AnalysisView jid={job.job_id} a={analysis} />
+              ? <AnalysisView key={job.job_id} jid={job.job_id} a={analysis} />
               : <p className="py-6 text-sm text-muted-foreground">Analysis unavailable.</p>}
           </TabsContent>
         </Tabs>
