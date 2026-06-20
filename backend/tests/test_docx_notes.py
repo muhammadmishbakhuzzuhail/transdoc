@@ -98,3 +98,28 @@ def test_textbox_extracted_body_untouched_and_round_tripped(tmp_path):
     assert "Body paragraph" in docxml                            # body preserved
     from docx import Document as Docx
     Docx(str(out))
+
+
+def test_translatable_paras_skips_separator_not_real_footnote_under_gc():
+    # regression: _translatable_paras keyed the separator skip-set by id() of lxml elements built in
+    # a separate traversal. lxml recycles element proxies, so under GC pressure a real footnote could
+    # collide with a freed separator id() and be wrongly dropped -> ALL footnotes silently lost
+    # (nondeterministic, surfaced as a flaky CI failure). Provoke proxy churn with gc and assert the
+    # real footnote is always yielded and the separator never is.
+    import gc
+
+    from lxml import etree
+
+    from transdoc.extract.docx_notes import _translatable_paras
+    xml = ('<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+           '<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>'
+           '<w:footnote w:id="1"><w:p><w:r><w:t>Real footnote</w:t></w:r></w:p></w:footnote>'
+           '</w:footnotes>').encode()
+    for _ in range(50):
+        root = etree.fromstring(xml)
+        gc.collect()
+        paras = list(_translatable_paras(root, "footnote"))
+        gc.collect()
+        texts = ["".join(t.text or "" for t in p.iter(
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t")) for _, p in paras]
+        assert texts == ["Real footnote"]   # separator skipped, real footnote kept — every time

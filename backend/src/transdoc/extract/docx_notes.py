@@ -64,12 +64,16 @@ def _translatable_paras(root, kind):
                 yield pidx, p
                 pidx += 1
         return
-    skip = {id(n) for n in root.findall(f"{_W}{kind}")
-            if n.get(f"{_W}type") in ("separator", "continuationSeparator")}
     for p in root.iter(f"{_W}p"):
         anc, drop = p.getparent(), False
         while anc is not None:
-            if id(anc) in skip:
+            # Skip the separator / continuationSeparator footnotes (no prose). Check the ancestor's
+            # tag + type DIRECTLY rather than via an id()-set built in a separate traversal: lxml
+            # makes throwaway proxy objects per access, so a freed proxy's id() can be reused by an
+            # unrelated element — a real footnote would then collide with a separator and be wrongly
+            # dropped (nondeterministic, GC-pressure dependent — it silently lost ALL footnotes).
+            if (anc.tag == f"{_W}{kind}"
+                    and anc.get(f"{_W}type") in ("separator", "continuationSeparator")):
                 drop = True
                 break
             anc = anc.getparent()
