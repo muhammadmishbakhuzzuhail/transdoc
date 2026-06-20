@@ -43,3 +43,5 @@ out_validate/
 
 # keep the manifest
 !**/corpus/README.md
+# generated example outputs (gallery curation happens separately under docs/examples/)
+out_examples/
