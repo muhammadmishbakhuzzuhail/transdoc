@@ -17,7 +17,7 @@ Every example uses `--to same-as-source` (the format is preserved); source and o
 
 | Example | Source | Output |
 |---------|--------|--------|
-| **IRS W-9 form (AcroForm PDF)** → Indonesian · **layout-exact overlay**<br>output ≡ input, only the text changes — every line/box/checkbox kept<br>[source](examples/form-w9.src.pdf) · [output](examples/form-w9.id.pdf) | ![](examples/form-w9.src.png) | ![](examples/form-w9.id.png) |
+| **IRS W-9 form (AcroForm PDF)** → Indonesian · **layout overlay**<br>every line/box/checkbox/field kept; only the text changes. The dense IRS instruction prose shrinks slightly to fit the longer Indonesian (overlay trade-off, flagged in the report — use `--to docx` for a reflow).<br>[source](examples/form-w9.src.pdf) · [output](examples/form-w9.id.pdf) | ![](examples/form-w9.src.png) | ![](examples/form-w9.id.png) |
 | **Arabic — RTL digital PDF** → English · QE ≈ 0.74<br>[source](examples/arabic.src.pdf) · [output](examples/arabic.en.pdf) | ![](examples/arabic.src.png) | ![](examples/arabic.en.png) |
 | **Chinese — CJK digital PDF** → English · QE ≈ 0.78<br>[source](examples/chinese.src.pdf) · [output](examples/chinese.en.pdf) | ![](examples/chinese.src.png) | ![](examples/chinese.en.png) |
 | **Hindi — scanned PDF (OCR)** → English · QE ≈ 0.75<br>[source](examples/hindi-scan.src.pdf) · [output](examples/hindi-scan.en.pdf) | ![](examples/hindi-scan.src.png) | ![](examples/hindi-scan.en.png) |
@@ -25,9 +25,11 @@ Every example uses `--to same-as-source` (the format is preserved); source and o
 
 ## What these show
 
-- **Forms are layout-exact.** The IRS W-9 is detected as an AcroForm and rendered with the overlay
-  path: every line, box, and checkbox stays in place and only the text is swapped to the target
-  language — the north-star "output ≡ input, only the language changes".
+- **Forms keep their layout.** The IRS W-9 is detected as an AcroForm and rendered with the overlay
+  path: every line, box, and checkbox stays in place and only the text is swapped — the north-star
+  "output is the input, only the language changes". Where the translation is longer than the
+  original (e.g. dense IRS instruction headings), the overlay shrinks it to fit and the report flags
+  any text that fell below a readable size; `--to docx` reflows those for full readability.
 - **Cross-script documents reflow cleanly.** RTL Arabic and CJK Chinese reflow into English;
   the Wikipedia logo, the Eleanor-Roosevelt figure, and its caption stay in place (caption
   anchoring). Cross-script sources reflow (FLOW) instead of being force-fit into the source's
