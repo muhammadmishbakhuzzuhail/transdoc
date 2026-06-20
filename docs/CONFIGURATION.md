@@ -117,22 +117,25 @@ Upload limits (in `limits.py`) are also env-overridable: `TRANSDOC_MAX_FILE_MB` 
 
 ## Fonts (PDF output, non-Latin scripts)
 
-The PDF renderer shapes text with PyMuPDF/HarfBuzz, which substitutes glyphs from the **fonts
-available on the host**. For non-Latin output (CJK, Arabic, Devanagari and other Indic, Thai,
-Hebrew, …) the machine must have suitable fonts installed — the **Noto** family is the recommended,
-complete set:
+**PDF output is self-contained.** The PDF renderer shapes text with PyMuPDF (`insert_htmlbox` /
+`Story`), which ships its own bundled **Noto** font set (Devanagari, Arabic, CJK, Hebrew, Thai,
+Bengali, Tamil, Telugu, Kannada, Malayalam, Gurmukhi, Gujarati, Oriya, Sinhala, Khmer, Lao,
+Myanmar, Ethiopic, Georgian, Armenian, …). The glyphs it shapes are **embedded into the generated
+PDF**, so non-Latin output renders correctly on any viewer — no host fonts required, and the file
+stays portable across machines. Verified on a host with system fonts disabled (`tests/
+test_pdf_fonts.py`).
+
+You therefore do **not** need to install system fonts for PDF output. If you want a specific
+typeface (e.g. matching a corporate font), installing it system-wide lets HarfBuzz prefer it:
 
 ```bash
-# Debian/Ubuntu — full Noto coverage (CJK + everything else)
-sudo apt install fonts-noto fonts-noto-cjk fonts-noto-color-emoji
-# Arch
-sudo pacman -S noto-fonts noto-fonts-cjk noto-fonts-emoji
+# Optional — only to prefer a particular face; not required for correct rendering
+sudo apt install fonts-noto fonts-noto-cjk      # Debian/Ubuntu
+sudo pacman -S noto-fonts noto-fonts-cjk        # Arch
 ```
 
-Without coverage for a script, that script renders as blank boxes (tofu) in **PDF/image** output
-only — **DOCX/PPTX/XLSX/EPUB** outputs embed no fonts and let the viewer (Word, the e-reader) pick
-one, so they are unaffected. Known limitation: fonts are not yet bundled/embedded into generated
-PDFs, so PDF output is not fully self-contained on a host with no CJK/Indic fonts.
+Requires `PyMuPDF>=1.26` (the broad bundled-Noto fallback). DOCX/PPTX/XLSX/EPUB outputs embed no
+fonts and let the viewer pick one, so they are unaffected either way.
 
 ---
 
