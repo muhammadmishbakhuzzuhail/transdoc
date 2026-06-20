@@ -80,7 +80,13 @@ class Protector:
         for m in _BRANDS_RE.finditer(text):
             spans.append((m.start(), m.end()))
         for ent in self.extra:
-            for m in re.finditer(re.escape(ent), text):
+            # Match whole tokens only: a bare re.escape(ent) is a SUBSTRING match, so a short
+            # protected/glossary term like "Rev" would match inside "Revenue" and restore to its
+            # rendering mid-word ("Revenue" -> "Putaranenue"). Add word boundaries on alphanumeric
+            # edges (kept off for terms that start/end with punctuation, e.g. multi-word phrases).
+            lb = r"(?<!\w)" if ent[:1].isalnum() or ent[:1] == "_" else ""
+            rb = r"(?!\w)" if ent[-1:].isalnum() or ent[-1:] == "_" else ""
+            for m in re.finditer(lb + re.escape(ent) + rb, text):
                 spans.append((m.start(), m.end()))
         spans.sort(key=lambda s: (s[0], -(s[1] - s[0])))
         merged: list[tuple[int, int]] = []
