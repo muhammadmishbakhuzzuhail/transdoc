@@ -12,8 +12,10 @@ can never drift.
 from __future__ import annotations
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-# part filename suffix -> note kind label (also the id prefix)
-_PARTS = (("footnotes.xml", "footnote"), ("endnotes.xml", "endnote"), ("comments.xml", "comment"))
+# part filename suffix -> note kind label (also the id prefix). document.xml is included for the
+# "textbox" kind only — text-box / shape text (w:txbxContent) the body walk in docx.py misses.
+_PARTS = (("footnotes.xml", "footnote"), ("endnotes.xml", "endnote"), ("comments.xml", "comment"),
+          ("document.xml", "textbox"))
 
 
 def _parts(docx_obj):
@@ -43,11 +45,27 @@ def _set_para_text(p, text: str) -> None:
 
 
 def _translatable_paras(root, kind):
-    """Yield (pidx, w:p) for real prose paragraphs in a note-part root, skipping the
-    footnote/endnote separator entries and empty paragraphs. Deterministic order = stable ids."""
+    """Yield (pidx, w:p) for the translatable paragraphs of a part, with a deterministic order so
+    ids are stable across extract and render.
+      - textbox: ONLY paragraphs inside a w:txbxContent (text-box/shape text in document.xml); the
+        body paragraphs are handled by docx_inplace, so they must be skipped here.
+      - footnote/endnote: skip the separator / continuationSeparator entries (no prose).
+      - comment: every non-empty paragraph."""
+    pidx = 0
+    if kind == "textbox":
+        for p in root.iter(f"{_W}p"):
+            anc, in_tbx = p.getparent(), False
+            while anc is not None:
+                if anc.tag == f"{_W}txbxContent":
+                    in_tbx = True
+                    break
+                anc = anc.getparent()
+            if in_tbx and _para_text(p).strip():
+                yield pidx, p
+                pidx += 1
+        return
     skip = {id(n) for n in root.findall(f"{_W}{kind}")
             if n.get(f"{_W}type") in ("separator", "continuationSeparator")}
-    pidx = 0
     for p in root.iter(f"{_W}p"):
         anc, drop = p.getparent(), False
         while anc is not None:
