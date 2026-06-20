@@ -25,8 +25,10 @@ _SIDE_MARGIN = 0.15       # outer left/right 15% is the marginalia band
 _SIDE_MAX_W = 0.20        # marginalia is narrow — at most 20% of the page width
 _BODY_MIN_W = 0.40        # a "body" block (the main text the note sits beside) is wider than this
 _UPGRADABLE = {BlockType.PARAGRAPH, BlockType.OTHER, BlockType.HEADING, BlockType.TITLE}
-# a page-number cell: a short run of digits / roman numerals, optionally "Page 3" or "3 / 10"
-_PAGENUM = re.compile(r"(?:page\s+)?[\divxlcm]+(?:\s*[/of-]+\s*[\divxlcm]+)?\.?", re.IGNORECASE)
+# a page-number cell: a short run of digits, optionally "Page 3" or "3 / 10"
+_PAGENUM = re.compile(r"(?:page\s+)?\d+(?:\s*[/of-]+\s*\d+)?\.?", re.IGNORECASE)
+# strict roman numeral (so a margin word made of i/v/x/l/c/d/m letters isn't mistaken for one)
+_ROMAN = re.compile(r"M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
 
 
 def _norm(t: str) -> str:
@@ -36,7 +38,15 @@ def _norm(t: str) -> str:
 
 def _is_pagenum(t: str) -> bool:
     s = t.strip()
-    return bool(s) and len(s) <= 12 and bool(_PAGENUM.fullmatch(s))
+    if not s or len(s) > 12:
+        return False
+    if _PAGENUM.fullmatch(s):
+        return True
+    # roman-numeral page number (front matter "ii", "VIII"): require a STRICT valid roman that is
+    # all-upper or all-lower — a mixed-case word ("Mix", "Did") or an invalid sequence ("Civic",
+    # "mill") is prose, not a page number, and must stay translatable.
+    r = s.rstrip(".")
+    return bool(r) and (r.isupper() or r.islower()) and bool(_ROMAN.fullmatch(r.upper()))
 
 
 def detect_running_heads(doc: Document) -> None:

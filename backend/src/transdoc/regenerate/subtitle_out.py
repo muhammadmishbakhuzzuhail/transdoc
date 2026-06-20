@@ -8,12 +8,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..config import Config
-from ..extract.subtitle import compose_cues, parse_cues
+from ..extract.subtitle import _read, compose_cues, parse_cues
 from ..ir import Document
 
 
 def render(doc: Document, cfg: Config, out_path: str) -> str:
-    src = Path(doc.source_path).read_text(encoding="utf-8", errors="replace")
+    # charset-detect like the extractor (_read). A hardcoded utf-8 re-read mangled non-UTF-8 files
+    # (UTF-16 from Windows tools): embedded NULs broke the blank-line cue split, desyncing cue ids.
+    src = _read(doc.source_path)
     m = {b.id: b.output_text for b in doc.blocks}
     cues = parse_cues(src)
     for i, cue in enumerate(cues):

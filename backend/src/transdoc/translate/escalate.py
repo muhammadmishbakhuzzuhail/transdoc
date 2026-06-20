@@ -58,7 +58,8 @@ def escalate_weak(doc, cfg: Config, findings) -> int:
         except OllamaError:
             continue                                    # best-effort: keep the NMT translation
         out = protector.restore(out, mapping)
-        b.translated = _apply_glossary(out, glossary)
+        # collapse runs too, else a styled paragraph keeps stale per-run text and ignores this
+        b.set_block_translation(_apply_glossary(out, glossary))
         b.flags["llm_escalated"] = cfg.ollama_model
         n += 1
     tr.unload(cfg)            # free the LLM from (V)RAM once escalation is done

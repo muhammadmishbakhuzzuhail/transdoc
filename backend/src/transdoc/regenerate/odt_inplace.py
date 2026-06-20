@@ -71,10 +71,12 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
             if b is not None:
                 _set_text(node, b.output_text)
         elif qname == "table":
+            dcells = [tc for tr in node.getElementsByType(TableRow)
+                      for tc in tr.getElementsByType(TableCell)]
+            if not dcells:
+                continue          # extract emits no block for a cell-less table; don't consume one
             b = take()
             if b is not None and b.table:
-                dcells = [tc for tr in node.getElementsByType(TableRow)
-                          for tc in tr.getElementsByType(TableCell)]
                 tcells = [c for row in b.table.rows for c in row]
                 for dc, tc in zip(dcells, tcells):
                     if tc.text.strip():

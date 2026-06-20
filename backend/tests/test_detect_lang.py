@@ -34,3 +34,19 @@ def test_lingua_detects_iso_code():
     # lingua fixes langdetect's Chinese-as-Korean full-text miss
     assert _lingua_detect("This is a longer English passage with several words.") == "en"
     assert _lingua_detect("Это предложение написано на русском языке полностью.") == "ru"
+
+
+def test_explicit_source_sets_doc_source_lang(tmp_path):
+    # regression: an explicit --source set profile.source_langs but never doc.source_lang, which
+    # downstream glossary/engine-src/German-guard/TM all read -> glossary silently disabled.
+    from pathlib import Path
+
+    from transdoc.config import Config
+    from transdoc.diagnose import diagnose
+    from transdoc.ingest.detect import Detection, Kind
+    from transdoc.ir import Block, BlockType, Document
+    doc = Document(source_path="x.txt", mime="text/plain")
+    doc.blocks = [Block(id="1", type=BlockType.PARAGRAPH, text="Bonjour le monde, ceci est un test.")]
+    det = Detection(kind=Kind.TEXT, mime="text/plain", path=Path("x.txt"), notes=[])
+    diagnose(doc, det, Config(source_lang="fr", target_lang="id"))
+    assert doc.source_lang == "fr"

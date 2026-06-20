@@ -5,9 +5,22 @@ band + cross-page repetition, and the typing_match eval metric."""
 
 from __future__ import annotations
 
+import pytest
+
 from transdoc.eval.metrics import typing_match
-from transdoc.extract.block_types import detect_marginalia, detect_running_heads
+from transdoc.extract.block_types import _is_pagenum, detect_marginalia, detect_running_heads
 from transdoc.ir import NON_TRANSLATABLE, BBox, Block, BlockType, Document
+
+
+@pytest.mark.parametrize("s", ["3", "Page 7", "3 / 10", "12.", "ii", "VIII", "iv", "xi"])
+def test_is_pagenum_accepts_real_page_numbers(s):
+    assert _is_pagenum(s)
+
+
+@pytest.mark.parametrize("s", ["Mix", "Did", "Civic", "civil", "mill", "Mill", "Note", "Index"])
+def test_is_pagenum_rejects_words(s):
+    # roman-letter words must stay translatable — the old IGNORECASE [divxlcm]+ matched these
+    assert not _is_pagenum(s)
 
 
 def _b(bid, text, x0, y0, x1, y1, page, t=BlockType.PARAGRAPH):
