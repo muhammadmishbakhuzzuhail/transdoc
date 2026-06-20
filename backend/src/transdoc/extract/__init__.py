@@ -4,12 +4,15 @@
 
 from __future__ import annotations
 
+import logging
 import tempfile
 from pathlib import Path
 
 from ..config import Config
 from ..ingest.detect import Detection, Kind, convert_to_docx
 from ..ir import Document
+
+log = logging.getLogger("transdoc.extract")
 
 
 def _structured_enabled(cfg: Config) -> bool:
@@ -52,7 +55,8 @@ def extract(det: Detection, cfg: Config) -> Document:
                 from .structured import extract_structured
                 return extract_structured(p, cfg)
             except Exception:
-                pass
+                log.warning("structured extraction failed for %s; falling back to the heuristic "
+                            "extractor", p, exc_info=True)
         from .pdf import extract as ex
         return ex(p, cfg)
     if k == Kind.PDF_SCAN:
@@ -66,21 +70,22 @@ def extract(det: Detection, cfg: Config) -> Document:
                 from .structured import extract_structured
                 return extract_structured(p, cfg)
             except Exception:
-                pass
+                log.warning("structured extraction failed for scan %s; falling back to line-OCR",
+                            p, exc_info=True)
         from .pdf import extract as ex
         import fitz
-        n = fitz.open(p).page_count
+        with fitz.open(p) as _d:
+            n = _d.page_count
         return ex(p, cfg, ocr_pages=set(range(n)))
     if k == Kind.PDF_MIXED:
         from ..ingest.detect import _image_dominates
         from .pdf import extract as ex
         import fitz
-        d = fitz.open(p)
         # OCR the pages with no real text layer: empty/near-empty, OR a page whose text is
         # just a caption over a dominating scan image (matches detect._classify_pdf).
-        ocr_pages = {i for i, pg in enumerate(d)
-                     if len(pg.get_text().strip()) <= 20 or _image_dominates(pg)}
-        d.close()
+        with fitz.open(p) as d:
+            ocr_pages = {i for i, pg in enumerate(d)
+                         if len(pg.get_text().strip()) <= 20 or _image_dominates(pg)}
         return ex(p, cfg, ocr_pages=ocr_pages)
     if k == Kind.DOCX:
         from .docx import extract as ex
@@ -121,7 +126,11 @@ def extract(det: Detection, cfg: Config) -> Document:
                     doc.tmp_dirs.append(tmp)
                 return doc
             except Exception:
-                pass
+                log.warning("structured extraction failed for image %s; falling back to line-OCR",
+                            p, exc_info=True)
+                if tmp:
+                    import shutil
+                    shutil.rmtree(tmp, ignore_errors=True)   # don't leak the orient temp dir
         from .image import extract as ex
         return ex(p, cfg)
     if k == Kind.PPTX:
