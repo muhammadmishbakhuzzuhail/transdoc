@@ -239,6 +239,44 @@ def _body_size(page) -> float:
     return max(sizes, key=sizes.get)  # most common size by char count = body text
 
 
+def _line_size(line) -> float:
+    return max((s.get("size", 0) for s in line.get("spans", []) if s.get("text", "").strip()),
+               default=0.0)
+
+
+def _split_blocks_by_size(blocks: list) -> list:
+    """Split a PyMuPDF text block whose lines jump sharply in font size into separate blocks.
+
+    PyMuPDF sometimes groups a big centred heading and the small left-aligned line(s) under it into
+    ONE block (e.g. an IRS form's title + 'Department of the Treasury …' subtitle). That block's
+    bbox then spans both, so the overlay renders the expanded heading left-aligned across the whole
+    width and overprints the neighbouring logo. Splitting at a >=1.6x size discontinuity restores
+    each part's own bbox (the centred title keeps its centred box). Uniform-size blocks (normal
+    paragraphs) are returned unchanged, so the blast radius is small."""
+    out = []
+    for blk in blocks:
+        lines = blk.get("lines", [])
+        if len(lines) < 2:
+            out.append(blk)
+            continue
+        groups = [[lines[0]]]
+        for ln in lines[1:]:
+            prev, cur = _line_size(groups[-1][-1]), _line_size(ln)
+            big, small = max(prev, cur), min(prev, cur)
+            if small > 0 and big / small >= 1.6:
+                groups.append([ln])      # sharp size change -> new block
+            else:
+                groups[-1].append(ln)
+        if len(groups) == 1:
+            out.append(blk)
+            continue
+        for g in groups:
+            bb = [min(ln["bbox"][0] for ln in g), min(ln["bbox"][1] for ln in g),
+                  max(ln["bbox"][2] for ln in g), max(ln["bbox"][3] for ln in g)]
+            out.append({"lines": g, "bbox": bb})
+    return out
+
+
 def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Document:
     """Extract a PDF. ``ocr_pages`` (0-based) are rasterized and OCR'd instead of parsed."""
     import fitz
@@ -391,7 +429,7 @@ def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Docume
         d = page.get_text("dict")
         raw_blocks = None         # lazily filled with get_text("rawdict") only if a suspect block appears
         idx = 0
-        for blk in d.get("blocks", []):
+        for blk in _split_blocks_by_size(d.get("blocks", [])):
             lines = blk.get("lines", [])
             if not lines:
                 continue
