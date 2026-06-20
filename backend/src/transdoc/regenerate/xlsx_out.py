@@ -20,5 +20,10 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
                 t = m.get(f"{ws.title}!{cell.coordinate}")
                 if t is not None:
                     cell.value = t
+                    # a translation starting with "=" (or a CSV-injection sigil) would be stored as
+                    # a live formula by openpyxl. Translations are always prose, never formulas
+                    # (source formula cells are skipped at extract), so pin them to a string cell.
+                    if isinstance(t, str) and t[:1] in ("=", "+", "-", "@"):
+                        cell.data_type = "s"
     wb.save(out_path)
     return out_path

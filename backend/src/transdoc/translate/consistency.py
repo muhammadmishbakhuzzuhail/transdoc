@@ -55,7 +55,7 @@ def enforce_consistency(doc: Document, cfg: Config) -> int:
             winner = Counter(translations).most_common(1)[0][0]
         for b in blocks:
             if b.translated != winner:
-                b.translated = winner
+                b.set_block_translation(winner)   # also collapse runs, else styled blocks ignore it
                 b.flags["consistency_normalized"] = (
                     "harmonised with the same source text elsewhere in the document")
                 changed += 1

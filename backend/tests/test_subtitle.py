@@ -57,3 +57,21 @@ def test_extract_skips_empty_cues(tmp_path):
     doc = extract(str(f), Config(target_lang="id"))
     # the WEBVTT preamble (no text) must not become a block
     assert [b.id for b in doc.blocks] == ["cue1"]
+
+
+def test_render_handles_utf16_source(tmp_path):
+    # regression: the renderer re-read the source as hardcoded utf-8, but the extractor charset-
+    # detects. A UTF-16 SRT (common from Windows) desynced cue ids -> dropped/misplaced cues.
+    from transdoc.regenerate.subtitle_out import render
+    f = tmp_path / "s.srt"
+    f.write_text(SRT, encoding="utf-16")                 # non-UTF-8 source
+    doc = extract(str(f), Config(target_lang="id"))
+    assert [b.id for b in doc.blocks] == ["cue0", "cue1"]
+    for b in doc.blocks:
+        b.translated = "X-" + b.text
+    out = tmp_path / "o.srt"
+    render(doc, Config(target_lang="id"), str(out))
+    cues = parse_cues(out.read_text(encoding="utf-8"))
+    assert cues[0]["text"] == ["X-Hello world", "second line"]   # cue0 swapped, timing intact
+    assert cues[0]["header"] == ["1", "00:00:01,000 --> 00:00:04,000"]
+    assert cues[1]["text"] == ["X-Goodbye"]                       # cue1 aligned, not shifted

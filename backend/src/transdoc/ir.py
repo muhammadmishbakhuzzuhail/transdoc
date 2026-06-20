@@ -209,6 +209,18 @@ class Block(BaseModel):
         """Text to render: translation if present, else source (verbatim blocks)."""
         return self.translated if self.translated is not None else self.text
 
+    def set_block_translation(self, text: str) -> None:
+        """Replace the block translation with a single new string (consistency harmonisation,
+        LLM escalation). Every renderer prefers ``runs`` over ``translated`` when runs exist, so a
+        styled paragraph would otherwise keep its stale per-run text and silently ignore the new
+        translation. Collapse the new text onto run 0 (others blanked) so all render paths emit it.
+        Inline sub-span styling within this one block is lost — the corrected text matters more."""
+        self.translated = text
+        if self.runs:
+            self.runs[0].translated = text
+            for r in self.runs[1:]:
+                r.translated = ""
+
 
 class Repair(BaseModel):
     """A single reconstruction edit made in Phase 2."""

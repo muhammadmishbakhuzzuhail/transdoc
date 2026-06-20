@@ -78,6 +78,10 @@ def diagnose(doc: Document, det: Detection, cfg: Config) -> DocProfile:
     lang = detect_lang(sample)
     if cfg.source_lang and cfg.source_lang != "auto":
         p.source_langs = [cfg.source_lang]
+        # also set doc.source_lang — downstream glossary resolution, the engine src, the German
+        # noun-caps guard, and the TM cache key all read it; only the auto branch set it before, so
+        # an explicit --source silently disabled the glossary and translated with auto-detect.
+        doc.source_lang = doc.source_lang or cfg.source_lang
     elif lang:
         p.source_langs = [lang]
         doc.source_lang = doc.source_lang or lang

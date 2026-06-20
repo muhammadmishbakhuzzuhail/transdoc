@@ -54,6 +54,23 @@ def test_odt_inplace_keeps_structure_and_swaps_text(tmp_path):
     assert teletype.extractText(cell0) == "[id] Name"     # table cell translated in place
 
 
+def test_cell_less_table_does_not_desync_blocks(tmp_path):
+    # a table with no cells is skipped at extract (no block) but the renderer used to take() one
+    # anyway -> off-by-one, every later paragraph translated into the wrong node. The paragraph
+    # AFTER the empty table must still get its own translation.
+    d = OpenDocumentText()
+    d.text.addElement(Table(name="Empty"))                 # cell-less table -> no IR block
+    d.text.addElement(P(text="Paragraph after the table."))
+    src = tmp_path / "e.odt"
+    d.save(str(src))
+    out = tmp_path / "e.id.odt"
+    run(str(src), Config(source_lang="en", target_lang="id", engine=Engine.ECHO,
+                         output_format=OutputFormat.SAME, mode=Mode.FULL), out_path=str(out))
+    t = load(str(out))
+    para = teletype.extractText(t.getElementsByType(P)[0])
+    assert para.startswith("[id] Paragraph after the table.")   # aligned, not swallowed
+
+
 def test_same_as_source_maps_odt_and_docx():
     from transdoc.regenerate import _EXT_TO_FORMAT
     assert _EXT_TO_FORMAT[".odt"] == OutputFormat.ODT

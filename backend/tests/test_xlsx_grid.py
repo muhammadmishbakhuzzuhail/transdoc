@@ -46,3 +46,19 @@ def test_xlsx_crossformat_is_a_table(tmp_path):
     rows = tables[0].table.rows
     assert [c.text for c in rows[0]] == ["Name", "City"]
     assert [c.text for c in rows[1]] == ["Hello", "London"]
+
+
+def test_render_formula_like_translation_stays_text(tmp_path):
+    # a translation starting with "=" must not be stored as a live formula (injection / #NAME?).
+    import openpyxl
+
+    from transdoc.regenerate.xlsx_out import render
+    src = tmp_path / "s.xlsx"
+    _make_xlsx(str(src))
+    doc = extract(str(src), Config(target_lang="id", output_format=OutputFormat.XLSX))
+    for b in doc.blocks:
+        b.translated = "=SUM(A2:A9)" if b.id == "Sheet!A1" else "[id] " + b.text
+    out = tmp_path / "o.xlsx"
+    render(doc, Config(target_lang="id", output_format=OutputFormat.XLSX), str(out))
+    cell = openpyxl.load_workbook(str(out))["Sheet"]["A1"]
+    assert cell.data_type == "s" and cell.value == "=SUM(A2:A9)"   # literal text, not a formula
