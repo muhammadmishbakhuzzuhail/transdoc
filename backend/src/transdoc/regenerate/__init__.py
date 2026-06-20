@@ -84,10 +84,13 @@ def regenerate(doc: Document, cfg: Config, out_path: str) -> str:
     # An image source can preserve layout the same way a PDF can (overlay on the original).
     fidelity = cfg.resolve_fidelity(src_is_pdf or src_is_image)
 
-    # Image source, layout fidelity: Lens-style overlay on the original. same-as-source ->
+    # Image source -> image/PDF output: Lens-style overlay on the original. same-as-source ->
     # a translated image (out_path keeps the source ext); -> pdf gives an image-backed PDF.
-    # render_image_overlay picks raster vs PDF from out_path's extension.
-    if src_is_image and fidelity == Fidelity.LAYOUT and fmt in (
+    # render_image_overlay picks raster vs PDF from out_path's extension. This is the default
+    # for any image source (AUTO resolves to RECONSTRUCT for it, which is meaningless for a flat
+    # image — overlay is the right rebuild); only an explicit `-f flow` falls through to a text
+    # reflow. Without this, an image + same-as-source wrote Markdown into a .jpg file.
+    if src_is_image and fidelity != Fidelity.FLOW and fmt in (
             OutputFormat.SAME, OutputFormat.PDF):
         from . import pdf_out
 

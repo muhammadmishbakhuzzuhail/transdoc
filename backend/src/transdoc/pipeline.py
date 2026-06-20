@@ -57,6 +57,25 @@ def _timing_report(timings: dict[str, float]) -> str:
 _ZIP_KINDS = {"docx", "xlsx", "pptx", "epub", "odt"}
 
 
+def _script_of(lang: str | None) -> str:
+    """Writing system of a language (Latin for anything not in the non-Latin map)."""
+    from .ocr.router import LANG_TO_SCRIPT
+    return LANG_TO_SCRIPT.get((lang or "").split("-")[0].lower(), "Latin")
+
+
+def _cross_script_reflow(src: str | None, tgt: str | None) -> bool:
+    """True when source and target use DIFFERENT writing systems. The positioned per-block
+    reconstruct keeps each block's source geometry, which only stays meaningful within one script
+    (text length, direction, and line metrics change across scripts) — across a boundary it leaves
+    half-blank pages, flips RTL<->LTR badly, and inflates the page count (Arabic 6->17, Hindi 5->13,
+    Thai ->23). Reconstruct therefore stays the default only for same-script work (its sweet spot:
+    Latin->Latin like en->id); any script change reflows. False when the source is unknown (auto)."""
+    s = (src or "").split("-")[0].lower()
+    if not s or s == "auto":
+        return False
+    return _script_of(s) != _script_of(tgt)
+
+
 def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # --- Safety guards (reject pathological/malicious input before any heavy work) ---
     from .limits import apply_pil_cap, check_file_size, check_pages, check_zip_bomb
@@ -141,6 +160,21 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     # --- Phases 3-5: Terminology + Translate + Self-review ---
     cfg.require_target()
+
+    # AUTO fidelity + a source whose script the positioned per-block rebuild can't preserve
+    # (RTL<->LTR direction flip, or CJK->alphabetic, where translated text length/direction change
+    # fundamentally) -> reflow instead of reconstruct. The reconstruct keeps source block geometry,
+    # which only stays meaningful within one script family; across these boundaries it leaves
+    # half-blank pages and inflates the page count (measured: Arabic 6->17, Chinese 7->15 pages vs
+    # a clean 7 in flow). Only when the user left fidelity on AUTO and is producing a PDF.
+    if (cfg.fidelity == Fidelity.AUTO
+            and cfg.output_format in (OutputFormat.PDF, OutputFormat.SAME)
+            and doc.mime == "application/pdf"):
+        eff_src = cfg.source_lang if (cfg.source_lang and cfg.source_lang != "auto") else doc.source_lang
+        if _cross_script_reflow(eff_src, cfg.target_lang):
+            cfg.fidelity = Fidelity.FLOW
+            log.info("cross-script %s->%s: AUTO -> FLOW (reconstruct can't preserve this layout)",
+                     eff_src, cfg.target_lang)
 
     # FLOW output reflows the text, so running headers/footers just clutter it (and waste
     # translation calls). Strip them before translating. LAYOUT keeps them in place.
@@ -241,7 +275,7 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
         if rows:
             write_review(rows, str(Path(outp).with_suffix("")) + ".review.tsv")
 
-    report = build_report(doc, cfg)
+    report = _quality_banner(doc, qa_findings, cfg) + build_report(doc, cfg)
     if verify_warnings:
         report += "\n\n## Post-render verification\n" + "\n".join(
             f"- {w}" for w in verify_warnings)
@@ -254,6 +288,26 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     Path(report_path).write_text(report, encoding="utf-8")
     _cleanup_tmp(doc)
     return Result(doc, outp, report_path, report, timings)
+
+
+def _quality_banner(doc, findings, cfg) -> str:
+    """A prominent top-of-report warning when a large share of segments carry HARD QA flags
+    (untranslated / empty / entity-loss). Previously such flags only appeared deep in the QA
+    section, so a low-quality output (e.g. an OCR-garbage scan, or a degenerate MT run) shipped
+    with no visible signal. This surfaces the verdict and points at the remedy."""
+    blocks = [b for b in doc.blocks if b.is_translatable and b.translated]
+    if not blocks:
+        return ""
+    hard_ids = {f.block_id for f in findings if f.severity == "hard"}
+    ratio = len(hard_ids) / len(blocks)
+    if ratio < 0.5:
+        return ""
+    tip = ("" if getattr(cfg, "escalate", False)
+           else " Re-run with `--escalate` (local-LLM repair of weak segments), or check the "
+                "source quality (OCR of a poor scan, mis-detected language).")
+    return (f"> ⚠ **Low translation quality:** {len(hard_ids)} of {len(blocks)} segments "
+            f"({ratio:.0%}) have hard QA flags (untranslated / empty / entity loss)."
+            f"{tip}\n\n")
 
 
 def _glossary_suggestions_report(doc) -> str:
