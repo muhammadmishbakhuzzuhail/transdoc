@@ -161,7 +161,13 @@ class PaddleOCREngine:
             with open(img_path, "wb") as fh:
                 fh.write(img)
             cmd = [self._py, "-m", "transdoc.ocr.paddle_detect", img_path, out_path, lang]
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            # Bound the subprocess: a wedged paddle (model-download hang, GPU deadlock) would
+            # otherwise block the worker — and the serialised job queue — indefinitely.
+            timeout = float(os.environ.get("TRANSDOC_OCR_TIMEOUT", "0")) or 300.0
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            except subprocess.TimeoutExpired as e:
+                raise RuntimeError(f"paddle OCR subprocess timed out after {timeout:.0f}s") from e
             if proc.returncode != 0:
                 raise RuntimeError(
                     f"paddle OCR subprocess failed (exit {proc.returncode}): {proc.stderr[-400:]}")

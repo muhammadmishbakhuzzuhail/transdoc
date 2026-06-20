@@ -120,17 +120,27 @@ def _classify_pdf(path: Path) -> tuple[Kind, list[str]]:
         notes.append("PyMuPDF missing; assuming digital PDF")
         return Kind.PDF_DIGITAL, notes
 
-    doc = fitz.open(str(path))
+    try:
+        doc = fitz.open(str(path))
+    except Exception as e:
+        raise ValueError(f"PDF unreadable or corrupt: {e}") from e
+    # An encrypted PDF opens but every page raises on get_text; fail with a clear message
+    # instead of a raw "document closed or encrypted" deep in extraction.
+    if getattr(doc, "needs_pass", False) and not doc.authenticate(""):
+        doc.close()
+        raise ValueError("password-protected PDF — supply a decrypted copy or the password")
     pages_with_text = 0
     n = doc.page_count
-    for page in doc:
-        # A page has a usable text layer if it carries enough real text AND a full-page
-        # image isn't dominating it. A scan with a tiny stray caption (e.g. a page number)
-        # has >20 chars but is really an image — treat it as scanned so it gets OCR'd.
-        chars = len(page.get_text("text").strip())
-        if chars > 20 and not _image_dominates(page):
-            pages_with_text += 1
-    doc.close()
+    try:
+        for page in doc:
+            # A page has a usable text layer if it carries enough real text AND a full-page
+            # image isn't dominating it. A scan with a tiny stray caption (e.g. a page number)
+            # has >20 chars but is really an image — treat it as scanned so it gets OCR'd.
+            chars = len(page.get_text("text").strip())
+            if chars > 20 and not _image_dominates(page):
+                pages_with_text += 1
+    finally:
+        doc.close()
 
     if pages_with_text == 0:
         notes.append(f"0/{n} pages have a text layer -> scanned, OCR required")

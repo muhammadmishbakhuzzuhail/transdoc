@@ -292,7 +292,16 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     snap_captions(doc)
     outp = _resolve_out(input_path, cfg, out_path)
     with _stage(timings, "regenerate"):
-        regenerate(doc, cfg, outp)
+        try:
+            regenerate(doc, cfg, outp)
+        except Exception:
+            # A renderer bug must not lose the whole translation: fall back to a Markdown render
+            # of the IR so the run always yields a usable file (plus a loud log).
+            log.warning("regenerate failed for %s; falling back to a Markdown render",
+                        outp, exc_info=True)
+            from .regenerate.markdown import render as _md_render
+            outp = str(Path(outp).with_suffix(".md"))
+            Path(outp).write_text(_md_render(doc, cfg), encoding="utf-8")
 
     # Phase 6b: optional post-render verification — re-extract the output and diff its structure
     # against the source IR, surfacing content-loss warnings in the report.
@@ -332,6 +341,13 @@ def _quality_banner(doc, findings, cfg) -> str:
     (untranslated / empty / entity-loss). Previously such flags only appeared deep in the QA
     section, so a low-quality output (e.g. an OCR-garbage scan, or a degenerate MT run) shipped
     with no visible signal. This surfaces the verdict and points at the remedy."""
+    # No translatable text at all (empty/blank/undecodable input, OCR found nothing) -> the output
+    # will be essentially empty. Surface it loudly instead of shipping a silent blank file.
+    if not any(b.is_translatable for b in doc.blocks):
+        return ("> ⚠ **No translatable text found** — the input appears to be empty, a blank/"
+                "image-only scan with no readable text, or an unsupported/undecodable format. "
+                "The output will be (near) empty. Check the source, or pass `--source <lang>` for "
+                "a non-Latin scan.\n\n")
     blocks = [b for b in doc.blocks if b.is_translatable and b.translated]
     if not blocks:
         return ""
