@@ -55,6 +55,35 @@ def _timing_report(timings: dict[str, float]) -> str:
 
 
 _ZIP_KINDS = {"docx", "xlsx", "pptx", "epub", "odt"}
+# OSD script name -> a representative language for that writing system. Used to resolve an
+# 'auto' source on a SCAN: OCR can't pick the right model without the language, and the language
+# can't be detected without OCR — break the deadlock by detecting the script from the image.
+_SCRIPT_TO_LANG = {
+    "Devanagari": "hi", "Han": "zh", "Japanese": "ja", "Hangul": "ko", "Bengali": "bn",
+    "Tamil": "ta", "Telugu": "te", "Thai": "th", "Cyrillic": "ru", "Arabic": "ar",
+    "Hebrew": "he", "Greek": "el",
+}
+
+
+def _autosource_script(det) -> str | None:
+    """Auto source + a scan/image: OSD-detect the script from the first page and map it to a
+    representative language so a non-Latin scan picks the right OCR model (and skips the Latin/
+    Chinese-defaulting structured path that turns Devanagari/Arabic into garbage). Latin or
+    undetectable -> None (keep 'auto')."""
+    from .ingest.detect import Kind
+    from .ocr.router import detect_script
+    if det.kind not in (Kind.PDF_SCAN, Kind.PDF_MIXED, Kind.IMAGE):
+        return None
+    try:
+        if det.kind == Kind.IMAGE:
+            img = Path(det.path).read_bytes()
+        else:
+            import fitz
+            with fitz.open(det.path) as d:
+                img = d[0].get_pixmap(dpi=200).tobytes("png")
+        return _SCRIPT_TO_LANG.get(detect_script(img) or "")
+    except Exception:
+        return None
 
 
 def _script_of(lang: str | None) -> str:
@@ -86,6 +115,14 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # --- Ingest + detect ---
     with _stage(timings, "detect"):
         det = detect(input_path)
+
+    # Auto source on a scan/image: resolve the script from the page image (OSD) so non-Latin
+    # scans route to the right OCR model instead of a Latin/Chinese default that yields garbage.
+    if (cfg.source_lang or "auto").lower() == "auto":
+        osd_lang = _autosource_script(det)
+        if osd_lang:
+            cfg.source_lang = osd_lang
+            log.info("auto source: OSD script -> source_lang=%s for OCR routing", osd_lang)
 
     if det.mime == "application/pdf":
         import fitz
