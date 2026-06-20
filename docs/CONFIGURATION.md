@@ -115,6 +115,25 @@ commercial fork, prefer `madlad`/`opusmt`/`argos`. See [TRANSLATION.md](TRANSLAT
 Upload limits (in `limits.py`) are also env-overridable: `TRANSDOC_MAX_FILE_MB` (300),
 `TRANSDOC_MAX_PAGES` (5000), `TRANSDOC_MAX_IMAGE_MP` (300), `TRANSDOC_MAX_ZIP_MB` (1000).
 
+## Fonts (PDF output, non-Latin scripts)
+
+The PDF renderer shapes text with PyMuPDF/HarfBuzz, which substitutes glyphs from the **fonts
+available on the host**. For non-Latin output (CJK, Arabic, Devanagari and other Indic, Thai,
+Hebrew, …) the machine must have suitable fonts installed — the **Noto** family is the recommended,
+complete set:
+
+```bash
+# Debian/Ubuntu — full Noto coverage (CJK + everything else)
+sudo apt install fonts-noto fonts-noto-cjk fonts-noto-color-emoji
+# Arch
+sudo pacman -S noto-fonts noto-fonts-cjk noto-fonts-emoji
+```
+
+Without coverage for a script, that script renders as blank boxes (tofu) in **PDF/image** output
+only — **DOCX/PPTX/XLSX/EPUB** outputs embed no fonts and let the viewer (Word, the e-reader) pick
+one, so they are unaffected. Known limitation: fonts are not yet bundled/embedded into generated
+PDFs, so PDF output is not fully self-contained on a host with no CJK/Indic fonts.
+
 ---
 
 See also: [USAGE.md](USAGE.md) · [QUALITY.md](QUALITY.md) · [DEVELOPMENT.md](DEVELOPMENT.md)

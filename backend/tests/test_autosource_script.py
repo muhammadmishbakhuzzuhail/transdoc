@@ -36,3 +36,22 @@ def test_latin_or_unknown_stays_none(tmp_path, monkeypatch):
     assert pipeline._autosource_script(_det(Kind.IMAGE, f)) is None
     monkeypatch.setattr("transdoc.ocr.router.detect_script", lambda img: None)
     assert pipeline._autosource_script(_det(Kind.IMAGE, f)) is None
+
+
+def test_indic_scripts_resolve(tmp_path, monkeypatch):
+    # Kannada + the Tesseract-only Indic scripts must resolve so an auto-source scan routes to the
+    # right OCR model instead of the English structured default.
+    f = tmp_path / "scan.png"
+    f.write_bytes(b"x")
+    for script, lang in [("Kannada", "kn"), ("Malayalam", "ml"), ("Gujarati", "gu"),
+                         ("Gurmukhi", "pa"), ("Oriya", "or"), ("Sinhala", "si")]:
+        monkeypatch.setattr("transdoc.ocr.router.detect_script", lambda img, s=script: s)
+        assert pipeline._autosource_script(_det(Kind.IMAGE, f)) == lang
+
+
+def test_indic_lang_to_script_routes_paddle_or_tess():
+    # explicit --source for these scripts must map to a script so the non-Latin dispatch + chain fire
+    from transdoc.ocr.router import LANG_TO_SCRIPT, ROUTING
+    for lang in ("ml", "gu", "pa", "or", "si"):
+        assert lang in LANG_TO_SCRIPT
+        assert LANG_TO_SCRIPT[lang] in ROUTING
