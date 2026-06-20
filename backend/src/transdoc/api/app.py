@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import tempfile
 import uuid
 from pathlib import Path
@@ -74,17 +73,30 @@ def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, doma
 
 
 def _save_upload(file: UploadFile) -> str:
-    """Persist an upload to a temp file, rejecting oversized inputs (HTTP 413). Returns the path."""
+    """Persist an upload to a temp file, rejecting oversized inputs (HTTP 413). Returns the path.
+    Streams with a hard byte cap so an oversized/zip-bomb upload can't fill the disk before the
+    size check (the old code copied the whole file first, then checked)."""
+    from ..limits import MAX_FILE_MB, InputTooLarge, check_zip_bomb
+    cap = MAX_FILE_MB * 1024 * 1024
     suffix = Path(file.filename or "doc").suffix or ".bin"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    with tmp as f:
-        shutil.copyfileobj(file.file, f)
-    from ..limits import InputTooLarge, check_file_size
+    written = 0
     try:
-        check_file_size(tmp.name)
-    except InputTooLarge as e:
+        with tmp as f:
+            while chunk := file.file.read(1024 * 1024):
+                written += len(chunk)
+                if written > cap:
+                    raise HTTPException(413, f"file exceeds the {MAX_FILE_MB} MB limit")
+                f.write(chunk)
+        # zip-bomb guard on the synchronous upload path too (office/EPUB are zip containers)
+        if suffix.lower() in (".docx", ".xlsx", ".pptx", ".epub", ".odt", ".zip"):
+            try:
+                check_zip_bomb(tmp.name)
+            except InputTooLarge as e:
+                raise HTTPException(413, str(e))
+    except Exception:
         Path(tmp.name).unlink(missing_ok=True)
-        raise HTTPException(413, str(e))
+        raise
     return tmp.name
 
 
