@@ -1,0 +1,17 @@
+# keep the build context (and image) small — none of these are needed to build/run
+.git
+**/__pycache__
+**/*.pyc
+backend/.venv
+backend/layout_venv
+backend/.pytest_cache
+backend/.ruff_cache
+frontend/node_modules
+frontend/dist
+# large dev-only corpora / generated outputs
+backend/corpus
+backend/out
+backend/out_validate
+out_examples
+docs/examples
+**/.DS_Store

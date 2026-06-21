@@ -13,6 +13,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from ..config import (Config, Engine, Fidelity, OCREngine, OutputFormat, Register)
 from .feedback_routes import router as feedback_router
@@ -34,13 +35,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_WEB = Path(__file__).parent / "web"
+_WEB = Path(__file__).parent / "web"      # committed self-contained fallback UI (single index.html)
+_SPA = Path(__file__).parent / "spa"      # built React app (gitignored; `make build-web` / Docker)
+
+# Serve the React SPA's hashed assets when a build is present. Without one (plain `python
+# server.py`), the fallback web/index.html is served and there are no assets to mount.
+if (_SPA / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=_SPA / "assets"), name="assets")
 
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    idx = _WEB / "index.html"
-    return idx.read_text(encoding="utf-8") if idx.exists() else "<h1>transdoc</h1>"
+    # prefer the built React SPA; fall back to the bundled single-file UI
+    for idx in (_SPA / "index.html", _WEB / "index.html"):
+        if idx.exists():
+            return idx.read_text(encoding="utf-8")
+    return "<h1>transdoc</h1>"
 
 
 @app.get("/api/health")

@@ -98,3 +98,10 @@ def test_preview_info_and_page_png():
     png = client.get(f"/api/preview/{jid}/source/0.png")
     assert png.status_code == 200 and png.headers["content-type"] == "image/png"
     assert client.get(f"/api/preview/{jid}/source/999.png").status_code == 404
+
+
+def test_root_serves_ui():
+    # with no built SPA in the repo, the bundled fallback UI is served at /
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "<html" in r.text.lower()
