@@ -57,6 +57,21 @@ def test_analysis_404_for_unknown_job():
     assert client.get("/api/analysis/deadbeef").status_code == 404
 
 
+def test_reading_order_form_field_accepted():
+    # the reading_order knob is now reachable over the API (was config-only)
+    jid = _run_echo_job(layout="off", quality="false", reading_order="xycut")
+    assert client.get(f"/api/jobs/{jid}").json()["status"] == "done"
+
+
+def test_make_cfg_threads_reading_order():
+    from transdoc.api.app import _make_cfg
+    cfg = _make_cfg(target_lang="id", source_lang="auto", output_format="docx", engine="google",
+                    fidelity="auto", domain="auto", register="auto", layout="auto",
+                    ocr_engine="auto", bilingual=False, quality=True, localize=False, pages="",
+                    reading_order="surya")
+    assert cfg.reading_order_engine == "surya"
+
+
 def test_preview_info_and_page_png():
     import io
     import time

@@ -29,11 +29,11 @@ programmatically / via the API request, no dedicated CLI flag yet).
 | `localize` | `false` | CLI, API, UI | Convert dates/numbers/units/currency |
 | `bilingual` | `false` | CLI `-b`, API, UI | Emit source + translation together |
 | `quality_check` | `false` (CLI) / `true` (API/UI) | CLI `-q`, API `quality`, UI | Reference-free QE (COMET-Kiwi) |
-| `align_styles` | `false` (CLI) / `true` (API/UI) | API `align`, UI | Word-alignment style transfer **(no CLI flag yet)** |
+| `align_styles` | `true` | CLI `--align/--no-align`, API `align`, UI | Word-alignment style transfer |
 | `escalate` | `false` | CLI | QE-gate LLM re-translation of weak segments |
 | `verify` | `false` | CLI | Re-extract output, diff structure vs source |
 | `review` | `false` | CLI | Emit `<output>.review.tsv` feedback sidecar |
-| `repair` | `false` | config-only | LLM OCR repair of low-confidence blocks **(no CLI/API flag yet)** |
+| `repair` | `false` | CLI `--repair`, API `repair` | LLM OCR repair of low-confidence blocks |
 | `ocr_figures` | `false` | CLI | OCR text inside large embedded images |
 | `auto_glossary` | `true` | config-only | Pin one rendering for repeated proper nouns |
 | `fuzzy_tm` | `true` | CLI `--fuzzy` | Reuse near-identical past translations |
@@ -42,7 +42,7 @@ programmatically / via the API request, no dedicated CLI flag yet).
 | `consistency` | `true` | CLI `--consistency` | One translation per identical source string |
 | `few_shot` | `true` | CLI `--few-shot` | Inject similar confirmed corrections (LLM only) |
 | `few_shot_k` | `3` | config-only | Max few-shot exemplars per LLM chunk |
-| `reading_order_engine` | `xycut` | config-only | `xycut` (deterministic) or `surya` **(no CLI/API flag yet)** |
+| `reading_order_engine` | `xycut` | CLI `--reading-order`, API `reading_order` | `xycut` (deterministic) or `surya` (VLM re-rank, slow, [surya] extra) |
 | `embed_model` | `paraphrase-multilingual-MiniLM-L12-v2` | config-only | Sentence-transformer for fuzzy/few-shot similarity |
 | `glossary` | `{}` | CLI `-g`, API | Per-run term overrides |
 | `flag_threshold` | `0.90` | config-only | QA flag cutoff |

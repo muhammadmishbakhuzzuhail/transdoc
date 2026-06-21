@@ -57,8 +57,8 @@ boundaries shift, so naive copying smears styling. The aligner computes a word a
 (awesome-align algorithm on multilingual BERT) and redistributes run styles onto the correct target
 words.
 
-- **Enable:** `align_styles` — `align` form field (API, **default on**) and "Style alignment" (UI,
-  on). No dedicated CLI flag yet.
+- **Enable:** `align_styles` — `--align/--no-align` (CLI, **default on**), the `align` form field
+  (API), and "Style alignment" (UI).
 
 ## Reading-order normalisation
 
@@ -74,7 +74,7 @@ For scanned input, `repair` runs an LLM pass that conservatively fixes obvious O
 low-confidence blocks**, with hallucination guards (rejects ballooned output) and a logged audit
 trail (`doc.repairs`). It never invents text.
 
-- **Enable:** `repair` (config-only — no CLI/API flag yet). Requires Ollama.
+- **Enable:** `--repair` (CLI) or the `repair` form field (API). Requires Ollama.
 
 ## Residual non-Latin cleanup
 
