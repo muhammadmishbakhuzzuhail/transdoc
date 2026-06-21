@@ -24,6 +24,57 @@ def _structured_enabled(cfg: Config) -> bool:
     return getattr(cfg, "layout", "off") in ("paddle", "auto")
 
 
+def _page_is_multicolumn(pg) -> bool:
+    """Cheap per-page column check on raw PyMuPDF text blocks (no models): >=2 side-by-side
+    column clusters, each < 60% page width, that vertically overlap. Mirrors
+    pipeline._is_multicolumn but pre-extraction."""
+    blocks = [b for b in pg.get_text("blocks") if b[4].strip()]
+    if len(blocks) < 4:
+        return False
+    pw = pg.rect.width or 595.0
+    cols: list[dict] = []
+    for b in sorted(blocks, key=lambda x: x[0]):
+        x0, x1 = b[0], b[2]
+        for c in cols:
+            if min(c["x1"], x1) - max(c["x0"], x0) > 0.3 * min(c["x1"] - c["x0"], x1 - x0):
+                c["x0"], c["x1"] = min(c["x0"], x0), max(c["x1"], x1)
+                c["bs"].append(b)
+                break
+        else:
+            cols.append({"x0": x0, "x1": x1, "bs": [b]})
+    real = [c for c in cols if len(c["bs"]) >= 2 and (c["x1"] - c["x0"]) < 0.6 * pw]
+    for i in range(len(real)):
+        for j in range(i + 1, len(real)):
+            a, bb = real[i]["bs"], real[j]["bs"]
+            ay0, ay1 = min(x[1] for x in a), max(x[3] for x in a)
+            by0, by1 = min(x[1] for x in bb), max(x[3] for x in bb)
+            if min(ay1, by1) - max(ay0, by0) > 0.4 * min(ay1 - ay0, by1 - by0):
+                return True
+    return False
+
+
+def _is_simple_digital_pdf(path: str) -> bool:
+    """A clean single-column text PDF with no figures/tables gains little from PP-StructureV3 but
+    pays its ~30s paddle cold-load (the dominant cost — profiled 40s extract vs 7s heuristic).
+    Cheaply pre-scan with no models: return True (use the fast heuristic extractor) ONLY when the
+    doc has NO raster image on any page AND every page is single-column. Conservative — any image
+    or any multi-column page keeps the structured path, so figure/table/column docs are unaffected.
+    On any error, return False (keep structured)."""
+    import os
+
+    import fitz
+    if os.environ.get("TRANSDOC_SIMPLE_SKIP_DISABLE") == "1":
+        return False
+    try:
+        with fitz.open(path) as d:
+            for pg in d:
+                if pg.get_images() or _page_is_multicolumn(pg):
+                    return False
+        return True
+    except Exception:
+        return False
+
+
 def _is_non_latin_source(cfg: Config) -> bool:
     """True when the source is an explicit non-Latin language. PP-StructureV3's region OCR is rougher
     on non-Latin (merges words, more errors) than the digital det+rec path, so a non-Latin SCAN is
@@ -49,6 +100,8 @@ def extract(det: Detection, cfg: Config) -> Document:
         # extractor uses that text layer directly.
         from ..config import OutputFormat
         if (_structured_enabled(cfg) and not _is_non_latin_source(cfg)
+                and not _is_simple_digital_pdf(p)        # clean single-col, no figures -> skip the
+                                                         # ~30s paddle cold-load, heuristic suffices
                 and cfg.output_format in (OutputFormat.MARKDOWN, OutputFormat.DOCX,
                                           OutputFormat.PDF, OutputFormat.SAME, OutputFormat.PLAIN)):
             try:
