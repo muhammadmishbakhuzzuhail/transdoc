@@ -203,6 +203,10 @@ def extract_structured(path: str, cfg: Config) -> Document:
         bg = _page_bg(page)
         if bg:
             out.page_background[pno] = bg
+        # Block ids key on the running block count (== reading_order), NOT r.order: PP-StructureV3
+        # reuses the same region `order` for a figure and its caption, so r.order ids COLLIDE — two
+        # blocks share an id and the renderer's id-keyed placements clobber each other (a figure
+        # inherited its caption's tiny slot and shrank to a thumbnail). len(out.blocks) is unique.
         for r in _ordered_regions(regions_by_page.get(pno, [])):
             if r.label in _SKIP:
                 continue
@@ -211,7 +215,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 tbl = _parse_table_html(r.content)
                 if tbl:
                     out.blocks.append(Block(
-                        id=f"p{pno}-r{r.order}", type=BlockType.TABLE, page=pno,
+                        id=f"p{pno}-r{len(out.blocks)}", type=BlockType.TABLE, page=pno,
                         reading_order=len(out.blocks), bbox=bbox, table=tbl,
                         confidence=Confidence(source="digital")))
                     continue
@@ -223,7 +227,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 page.get_pixmap(clip=rect, dpi=200).save(str(fn))
                 cidx += 1
                 out.blocks.append(Block(
-                    id=f"p{pno}-r{r.order}", type=BlockType.FIGURE, page=pno,
+                    id=f"p{pno}-r{len(out.blocks)}", type=BlockType.FIGURE, page=pno,
                     reading_order=len(out.blocks), bbox=bbox, crop_region=True, image_path=str(fn),
                     confidence=Confidence(source="digital")))
                 # Optionally OCR text INSIDE the figure/chart (axis labels, callouts) so it gets
@@ -244,7 +248,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
                 except Exception:
                     fpath = None
                 out.blocks.append(Block(
-                    id=f"p{pno}-r{r.order}", type=BlockType.FORMULA, page=pno,
+                    id=f"p{pno}-r{len(out.blocks)}", type=BlockType.FORMULA, page=pno,
                     reading_order=len(out.blocks), bbox=bbox, text=_clean_latex(r.content.strip()),
                     image_path=fpath, confidence=Confidence(source="digital")))  # never translated
                 continue
@@ -257,7 +261,7 @@ def extract_structured(path: str, cfg: Config) -> Document:
             # block by 72/300 only when source=="ocr" (legacy 300-dpi pixel bboxes), which
             # would misplace this point-bbox. Carry true OCR provenance in a flag instead.
             blk = Block(
-                id=f"p{pno}-r{r.order}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
+                id=f"p{pno}-r{len(out.blocks)}", type=_LABEL.get(r.label, BlockType.PARAGRAPH),
                 page=pno, reading_order=len(out.blocks), bbox=bbox, text=text,
                 style=_region_style(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)),
                 runs=_region_runs(page, fitz.Rect(r.x0, r.y0, r.x1, r.y1)) if digital_ok else [],
