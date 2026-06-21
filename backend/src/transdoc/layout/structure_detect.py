@@ -25,19 +25,8 @@ def _regions_for_page(pipe, page) -> list[dict]:
     return parse_regions(res[0].json, scale) if res else []
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) < 3:
-        sys.stderr.write("usage: structure_detect <pdf> <out.json> <pno> [<pno> ...]\n")
-        return 2
-    lang = next((a.split("=", 1)[1] for a in argv if a.startswith("--lang=")), None)
-    rest = [a for a in argv if not a.startswith("--lang=")]
-    pdf_path, out_path = rest[0], rest[1]
-    pnos = [int(x) for x in rest[2:]]
-
+def _detect(pipe, pdf_path: str, out_path: str, pnos: list[int]) -> None:
     import fitz
-    from paddleocr import PPStructureV3
-
-    pipe = PPStructureV3(lang=lang) if lang else PPStructureV3()
     doc = fitz.open(pdf_path)
     try:
         result = {pno: _regions_for_page(pipe, doc[pno]) for pno in pnos}
@@ -45,6 +34,51 @@ def main(argv: list[str]) -> int:
         doc.close()
     with open(out_path, "w") as fh:
         json.dump(result, fh)
+
+
+# Sentinel lines on stdout — paddle pollutes stdout with progress, so the parent ignores any line
+# without one of these prefixes. Server mode loads the model ONCE and serves many documents.
+_READY = "__STRUCT_READY__"
+_OK = "__STRUCT_OK__"
+_ERR = "__STRUCT_ERR__"
+
+
+def _serve(lang: str | None) -> int:
+    """Persistent worker: load PP-StructureV3 once, then process one request per stdin line
+    ({"pdf","out","pnos"} JSON) until EOF, emitting a sentinel line per request. Lets the parent
+    reuse a warm model across documents instead of paying the ~30s cold-load every time."""
+    from paddleocr import PPStructureV3
+    pipe = PPStructureV3(lang=lang) if lang else PPStructureV3()
+    sys.stdout.write(_READY + "\n")
+    sys.stdout.flush()
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            break
+        try:
+            req = json.loads(line)
+            _detect(pipe, req["pdf"], req["out"], [int(p) for p in req["pnos"]])
+            sys.stdout.write(f"{_OK} {req['out']}\n")
+        except Exception as e:  # keep the worker alive across a bad request
+            sys.stdout.write(f"{_ERR} {str(e)[:300]}\n")
+        sys.stdout.flush()
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    lang = next((a.split("=", 1)[1] for a in argv if a.startswith("--lang=")), None)
+    rest = [a for a in argv if not a.startswith("--lang=")]
+    if rest and rest[0] == "--serve":
+        return _serve(lang)
+    if len(rest) < 3:
+        sys.stderr.write("usage: structure_detect <pdf> <out.json> <pno> [<pno> ...] | --serve\n")
+        return 2
+    pdf_path, out_path = rest[0], rest[1]
+    pnos = [int(x) for x in rest[2:]]
+
+    from paddleocr import PPStructureV3
+    pipe = PPStructureV3(lang=lang) if lang else PPStructureV3()
+    _detect(pipe, pdf_path, out_path, pnos)
     return 0
 
 

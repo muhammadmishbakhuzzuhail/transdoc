@@ -125,20 +125,124 @@ class _InProcess:
         return out
 
 
+_READY = "__STRUCT_READY__"
+_OK = "__STRUCT_OK__"
+_ERR = "__STRUCT_ERR__"
+
+
 class _Subprocess:
+    """Runs PP-StructureV3 in the isolated paddle interpreter. By default a PERSISTENT worker:
+    the model is loaded once and reused across documents (the ~30s cold-load dominated per-doc
+    latency — see profiling). TRANSDOC_LAYOUT_PERSIST=0 reverts to one-shot-per-document. A wedged
+    paddle is bounded by a per-request timeout; on timeout/crash the worker is killed and the
+    request retried once on a fresh worker, then the error propagates (caller falls back to the
+    heuristic extractor)."""
+
     def __init__(self, python_exe: str, lang: str | None = None):
+        import threading
         self.python_exe = python_exe
         self._lang = lang
+        self._proc = None
+        self._lock = threading.Lock()
 
-    def extract_pages(self, fdoc, pnos) -> dict[int, list[StructRegion]]:
+    # --- persistent-worker path -------------------------------------------------------------
+    @staticmethod
+    def _persist_enabled() -> bool:
+        import os
+        return os.environ.get("TRANSDOC_LAYOUT_PERSIST", "1") != "0"
+
+    def _read_sentinel(self, prefixes, timeout: float) -> str:
+        """Read worker stdout lines, ignoring paddle's progress noise, until one starts with a
+        sentinel prefix. Raises on timeout or worker exit (EOF)."""
+        import select
+        import time
+        f = self._proc.stdout
+        deadline = time.monotonic() + timeout
+        while True:
+            rem = deadline - time.monotonic()
+            if rem <= 0 or not select.select([f], [], [], rem)[0]:
+                raise TimeoutError("layout worker timed out")
+            line = f.readline()
+            if line == "":
+                raise RuntimeError("layout worker exited")
+            line = line.strip()
+            if any(line.startswith(p) for p in prefixes):
+                return line
+
+    def _start(self) -> None:
+        import os
+        import subprocess
+        cmd = [self.python_exe, "-m", "transdoc.layout.structure_detect", "--serve"]
+        if self._lang:
+            cmd.append(f"--lang={self._lang}")
+        self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                      stderr=subprocess.DEVNULL, text=True, bufsize=1)
+        _register_worker(self)
+        # model cold-load can take ~30s; allow generous startup before giving up
+        load_to = float(os.environ.get("TRANSDOC_LAYOUT_LOAD_TIMEOUT", "0")) or 240.0
+        self._read_sentinel((_READY,), load_to)
+
+    def stop(self) -> None:
+        if self._proc is None:
+            return
+        p, self._proc = self._proc, None
+        for step in (p.stdin and p.stdin.close, p.terminate):
+            try:
+                step()
+            except Exception:
+                pass
+        try:
+            p.wait(timeout=5)
+        except Exception:
+            try:
+                p.kill()
+            except Exception:
+                pass
+
+    def _request(self, fdoc, pnos) -> dict:
+        import json
+        import os
+        import tempfile
+        pdf_path = fdoc.name
+        if not pdf_path:
+            raise RuntimeError("structured extraction needs a file-backed PDF")
+        fd, out_path = tempfile.mkstemp(suffix=".json", prefix="transdoc-struct-")
+        os.close(fd)
+        try:
+            self._proc.stdin.write(json.dumps(
+                {"pdf": pdf_path, "out": out_path, "pnos": list(pnos)}) + "\n")
+            self._proc.stdin.flush()
+            timeout = float(os.environ.get("TRANSDOC_LAYOUT_TIMEOUT", "0")) or max(300.0, 120.0 * len(pnos))
+            line = self._read_sentinel((_OK, _ERR), timeout)
+            if line.startswith(_ERR):
+                raise RuntimeError(f"layout worker error: {line[len(_ERR):].strip()}")
+            with open(out_path) as fh:
+                raw = json.load(fh)
+        finally:
+            try:
+                os.unlink(out_path)
+            except OSError:
+                pass
+        return _parse_raw(raw)
+
+    def _served(self, fdoc, pnos) -> dict:
+        for attempt in (1, 2):
+            try:
+                if self._proc is None or self._proc.poll() is not None:
+                    self._start()
+                return self._request(fdoc, pnos)
+            except Exception:
+                self.stop()                 # kill the wedged worker; retry once on a fresh one
+                if attempt == 2:
+                    raise                   # 2nd failure -> caller falls back to the heuristic
+        return {}
+
+    # --- one-shot path (TRANSDOC_LAYOUT_PERSIST=0) ------------------------------------------
+    def _oneshot(self, fdoc, pnos) -> dict:
         import json
         import os
         import subprocess
         import tempfile
-
-        pnos = list(pnos)
-        if not pnos:
-            return {}
         pdf_path = fdoc.name
         if not pdf_path:
             raise RuntimeError("structured extraction needs a file-backed PDF")
@@ -149,8 +253,6 @@ class _Subprocess:
                    pdf_path, out_path, *[str(p) for p in pnos]]
             if self._lang:
                 cmd.append(f"--lang={self._lang}")
-            # Bound the subprocess: a wedged paddle (model-download hang, GPU deadlock) would
-            # otherwise block the worker forever and, since jobs are serialised, stall the queue.
             timeout = float(os.environ.get("TRANSDOC_LAYOUT_TIMEOUT", "0")) or max(300.0, 120.0 * len(pnos))
             try:
                 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -166,20 +268,57 @@ class _Subprocess:
                 os.unlink(out_path)
             except OSError:
                 pass
-        return {int(p): [StructRegion(r["label"], *r["bbox"], r["content"], r["order"])
-                         for r in regs]
-                for p, regs in raw.items()}
+        return _parse_raw(raw)
+
+    def extract_pages(self, fdoc, pnos) -> dict[int, list[StructRegion]]:
+        pnos = list(pnos)
+        if not pnos:
+            return {}
+        if not self._persist_enabled():
+            return self._oneshot(fdoc, pnos)
+        with self._lock:
+            return self._served(fdoc, pnos)
+
+
+def _parse_raw(raw: dict) -> dict[int, list[StructRegion]]:
+    return {int(p): [StructRegion(r["label"], *r["bbox"], r["content"], r["order"]) for r in regs]
+            for p, regs in raw.items()}
+
+
+# Live subprocess workers, terminated at interpreter exit so a persistent paddle never lingers.
+_WORKERS: list = []
+
+
+def _register_worker(w) -> None:
+    import atexit
+    if not _WORKERS:
+        atexit.register(lambda: [x.stop() for x in _WORKERS])
+    if w not in _WORKERS:
+        _WORKERS.append(w)
+
+
+# Cache the extractor per language so the warm model (in-process pipe or persistent worker) is
+# reused across documents instead of rebuilt each call.
+_EXTRACTOR_CACHE: dict = {}
 
 
 def get_structure_extractor(lang: str | None = None):
-    """In-process PP-StructureV3 if paddle is importable here, else the isolated subprocess.
+    """In-process PP-StructureV3 if paddle is importable here, else the isolated subprocess (a
+    persistent worker by default). Cached per `lang` so the loaded model is reused across documents.
     `lang` is the PaddleOCR language code to OCR with (see paddle_lang); None keeps PP-StructureV3's
     default. Raises if neither is available (caller decides whether to fall back)."""
+    key = lang or ""
+    cached = _EXTRACTOR_CACHE.get(key)
+    if cached is not None:
+        return cached
     if importlib.util.find_spec("paddle") is not None:
-        return _InProcess(lang)
-    py = _layout_python()
-    if py:
-        return _Subprocess(py, lang)
-    raise RuntimeError(
-        "structured extraction needs paddle (PP-StructureV3): install the [paddleocr] extra or "
-        "set TRANSDOC_LAYOUT_PYTHON to an isolated paddle venv.")
+        ext = _InProcess(lang)
+    else:
+        py = _layout_python()
+        if not py:
+            raise RuntimeError(
+                "structured extraction needs paddle (PP-StructureV3): install the [paddleocr] extra "
+                "or set TRANSDOC_LAYOUT_PYTHON to an isolated paddle venv.")
+        ext = _Subprocess(py, lang)
+    _EXTRACTOR_CACHE[key] = ext
+    return ext
