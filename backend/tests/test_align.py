@@ -78,7 +78,9 @@ def test_empty_alignment_falls_back(monkeypatch):
     assert align_mod.restyle_runs(d, _cfg()) == 0
 
 
-def test_disabled_by_default(monkeypatch):
+def test_enabled_by_default(monkeypatch):
+    # align_styles defaults ON (whole-paragraph translation + style redistribution = DeepL-like
+    # quality); the aligner runs for a mixed-style block. Explicit align_styles=False opts out.
     called = {"n": 0}
     monkeypatch.setattr(align_mod.WordAligner, "align",
                         lambda self, s, t: called.__setitem__("n", called["n"] + 1) or set())
@@ -86,8 +88,11 @@ def test_disabled_by_default(monkeypatch):
     b = _block("satu dua", runs)
     d = Document(source_path="x", mime="text/plain")
     d.blocks = [b]
-    align_mod.restyle_runs(d, Config(source_lang="en", target_lang="id"))  # align_styles off
-    assert called["n"] == 0
+    align_mod.restyle_runs(d, Config(source_lang="en", target_lang="id"))   # default: on
+    assert called["n"] == 1
+    called["n"] = 0
+    align_mod.restyle_runs(d, Config(source_lang="en", target_lang="id", align_styles=False))
+    assert called["n"] == 0                                                  # opt-out
 
 
 def test_single_run_block_untouched(monkeypatch):

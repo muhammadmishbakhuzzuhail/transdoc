@@ -107,12 +107,16 @@ class Config(BaseModel):
     pages: str | None = None                   # page selection, e.g. "3-7,10,15-"
     bilingual: bool = False                     # emit source + translation together
     quality_check: bool = False                 # run reference-free QE (COMET), flag weak segments
-    align_styles: bool = False                  # word-alignment style transfer: redistribute inline
-                                                # run styles (bold/italic/super/link) onto the
-                                                # whole-block translation via mBERT word alignment, so
-                                                # a styled span tracks the right words after reorder/
-                                                # expansion. Falls back to per-run translation when the
-                                                # aligner is unavailable or the alignment is too sparse.
+    align_styles: bool = True                   # word-alignment style transfer: translate each styled
+                                                # paragraph as ONE unit (full context, DeepL-like) and
+                                                # redistribute its inline run styles (bold/italic/
+                                                # super/link) onto that translation via mBERT word
+                                                # alignment, so a styled span tracks the right words
+                                                # after reorder/expansion. On by default for
+                                                # whole-paragraph quality; gracefully falls back to
+                                                # per-run translation when the aligner (torch +
+                                                # transformers, an optional extra) is unavailable or
+                                                # the alignment is too sparse.
     escalate: bool = False                       # hybrid QE-gate: re-translate QA-weak segments
                                                 # (entity/untranslated/empty/length + low-COMET) with
                                                 # the local doc-context LLM (Ollama). Opt-in (needs
