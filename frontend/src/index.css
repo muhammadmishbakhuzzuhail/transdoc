@@ -3,44 +3,51 @@
 @tailwind utilities;
 
 @layer base {
+  /* Palette: neutral slate surfaces + an indigo brand accent. Contrasts target WCAG AA —
+     indigo-600 (#4f46e5) carries white text (~6.6:1) in light; indigo-400 (#818cf8) carries
+     near-black text in dark; body + muted-foreground clear AA on their backgrounds. */
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 99%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    --primary: 222 47% 31%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 31%;
-    --radius: 0.5rem;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 30% 96%;
+    --secondary-foreground: 222 47% 18%;
+    --muted: 220 30% 96%;
+    --muted-foreground: 220 12% 42%;
+    --accent: 243 75% 96%;
+    --accent-foreground: 243 60% 32%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 24% 90%;
+    --input: 220 24% 88%;
+    --ring: 243 75% 58%;
+    --radius: 0.6rem;
   }
   .dark {
     --background: 222 47% 7%;
     --foreground: 210 40% 96%;
-    --card: 222 44% 10%;
+    --card: 222 40% 11%;
     --card-foreground: 210 40% 96%;
-    --primary: 210 40% 90%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 234 89% 74%;
     --primary-foreground: 222 47% 11%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 96%;
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 96%;
-    --destructive: 0 63% 45%;
-    --destructive-foreground: 210 40% 96%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 213 27% 70%;
+    --muted: 217 33% 16%;
+    --muted-foreground: 218 15% 68%;
+    --accent: 222 40% 18%;
+    --accent-foreground: 234 89% 84%;
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 222 47% 11%;
+    --border: 217 30% 22%;
+    --input: 217 30% 24%;
+    --ring: 234 89% 74%;
   }
   * { @apply border-border; }
   body { @apply bg-background text-foreground; font-feature-settings: "rlig" 1, "calt" 1; }

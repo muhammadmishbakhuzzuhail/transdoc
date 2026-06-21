@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
-import { AlertCircle, Languages, Loader2, RotateCcw } from "lucide-react"
+import { AlertCircle, CheckCircle2, Download, FileText, Languages, Loader2, Moon, RotateCcw, Sun } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
 import { BatchView } from "@/components/BatchView"
+import { Footer } from "@/components/Footer"
 import { GlossaryView } from "@/components/GlossaryView"
+import { Hero } from "@/components/Hero"
 import { PreviewPanel } from "@/components/PreviewPanel"
 import { ReviewView } from "@/components/ReviewView"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useTheme } from "@/lib/theme"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  type Analysis, getAnalysis, getHealth, getJob, type Health, type JobStatus, startBatch,
-  startTranslate,
+  type Analysis, downloadUrl, getAnalysis, getHealth, getJob, type Health, type JobStatus,
+  reportUrl, startBatch, startTranslate,
 } from "@/lib/api"
 
 export default function App() {
@@ -23,6 +26,7 @@ export default function App() {
   const [batchId, setBatchId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<"translate" | "glossary">("translate")
+  const [theme, toggleTheme] = useTheme()
   const poll = useRef<number | null>(null)
   const lastSubmit = useRef<{ files: File[]; v: FormValues } | null>(null)   // for Retry
 
@@ -86,7 +90,7 @@ export default function App() {
             Layout-faithful document translation — CPU-friendly, free.
           </p>
         </div>
-        <nav className="ml-auto flex gap-1">
+        <nav className="ml-auto flex items-center gap-1">
           {(["translate", "glossary"] as const).map((tab) => (
             <button key={tab} type="button" onClick={() => setView(tab)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
@@ -94,10 +98,16 @@ export default function App() {
               {tab}
             </button>
           ))}
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="ml-1"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
         </nav>
       </header>
 
       {view === "glossary" ? <GlossaryView /> : <>
+
+      {!job && !batchId && !error && <Hero />}
 
       <TranslateForm health={health} busy={busy} onSubmit={submit} />
 
@@ -138,6 +148,27 @@ export default function App() {
       {/* Review-first: once a job is done, the CAT-grade segment review is the default screen;
           before/after preview, analysis and download live behind secondary tabs. */}
       {job?.status === "done" && (
+        <Card className="border-primary/30 bg-accent/40">
+          <CardContent className="flex flex-wrap items-center gap-3 py-4">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <span className="text-sm font-medium">Translation ready</span>
+            <div className="ml-auto flex gap-2">
+              {job.has_report && (
+                <a href={reportUrl(job.job_id)} target="_blank" rel="noreferrer">
+                  <Button variant="outline" size="sm"><FileText className="h-4 w-4" /> Report</Button>
+                </a>
+              )}
+              {job.has_output && (
+                <a href={downloadUrl(job.job_id)}>
+                  <Button size="sm"><Download className="h-4 w-4" /> Download</Button>
+                </a>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {job?.status === "done" && (
         <Tabs defaultValue="review" className="space-y-4">
           <TabsList>
             <TabsTrigger value="review">Review</TabsTrigger>
@@ -156,6 +187,8 @@ export default function App() {
         </Tabs>
       )}
       </>}
+
+      <Footer />
     </div>
   )
 }
