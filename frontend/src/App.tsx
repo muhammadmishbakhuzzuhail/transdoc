@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
-import { AlertCircle, Languages, Loader2 } from "lucide-react"
+import { AlertCircle, Languages, Loader2, RotateCcw } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { AnalysisView } from "@/components/AnalysisView"
 import { BatchView } from "@/components/BatchView"
@@ -8,6 +8,7 @@ import { GlossaryView } from "@/components/GlossaryView"
 import { PreviewPanel } from "@/components/PreviewPanel"
 import { ReviewView } from "@/components/ReviewView"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -23,6 +24,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<"translate" | "glossary">("translate")
   const poll = useRef<number | null>(null)
+  const lastSubmit = useRef<{ files: File[]; v: FormValues } | null>(null)   // for Retry
 
   useEffect(() => {
     getHealth().then(setHealth).catch(() => setError("Backend unreachable. Start it with: transdoc serve"))
@@ -32,6 +34,7 @@ export default function App() {
   const busy = job?.status === "queued" || job?.status === "running"
 
   async function submit(files: File[], v: FormValues) {
+    lastSubmit.current = { files, v }                // remember for Retry
     setError(null); setAnalysis(null); setJob(null); setBatchId(null)
     if (poll.current) clearInterval(poll.current)   // stop any prior single-job poll (incl. before a batch)
     const fd = new FormData()
@@ -101,7 +104,14 @@ export default function App() {
       {error && (
         <Card className="border-destructive">
           <CardContent className="flex items-center gap-2 py-4 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" /> {error}
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span className="flex-1">{error}</span>
+            {lastSubmit.current && (
+              <Button size="sm" variant="outline"
+                onClick={() => { const s = lastSubmit.current!; submit(s.files, s.v) }}>
+                <RotateCcw className="h-3.5 w-3.5" /> Retry
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -112,7 +122,10 @@ export default function App() {
         <Card>
           <CardContent className="space-y-3 py-5">
             <div className="flex items-center gap-2 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> {job?.message || "starting…"}
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="flex-1 capitalize">{job?.message || "starting…"}</span>
+              <span className="tabular-nums text-muted-foreground">
+                {Math.round((job?.progress ?? 0.1) * 100)}%</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div className="h-full bg-primary transition-all"
