@@ -41,3 +41,30 @@ def test_apply_toc_clamps_pages(tmp_path):
     _apply_pdf_toc(d, _D())
     assert d.get_toc()[0][2] == 1   # page clamped to count
     d.close()
+
+
+def test_apply_toc_remaps_source_page_to_output(tmp_path):
+    # with spill pages, a source page number != output index; src_to_out maps it. Source page 2
+    # (1-based) -> 0-based key 1 -> output page index 3 -> bookmark page 4.
+    d = fitz.open()
+    for _ in range(5):
+        d.new_page(width=300, height=300)
+
+    class _D:
+        toc = [TocEntry(level=1, title="Methods", page=2, translated="Metode")]
+    _apply_pdf_toc(d, _D(), {0: 0, 1: 3})       # source page 1 (0-based) lands on output page 3
+    assert d.get_toc()[0][2] == 4               # 1-based output page
+    d.close()
+
+
+def test_apply_toc_drops_entry_for_trimmed_page(tmp_path):
+    # when --pages trimmed the source page an entry points at, drop the bookmark (not clamp to a
+    # wrong page).
+    d = fitz.open()
+    d.new_page(width=300, height=300)
+
+    class _D:
+        toc = [TocEntry(level=1, title="Gone", page=2, translated="Hilang")]
+    _apply_pdf_toc(d, _D(), {0: 0})             # source page 1 (0-based) not in the map
+    assert d.get_toc() == []
+    d.close()
