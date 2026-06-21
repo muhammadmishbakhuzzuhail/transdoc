@@ -41,3 +41,19 @@ def test_all_pages_when_unset(tmp_path):
                  output_format=OutputFormat.PDF, fidelity=Fidelity.LAYOUT, mode=Mode.FULL)
     run(str(src), cfg, out_path=str(out))
     assert fitz.open(str(out)).page_count == 3
+
+
+def test_pages_subset_reconstruct_keeps_right_page(tmp_path):
+    # RECONSTRUCT may insert spill pages, so output index != source page. --pages must select by
+    # SOURCE page (it was trimming the wrong pages once any content spilled).
+    src = tmp_path / "doc.pdf"
+    _three_page_pdf(src)
+    out = tmp_path / "o.pdf"
+    cfg = Config(source_lang="en", target_lang="id", engine=Engine.ECHO,
+                 output_format=OutputFormat.PDF, fidelity=Fidelity.RECONSTRUCT,
+                 mode=Mode.FULL, pages="2")
+    run(str(src), cfg, out_path=str(out))
+    o = fitz.open(str(out))
+    assert o.page_count == 1
+    assert "Page 1" in o[0].get_text()      # source page index 1 == "Page 1" text; correct page kept
+    o.close()

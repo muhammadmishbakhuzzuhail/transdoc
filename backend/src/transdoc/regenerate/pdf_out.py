@@ -46,13 +46,27 @@ def _esc(s: str) -> str:
     return html.escape(s)
 
 
-def _apply_pdf_toc(pdf, doc) -> None:
-    """Rebuild the PDF outline/bookmarks with translated titles (clamped to page count)."""
+def _apply_pdf_toc(pdf, doc, src_to_out: dict | None = None) -> None:
+    """Rebuild the PDF outline/bookmarks with translated titles (clamped to page count).
+
+    e.page is a 1-based SOURCE page number. When the reconstruct renderer inserted spill pages or
+    trimmed via --pages, src_to_out maps a 0-based source page to its output page index; without it
+    (overlay path) output pages mirror source pages 1:1 so e.page is used directly."""
     if not getattr(doc, "toc", None):
         return
     n = pdf.page_count
-    toc = [[max(1, e.level), e.output_text, min(max(1, e.page), n)]
-           for e in doc.toc if e.output_text.strip()]
+    toc = []
+    for e in doc.toc:
+        if not e.output_text.strip():
+            continue
+        if src_to_out is not None:
+            out_idx = src_to_out.get(max(1, e.page) - 1)
+            if out_idx is None:
+                continue                       # source page not in the output (trimmed by --pages)
+            pg = out_idx + 1
+        else:
+            pg = e.page
+        toc.append([max(1, e.level), e.output_text, min(max(1, pg), n)])
     if toc:
         try:
             pdf.set_toc(toc)
@@ -814,6 +828,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
             src = None
 
     out = fitz.open()
+    page_src: list[int] = []          # output page index -> source page no (reflow may add spills)
     try:
         for pno in range(npages):
             w, h = doc.page_sizes.get(pno, (595.0, 842.0))
@@ -835,6 +850,7 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
             while True:
                 placements, overflow = _reflow(page_items, h, anchored) if page_items else ({}, [])
                 page = out.new_page(width=w, height=h)
+                page_src.append(pno)
                 if origin:                            # backgrounds/vectors/annots use source geom
                     bg = doc.page_background.get(pno)
                     if bg:
@@ -855,9 +871,21 @@ def render_reconstruct(doc: Document, cfg: Config, out_path: str) -> str:
                 if not overflow or len(overflow) == len(page_items):
                     break                             # done, or nothing fit (avoid infinite spill)
                 page_items, anchored, origin = overflow, False, False
-        _subset_pages(out, cfg)
+        # Subset + TOC keyed on SOURCE pages: reflow may have inserted spill pages, so an output
+        # page index != its source page number. Without this map, --pages trims the wrong pages and
+        # TOC bookmarks land on the wrong page whenever any content spilled.
+        from ..extract.pdf import _parse_pages
+        sel_src = _parse_pages(getattr(cfg, "pages", None), npages)
+        if sel_src is not None and len(sel_src) < npages:
+            keep = [i for i, pno in enumerate(page_src) if pno in sel_src]
+            if keep:
+                out.select(keep)
+                page_src = [page_src[i] for i in keep]
+        src_to_out: dict[int, int] = {}
+        for out_idx, pno in enumerate(page_src):
+            src_to_out.setdefault(pno, out_idx)        # first output page for each source page
         _apply_pdf_metadata(out, doc)
-        _apply_pdf_toc(out, doc)
+        _apply_pdf_toc(out, doc, src_to_out)
         _save_pdf(out, out_path)
     finally:
         out.close()

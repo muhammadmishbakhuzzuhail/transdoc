@@ -54,7 +54,11 @@ def build_report(doc: Document, cfg: Config) -> str:
             L.append(f"- {len(shrunk)} block(s) shrunk to fit (still legible).")
         L.append("")
 
-    flagged = doc.flagged_blocks()
+    # "needs human check" is about CONTENT risk — exclude render-only flags (text_expansion /
+    # illegible / region_overlap), which are layout artefacts already covered by "Rendering quality"
+    # above; otherwise a merely-shrunk-but-legible block is double-listed and inflates the count.
+    _RENDER_FLAGS = {"text_expansion", "illegible", "region_overlap"}
+    flagged = [b for b in doc.flagged_blocks() if set(b.flags) - _RENDER_FLAGS]
     if flagged:
         L.append("## Flagged items (needs human check)")
         for b in flagged:
