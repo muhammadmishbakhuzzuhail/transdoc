@@ -72,3 +72,28 @@ jobs:
 
       - name: Build (tsc + vite)
         run: npm run build
+
+  docker:
+    # Verify the single-image build (multi-stage: React build + python runtime with tesseract /
+    # LibreOffice). Build only — no push — so a broken Dockerfile fails CI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: transdoc:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test (import app + CLI help)
+        run: |
+          docker run --rm transdoc:ci python -c "import transdoc.api.app"
+          docker run --rm transdoc:ci transdoc --help
