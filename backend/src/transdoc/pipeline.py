@@ -109,6 +109,49 @@ def _cross_script_reflow(src: str | None, tgt: str | None) -> bool:
     return _script_of(s) != _script_of(tgt)
 
 
+def _is_multicolumn(doc) -> bool:
+    """True when the source is laid out in >=2 side-by-side text columns on most pages. The
+    positioned per-block reconstruct keeps each block's source x — fine within one column, but when
+    the translation expands, columns overprint each other (verified on arXiv en->id: left column
+    text printed over the right). Such docs reflow far more readably in FLOW; single-column docs
+    keep reconstruct (its layout-faithful sweet spot). Detected from paragraph bboxes: two column
+    clusters, each narrower than ~60% of the page, that vertically overlap (genuinely side-by-side,
+    not sequential blocks at different indents)."""
+    from .ir import BlockType
+    by_page: dict[int, list] = {}
+    for b in doc.blocks:
+        if b.bbox and b.type in (BlockType.PARAGRAPH, BlockType.LIST_ITEM) and b.text.strip():
+            by_page.setdefault(b.page, []).append(b)
+    pages = multi = 0
+    for pno, blocks in by_page.items():
+        if len(blocks) < 4:
+            continue
+        pw = (doc.page_sizes.get(pno, (595.0, 842.0))[0]) or 595.0
+        cols: list[dict] = []
+        for b in sorted(blocks, key=lambda x: x.bbox.x0):
+            x0, x1 = b.bbox.x0, b.bbox.x1
+            for c in cols:
+                if min(c["x1"], x1) - max(c["x0"], x0) > 0.3 * min(c["x1"] - c["x0"], x1 - x0):
+                    c["x0"], c["x1"] = min(c["x0"], x0), max(c["x1"], x1)
+                    c["bs"].append(b)
+                    break
+            else:
+                cols.append({"x0": x0, "x1": x1, "bs": [b]})
+        real = [c for c in cols if len(c["bs"]) >= 2 and (c["x1"] - c["x0"]) < 0.6 * pw]
+        side_by_side = False
+        for i in range(len(real)):
+            for j in range(i + 1, len(real)):
+                a, bb = real[i]["bs"], real[j]["bs"]
+                ay0, ay1 = min(x.bbox.y0 for x in a), max(x.bbox.y1 for x in a)
+                by0, by1 = min(x.bbox.y0 for x in bb), max(x.bbox.y1 for x in bb)
+                if min(ay1, by1) - max(ay0, by0) > 0.4 * min(ay1 - ay0, by1 - by0):
+                    side_by_side = True
+        pages += 1
+        if side_by_side:
+            multi += 1
+    return pages > 0 and multi >= max(1, pages // 2)
+
+
 def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # --- Safety guards (reject pathological/malicious input before any heavy work) ---
     from .limits import apply_pil_cap, check_file_size, check_pages, check_zip_bomb
@@ -216,6 +259,12 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
             cfg.fidelity = Fidelity.FLOW
             log.info("cross-script %s->%s: AUTO -> FLOW (reconstruct can't preserve this layout)",
                      eff_src, cfg.target_lang)
+        elif _is_multicolumn(doc):
+            # Same-script multi-column (e.g. arXiv en->id): reconstruct overprints the columns when
+            # text expands. Reflow reads cleanly and still preserves figures/tables. (Forms already
+            # routed to LAYOUT above, so cfg.fidelity is no longer AUTO for them.)
+            cfg.fidelity = Fidelity.FLOW
+            log.info("multi-column source: AUTO -> FLOW (reconstruct overprints expanded columns)")
 
     # FLOW output reflows the text, so running headers/footers just clutter it (and waste
     # translation calls). Strip them before translating. LAYOUT keeps them in place.
