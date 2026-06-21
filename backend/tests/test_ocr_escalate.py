@@ -92,3 +92,28 @@ def test_escalates_on_high_low_fraction_even_if_avg_ok():
     out = run_with_escalation([_M(weak_tail), _M(mixed([0.95] * 5, "strong"))],
                               b"", CFG)
     assert out[0].text.startswith("strong")      # escalated despite the ok-ish average
+
+
+def test_empty_primary_escalates_and_real_text_wins():
+    # an empty primary pass (engine recognised nothing) must NOT be accepted as a "perfect" page:
+    # _avg_conf([])/_quality([]) used to report perfect, so the chain returned [] and never tried a
+    # stronger engine that could read the page. Now empty -> escalate, and a real pass beats empty.
+    from transdoc.ir import BBox, Block, BlockType, Confidence
+    from transdoc.ocr.auto import _needs_escalation, _quality, run_with_escalation
+
+    assert _needs_escalation([]) is True
+    assert _quality([]) == -1.0
+
+    real = [Block(id="r0", type=BlockType.PARAGRAPH, page=0, text="real text",
+                  bbox=BBox(x0=0, y0=0, x1=9, y1=4),
+                  confidence=Confidence(source="ocr", ocr=0.5))]
+
+    class _M:
+        def __init__(self, b):
+            self._b = b
+
+        def recognize_image_bytes(self, img, cfg, page=0):
+            return self._b
+
+    out = run_with_escalation([_M([]), _M(real)], b"", CFG)
+    assert out and out[0].text == "real text"     # empty primary -> real escalation wins, not lost

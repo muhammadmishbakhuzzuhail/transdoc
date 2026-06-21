@@ -47,7 +47,8 @@ def enforce_consistency(doc: Document, cfg: Config) -> int:
         winner = None
         if tm is not None:
             try:
-                winner = tm.confirmed_translation(blocks[0].text, cfg.target_lang) or None
+                winner = tm.confirmed_translation(
+                    blocks[0].text, cfg.target_lang, src_lang=doc.source_lang or "") or None
             except Exception:
                 winner = None
         if not winner:

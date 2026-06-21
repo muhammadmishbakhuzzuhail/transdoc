@@ -337,7 +337,12 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         # 1b) cross-run cache: skip segments already translated for this target in any prior run.
         #     This is what keeps a free Google-web-endpoint service under the rate limit.
         ptm = PersistentTM.get()
-        cached = ptm.get_many(unique, target) if ptm else {}
+        # Key the cache on the run's source language (like the LLM path's get_segments/put_segments).
+        # Without it every NMT row is keyed src_lang="" -> a de->id translation of "Information" is
+        # served to an en->id run, AND a confirmed correction stored under its real src_lang is
+        # invisible to this exact-match lookup (only the fuzzy path could find it).
+        src_lang = doc.source_lang or ""
+        cached = ptm.get_many(unique, target, src_lang=src_lang) if ptm else {}
         todo = [u for u in unique if u not in cached]
 
         # 1b-fuzzy) reuse a near-identical past translation (PR-4). A high-scoring match whose text is
@@ -384,7 +389,7 @@ def translate_document(doc: Document, tr: Translator, cfg: Config) -> None:
         # Only persist real translations. A no-op engine (echo) marks itself non-cacheable so its
         # "[id] ..." placeholder output never poisons the cross-run TM for later real runs.
         if ptm and fresh_map and getattr(tr, "cacheable", True):
-            ptm.put_many(fresh_map, target)
+            ptm.put_many(fresh_map, target, src_lang=src_lang)
         translated_unique = [cached.get(u) or fuzzy_hits.get(u) or fresh_map.get(u, u)
                              for u in unique]
 

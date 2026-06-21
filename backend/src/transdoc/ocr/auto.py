@@ -37,12 +37,21 @@ def _low_fraction(blocks: list[Block]) -> float:
 
 
 def _needs_escalation(blocks: list[Block]) -> bool:
+    # An EMPTY pass (primary recognised nothing — wrong lang pack, dense non-Latin, failed
+    # recognition) must escalate: _avg_conf([])/_low_fraction([]) report a "perfect" page, which
+    # would otherwise accept a blank result and never try a stronger engine that can read it.
+    if not blocks:
+        return True
     return _avg_conf(blocks) < ESCALATE_BELOW or _low_fraction(blocks) > LOW_FRACTION
 
 
 def _quality(blocks: list[Block]) -> float:
     """Rank a pass: high average, few weak lines. Lets a stronger engine win even when its average
     is close, as long as it leaves fewer garbled lines."""
+    # An empty pass must NEVER beat a real (even weak) one — _avg_conf([]) is 1.0, so without this
+    # an engine that errors-to-empty would score "perfect" and discard the good text.
+    if not blocks:
+        return -1.0
     return _avg_conf(blocks) - 0.3 * _low_fraction(blocks)
 
 
