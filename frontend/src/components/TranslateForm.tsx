@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
-import { ChevronDown, FileUp, Loader2, Settings2 } from "lucide-react"
+import { ChevronDown, FileUp, Loader2, Settings2, X } from "lucide-react"
 import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -38,6 +38,12 @@ const DEFAULTS: FormValues = {
   target_lang: "id", source_lang: "auto", output_format: "same-as-source", engine: "fallback",
   fidelity: "auto", layout: "auto", ocr_engine: "auto", register: "auto",
   bilingual: false, quality: true, localize: false, align: true, escalate: false, repair: false, pages: "",
+}
+
+function fmtSize(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -89,18 +95,36 @@ export function TranslateForm({ health, busy, onSubmit }: {
           onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files.length) setFiles(Array.from(e.dataTransfer.files)) }}
           className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-10 text-center transition-colors ${drag ? "border-primary bg-accent" : "border-border"}`}
         >
-          <FileUp className="h-8 w-8 text-muted-foreground" />
+          <FileUp className={`h-8 w-8 ${drag ? "text-primary" : "text-muted-foreground"}`} />
           <div className="text-sm">
-            {files.length === 1 ? <span className="font-medium">{files[0].name}</span>
-              : files.length > 1 ? <span className="font-medium">{files.length} files</span>
-              : "Drop documents or click to browse"}
+            {files.length ? <span className="font-medium">{files.length === 1 ? "1 file" : `${files.length} files`} selected — click to change</span>
+              : <><span className="font-medium text-foreground">Drop a document</span> or click to browse</>}
           </div>
           <p className="text-xs text-muted-foreground">
-            One or many — PDF (incl. scans), DOCX, PPTX, XLSX, EPUB, images, subtitles
+            PDF (incl. scans), DOCX, PPTX, XLSX, EPUB, images, subtitles — one or many
           </p>
           <input ref={inputRef} type="file" multiple className="hidden"
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
         </div>
+
+        {/* selected files: name + size + remove */}
+        {files.length > 0 && (
+          <ul className="space-y-1.5">
+            {files.map((f, i) => (
+              <li key={`${f.name}-${i}`}
+                className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                <FileUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{fmtSize(f.size)}</span>
+                <button type="button" aria-label={`Remove ${f.name}`}
+                  onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
+                  className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/* The two things a beginner actually chooses */}
         <div className="grid grid-cols-2 gap-4">
