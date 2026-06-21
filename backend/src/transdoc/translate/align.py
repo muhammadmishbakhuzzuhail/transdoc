@@ -36,6 +36,24 @@ class WordAligner:
     _tok = None
     _ok = True
 
+    @classmethod
+    def release(cls) -> None:
+        """Drop the mBERT aligner and free its memory after the align stage, so the next heavy
+        stage (COMET QE) doesn't coexist with it. On a small box (~11 GB RAM) stacking paddle +
+        mBERT + COMET overflows; each model runs in its OWN stage, so unloading between them keeps
+        peak memory at one model, not the sum. Re-loads lazily if align runs again."""
+        cls._model = None
+        cls._tok = None
+        cls._ok = True
+        try:
+            import gc
+            gc.collect()
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
     def _load(self):
         if WordAligner._model is None and WordAligner._ok:
             try:
