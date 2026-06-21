@@ -303,8 +303,9 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     # expansion. Falls back to the per-run translation when the aligner is unavailable/too sparse.
     if cfg.align_styles and not getattr(tr, "is_noop", False):   # skip echo/no-op engines
         with _stage(timings, "align"):
-            from .translate.align import restyle_runs
+            from .translate.align import WordAligner, restyle_runs
             restyle_runs(doc, cfg)
+            WordAligner.release()        # free mBERT before the QE stage loads COMET (small-RAM)
 
     # Phase 5a': document-level consistency — force identical source text to one translation
     # (confirmed > majority > first). Before QA so the harmonised output is what gets checked.
