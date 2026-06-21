@@ -295,3 +295,24 @@ def test_markdown_renders_formula_as_display_math():
                         bbox=BBox(x0=0, y0=0, x1=1, y1=1), confidence=Confidence())]
     md = render(doc, Config(target_lang="id"))
     assert "$$" in md and r"\frac{a}{b}" in md
+
+
+def test_structured_ids_unique_when_region_order_repeats(monkeypatch, tmp_path):
+    # PP-StructureV3 reuses the same region `order` for a figure and its caption. Block ids must
+    # still be unique — a collision made the reconstruct renderer's id-keyed placements clobber
+    # each other (the figure inherited the caption's tiny slot and shrank to a thumbnail).
+    class _Fake:
+        def extract_pages(self, fdoc, pnos):
+            return {0: [
+                StructRegion("image", 40, 40, 300, 300, "", 0),            # figure, order 0
+                StructRegion("figure_title", 40, 310, 300, 330, "Figure 1: x", 0),  # caption, SAME order
+                StructRegion("text", 40, 350, 500, 420, "body text here", 1),
+            ]}
+    monkeypatch.setattr("transdoc.layout.structure.get_structure_extractor",
+                        lambda *a, **k: _Fake())
+    doc = extract_structured(_pdf(tmp_path), Config(target_lang="id", layout="paddle"))
+    ids = [b.id for b in doc.blocks]
+    assert len(ids) == len(set(ids)), f"duplicate block ids: {ids}"
+    # the figure block kept its full region bbox (not collapsed to the caption's slot)
+    figs = [b for b in doc.blocks if b.type == BlockType.FIGURE]
+    assert len(figs) == 1 and (figs[0].bbox.y1 - figs[0].bbox.y0) > 200
