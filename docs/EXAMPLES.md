@@ -12,8 +12,8 @@ Every example uses `--to same-as-source` (the format is preserved); source and o
 > transdoc translate <source> --lang en --to same-as-source
 > ```
 > Quality numbers are reference-free COMET-Kiwi QE (mean over scored segments). Sources are
-> public domain (UN Universal Declaration of Human Rights; a US IRS W-9 form) plus one synthetic
-> DOCX.
+> public domain (UN Universal Declaration of Human Rights; a US IRS W-9 form) plus two synthetic
+> samples (a DOCX and a two-column PDF), both released into the public domain.
 
 | Example | Source | Output |
 |---------|--------|--------|
@@ -22,6 +22,7 @@ Every example uses `--to same-as-source` (the format is preserved); source and o
 | **Chinese — CJK digital PDF** → English · QE ≈ 0.78<br>[source](examples/chinese.src.pdf) · [output](examples/chinese.en.pdf) | ![](examples/chinese.src.png) | ![](examples/chinese.en.png) |
 | **Hindi — scanned PDF (OCR)** → English · QE ≈ 0.75<br>[source](examples/hindi-scan.src.pdf) · [output](examples/hindi-scan.en.pdf) | ![](examples/hindi-scan.src.png) | ![](examples/hindi-scan.en.png) |
 | **Multilingual DOCX** → English (round-trip)<br>[source](examples/mixed-docx.src.docx) · [output](examples/mixed-docx.en.docx) | ![](examples/mixed-docx.src.png) | ![](examples/mixed-docx.en.png) |
+| **Two-column PDF** → Indonesian · **auto reflow**<br>a 2-column layout where the longer Indonesian would overprint the columns under a rigid per-block rebuild; AUTO detects the multi-column source and reflows it into one readable stream, keeping the figure at full size and the caption anchored.<br>[source](examples/twocol.src.pdf) · [output](examples/twocol.id.pdf) | ![](examples/twocol.src.png) | ![](examples/twocol.id.png) |
 
 ## What these show
 
@@ -38,6 +39,10 @@ Every example uses `--to same-as-source` (the format is preserved); source and o
   English output, no source text layer required.
 - **In-place Office round-trip.** The DOCX keeps its headings, list, and table; only the language
   changes (the multilingual line is normalised to English).
+- **Multi-column pages reflow automatically.** A two-column source would overprint its columns if
+  the longer translation were force-fit into the original per-block geometry, so AUTO detects the
+  multi-column layout and reflows it into one readable stream — the figure stays full-size and the
+  caption stays anchored. Single-column pages and forms keep the layout-exact rebuild.
 
 ## Notes & limits
 
