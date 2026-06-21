@@ -31,6 +31,15 @@ def test_confirmed_row_is_immune_to_engine_overwrite(tmp_path):
     assert s.get_many(["cat"], "id") == {"cat": "kucing"}                     # not overwritten
 
 
+def test_confirmed_translation_scoped_by_src_lang(tmp_path):
+    # confirmed_translation accepted src_lang/domain params but the query ignored them, so a
+    # correction from a different language pair could leak into the consistency pass.
+    s = TMStore(path=tmp_path / "transdoc.db")
+    s.put_correction("Total", "Jumlah", "id", src_lang="en")
+    assert s.confirmed_translation("Total", "id", src_lang="en") == "Jumlah"
+    assert s.confirmed_translation("Total", "id", src_lang="de") is None      # other src: no leak
+
+
 def test_unconfirmed_row_is_updated_by_engine(tmp_path):
     s = TMStore(path=tmp_path / "transdoc.db")
     s.put_many({"cat": "old"}, target="id")

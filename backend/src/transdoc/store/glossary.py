@@ -207,8 +207,14 @@ class GlossaryStore:
             p.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
         else:
             header = "src_lang\ttgt_lang\tdomain\tterm\trendering\torigin\tlocked"
+
+            def _safe(c, v):
+                # neutralise CSV/formula injection on user-controlled text columns (=,+,-,@ -> live
+                # formula when the TSV is opened in a spreadsheet)
+                s = str(v)
+                return "'" + s if c in ("term", "rendering") and s[:1] in ("=", "+", "-", "@") else s
             lines = [header] + [
-                "\t".join(str(e[c]) for c in
+                "\t".join(_safe(c, e[c]) for c in
                           ("src_lang", "tgt_lang", "domain", "term", "rendering", "origin", "locked"))
                 for e in entries
             ]

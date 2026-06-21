@@ -43,6 +43,13 @@ def test_precision_first_chain_order():
         assert chain[-1] == "easyocr"
 
 
+def test_kannada_does_not_lead_with_paddle():
+    # paddle has no Kannada model -> it must not lead (it would OCR Kannada as English at high conf
+    # and block escalation to Tesseract, the only engine that can read it).
+    assert R.ROUTING["Kannada"][0] == "tesseract"
+    assert "paddle" not in R.ROUTING["Kannada"]
+
+
 def test_routes_by_detected_script(monkeypatch):
     o = R.ScriptRoutedOCR()
     monkeypatch.setattr(R, "detect_script", lambda img: "Han")

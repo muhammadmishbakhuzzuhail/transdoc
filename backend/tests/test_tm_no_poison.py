@@ -16,10 +16,10 @@ class _RecordingTM:
     def __init__(self):
         self.put_calls = 0
 
-    def get_many(self, sources, target):
+    def get_many(self, sources, target, src_lang="", domain=""):
         return {}
 
-    def put_many(self, pairs, target):
+    def put_many(self, pairs, target, src_lang="", domain=""):
         self.put_calls += 1
 
 

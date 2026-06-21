@@ -17,6 +17,12 @@ from xml.sax.saxutils import escape
 _XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 
 
+def _csv_safe(v: str) -> str:
+    """Neutralise CSV/formula injection: a cell beginning =,+,-,@ becomes a live formula when the
+    exported file is opened in Excel/Sheets. Prefix with a single quote so it stays literal text."""
+    return "'" + v if v[:1] in ("=", "+", "-", "@") else v
+
+
 # --- TMX (translation memory) ---------------------------------------------------------------
 
 def export_tmx(tm, path: str | Path) -> int:
@@ -42,6 +48,11 @@ def export_tmx(tm, path: str | Path) -> int:
 def import_tmx(tm, path: str | Path) -> int:
     """Parse a TMX file and load its translation units into the TM. Each <tu> with at least two
     <tuv> contributes (source, target, src_lang, tgt_lang). Returns the count imported."""
+    # Reject a DTD / internal entities before parsing: stdlib ET expands entities, so a small
+    # nested-entity ("billion laughs") TMX could amplify CPU/memory. We never need a DTD here.
+    head = Path(path).read_bytes()[:4096].lower()
+    if b"<!doctype" in head or b"<!entity" in head:
+        raise ValueError("TMX with a DTD / entity declaration is not accepted")
     root = ET.parse(path).getroot()
     rows = []
     for tu in root.iter("tu"):
@@ -70,7 +81,8 @@ def export_glossary_csv(gloss, path: str | Path, src_lang: str | None = None,
         w = csv.writer(f)
         w.writerow(["source", "target", "src_lang", "tgt_lang", "domain"])
         for e in entries:
-            w.writerow([e["term"], e["rendering"], e["src_lang"], e["tgt_lang"], e["domain"]])
+            w.writerow([_csv_safe(e["term"]), _csv_safe(e["rendering"]),
+                        e["src_lang"], e["tgt_lang"], e["domain"]])
     return len(entries)
 
 

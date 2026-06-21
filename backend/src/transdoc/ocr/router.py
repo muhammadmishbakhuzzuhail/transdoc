@@ -107,10 +107,11 @@ ROUTING: dict[str, list[str]] = {
     # correct-but-lower-confidence Paddle pass and wrecks the translation. Drop it from the chain;
     # Paddle leads and EasyOCR (no spurious spacing) backs it up.
     "Thai": ["paddle", "easyocr"],
-    "Kannada": ["paddle", "tesseract", "easyocr"],
-    # Indic scripts only Tesseract has models for (Paddle/EasyOCR lack them) -> tesseract leads,
-    # the others are no-ops that simply drop out of the chain. Explicit so routing is intentional,
-    # not an accident of DEFAULT_CHAIN.
+    # Indic scripts only Tesseract (+ EasyOCR for some) has models for; Paddle has NO model for
+    # them, so a paddle-first chain falls back to the English model and OCRs e.g. Kannada as Latin
+    # gibberish at high confidence -> never escalates to Tesseract, the one engine that can read it.
+    # Tesseract leads; the others are no-ops that drop out. Explicit so routing is intentional.
+    "Kannada": ["tesseract", "easyocr"],          # paddle has no Kannada model — must not lead
     "Malayalam": ["tesseract", "paddle", "easyocr"],
     "Gujarati": ["tesseract", "paddle", "easyocr"],
     "Gurmukhi": ["tesseract", "paddle", "easyocr"],

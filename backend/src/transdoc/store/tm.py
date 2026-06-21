@@ -168,12 +168,19 @@ class TMStore:
                               domain: str = "") -> str | None:
         """The human-confirmed translation of ``source`` for this target, if any (newest wins).
         Used by the consistency pass to prefer a correction when harmonising duplicates."""
+        # Honour src_lang / domain when given (the params existed but the query ignored them, so a
+        # confirmed correction from an unrelated language pair / domain could leak into a lookup).
+        q = "SELECT tgt_text FROM tm WHERE src_norm=? AND tgt_lang=? AND confirmed=1"
+        params: list = [_norm(source), target]
+        if src_lang:
+            q += " AND src_lang=?"
+            params.append(src_lang)
+        if domain:
+            q += " AND domain=?"
+            params.append(domain)
+        q += " ORDER BY updated_at DESC LIMIT 1"
         with self._lock:
-            cur = self._conn.execute(
-                "SELECT tgt_text FROM tm WHERE src_norm=? AND tgt_lang=? AND confirmed=1 "
-                "ORDER BY updated_at DESC LIMIT 1",
-                [_norm(source), target])
-            row = cur.fetchone()
+            row = self._conn.execute(q, params).fetchone()
         return row[0] if row else None
 
     def export_pairs(self) -> list[dict]:

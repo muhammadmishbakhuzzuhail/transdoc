@@ -66,3 +66,25 @@ def test_glossary_csv_headerless_with_pair_args(stores, tmp_path):
     assert n == 2
     entries = {e["term"]: e["rendering"] for e in gs.list("de", "id")}
     assert entries == {"Mark": "tanda", "Bank": "bank"}
+
+
+def test_glossary_csv_export_neutralises_formula_injection(stores, tmp_path):
+    from transdoc.store.interchange import export_glossary_csv
+    _, gs = stores
+    gs.add("=cmd()", "=HYPERLINK(evil)", "en", "id", origin="user")
+    p = tmp_path / "g.csv"
+    export_glossary_csv(gs, p)
+    text = p.read_text()
+    # the formula-sigil cells must be prefixed with ' so a spreadsheet treats them as text
+    assert "'=cmd()" in text and "'=HYPERLINK(evil)" in text
+
+
+def test_tmx_import_rejects_dtd_entity(stores, tmp_path):
+    from transdoc.store.interchange import import_tmx
+    tm, _ = stores
+    p = tmp_path / "bomb.tmx"
+    p.write_text('<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "boom">]>'
+                 "<tmx><body></body></tmx>", encoding="utf-8")
+    import pytest
+    with pytest.raises(ValueError):
+        import_tmx(tm, p)
