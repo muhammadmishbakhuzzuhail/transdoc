@@ -96,6 +96,9 @@ commercial fork, prefer `madlad`/`opusmt`/`argos`. See [TRANSLATION.md](TRANSLAT
 | `TRANSDOC_JOBS_DB` | Async job store path | under the data dir |
 | `TRANSDOC_LAYOUT_PYTHON` | Python for the isolated paddle/layout venv | `./layout_venv/bin/python` |
 | `TRANSDOC_LAYOUT_DISABLE` | Disable the structured (PP-StructureV3) path | unset |
+| `TRANSDOC_LAYOUT_PERSIST` | Keep the paddle layout worker warm across documents (set `0` for one-shot per doc) | `1` |
+| `TRANSDOC_SIMPLE_SKIP_DISABLE` | Set `1` to always run structured, even for simple single-column image-free PDFs | unset |
+| `TRANSDOC_LAYOUT_LOAD_TIMEOUT` | Seconds to wait for the layout worker's model load | `240` |
 | `TRANSDOC_DISABLE_LINGUA` | Disable the lingua language detector | unset |
 | `TRANSDOC_EASYOCR_GPU` | Allow EasyOCR to use the GPU | unset (CPU) |
 | `TRANSDOC_FALLBACK_CHAIN` | Override the `fallback` engine chain | `google,mymemory,libretranslate` |
