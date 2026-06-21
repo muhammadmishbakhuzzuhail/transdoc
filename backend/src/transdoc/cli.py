@@ -86,6 +86,9 @@ def translate(
                                help="auto|off|paddle — PP-StructureV3 structured extraction: "
                                     "regions/tables/formula-LaTeX + crop figures/math verbatim. "
                                     "auto = use it when paddle is reachable, else heuristics ([paddleocr])"),
+    reading_order: str = typer.Option("xycut", "--reading-order",
+                                      help="xycut (deterministic) | surya (VLM re-rank, slow, "
+                                           "PDF-only; needs the [surya] extra)"),
     out: str = typer.Option(None, "--out", "-o", help="Output path"),
 ):
     """Run the full pipeline: extract -> diagnose -> translate -> regenerate + report."""
@@ -102,6 +105,7 @@ def translate(
     cfg.consistency = consistency
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout
+    cfg.reading_order_engine = reading_order
     if glossary:
         from .translate.protect import load_glossary
         cfg.glossary = load_glossary(glossary)
