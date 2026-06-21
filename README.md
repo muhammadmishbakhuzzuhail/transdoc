@@ -13,9 +13,22 @@ OCR backends, or output formats without touching the rest.
 
 ## Quickstart
 
+**Docker (no setup — recommended):**
+
+```bash
+docker build -t transdoc .
+docker run --rm -p 8000:8000 transdoc      # → http://localhost:8000
+```
+
+One image: the React UI + REST API on one port, with Tesseract (OCR) and LibreOffice
+(office↔PDF) bundled. Needs outbound network for the default Google translation engine.
+
+**From source:**
+
 ```bash
 # 1. Setup (first time)
 make setup                  # backend .venv + frontend deps
+make build-web              # (optional) bundle the React UI so the server serves it at /
 
 # 2. Run the web UI + REST API
 cd backend

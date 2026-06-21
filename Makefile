@@ -41,6 +41,14 @@ setup-frontend:
 	cd frontend && npm ci
 	@echo "frontend ready"
 
+# Build the React UI and bundle it where FastAPI serves it (api/web), so `python server.py`
+# (or the Docker image) serves the full SPA at / instead of the minimal fallback page.
+build-web:
+	cd frontend && npm run build
+	rm -rf backend/src/transdoc/api/spa
+	cp -r frontend/dist backend/src/transdoc/api/spa
+	@echo "SPA bundled -> backend/src/transdoc/api/spa (served at /)"
+
 # Isolated paddle env for the structured/--layout path. paddlepaddle and torch can't share a
 # venv (nccl symbol clash), so this lives apart and the backend bridges to it out-of-process
 # (default search ./backend/layout_venv/bin/python, or set TRANSDOC_LAYOUT_PYTHON).

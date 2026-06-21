@@ -45,3 +45,6 @@ out_validate/
 !**/corpus/README.md
 # generated example outputs (gallery curation happens separately under docs/examples/)
 out_examples/
+
+# built React SPA bundled into the API (make build-web / Docker)
+backend/src/transdoc/api/spa/
