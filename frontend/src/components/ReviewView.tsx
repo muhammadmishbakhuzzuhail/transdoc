@@ -11,6 +11,7 @@ import {
   getReview, getSynonyms, type GlossarySuggestion, postCorrection, previewUrl, type ReviewPayload,
   type ReviewSegment,
 } from "@/lib/api"
+import { useI18n } from "@/lib/i18n"
 
 const FALLBACK_STYLES = ["general", "professional", "academic", "friendly", "concise"]
 const VIRTUAL_THRESHOLD = 60     // below this, render the whole list; above, window-virtualize
@@ -26,6 +27,7 @@ export function ReviewView({ jid }: { jid: string }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [styles, setStyles] = useState<string[]>(FALLBACK_STYLES)
   const [mode, setMode] = useState("general")     // rephrase/alternatives style preset
+  const { t } = useI18n()
 
   useEffect(() => {
     getReview(jid).then((r) => {
@@ -47,7 +49,7 @@ export function ReviewView({ jid }: { jid: string }) {
   if (!review) {
     return (
       <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading segments…
+        <Loader2 className="h-4 w-4 animate-spin" /> {t("rv_loading")}
       </div>
     )
   }
@@ -58,9 +60,9 @@ export function ReviewView({ jid }: { jid: string }) {
     <div className="flex flex-col gap-4 lg:flex-row">
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-2 px-0.5 text-xs text-muted-foreground">
-          <span>{review.segments.length} segments</span>
+          <span>{review.segments.length} {t("rv_segments")}</span>
           <label className="ml-auto flex items-center gap-1.5">
-            Suggestion mode
+            {t("rv_mode")}
             <select value={mode} onChange={(e) => setMode(e.target.value)}
               className="rounded-md border bg-background px-2 py-1 text-xs capitalize
                 focus:outline-none focus:ring-2 focus:ring-primary">
@@ -69,7 +71,7 @@ export function ReviewView({ jid }: { jid: string }) {
           </label>
         </div>
         {review.segments.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">No translatable segments.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("rv_none")}</p>
         )}
         {/* Small docs render the whole list (the common, visually-tested path). Large docs would
             mount hundreds of textareas at once and jank the tab, so they window-virtualize. */}
@@ -137,6 +139,7 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
   seg: ReviewSegment; srcLang: string; tgtLang: string; fuzzy: FuzzySuggestion[]; mode: string
   active: boolean; onSelect: () => void
 }) {
+  const { t } = useI18n()
   const [value, setValue] = useState(seg.translation)
   const [state, setState] = useState<SaveState>("idle")
   const saved = useRef(seg.translation)
@@ -254,9 +257,9 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
           <Badge key={f} variant="destructive" className="font-normal">{f}</Badge>
         ))}
         <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-          {state === "saving" && <><Loader2 className="h-3 w-3 animate-spin" /> saving…</>}
-          {state === "saved" && <><Check className="h-3 w-3 text-green-600" /> saved</>}
-          {state === "error" && <span className="text-destructive">save failed</span>}
+          {state === "saving" && <><Loader2 className="h-3 w-3 animate-spin" /> {t("rv_saving")}</>}
+          {state === "saved" && <><Check className="h-3 w-3 text-green-600" /> {t("rv_saved")}</>}
+          {state === "error" && <span className="text-destructive">{t("rv_save_failed")}</span>}
         </span>
       </div>
       <p className="mb-2 whitespace-pre-wrap text-sm text-muted-foreground">{seg.source}</p>
@@ -278,18 +281,18 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
         <button type="button" onClick={loadAlts} disabled={loadingAlts}
           className="flex items-center gap-1 hover:text-foreground">
           {loadingAlts ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-          alternatives
+          {t("rv_alternatives")}
         </button>
         <button type="button" onClick={loadRephrase} disabled={loadingReph}
-          className="flex items-center gap-1 hover:text-foreground" title={`rephrase (${mode})`}>
+          className="flex items-center gap-1 hover:text-foreground" title={`${t("rv_rephrase")} (${mode})`}>
           {loadingReph ? <Loader2 className="h-3 w-3 animate-spin" /> : <WrapText className="h-3 w-3" />}
-          rephrase
+          {t("rv_rephrase")}
         </button>
         <button type="button" onClick={loadSynonyms} disabled={!selText || loadingSyns}
           className="flex items-center gap-1 enabled:hover:text-foreground disabled:opacity-50"
           title={selText ? `synonyms for "${selText}"` : "select a word in the text first"}>
           {loadingSyns ? <Loader2 className="h-3 w-3 animate-spin" /> : <Replace className="h-3 w-3" />}
-          synonyms{selText && `: "${selText.length > 18 ? `${selText.slice(0, 18)}…` : selText}"`}
+          {t("rv_synonyms")}{selText && `: "${selText.length > 18 ? `${selText.slice(0, 18)}…` : selText}"`}
         </button>
         {((alts && alts.length === 0 && !loadingAlts) || (syns && syns.length === 0 && !loadingSyns)
           || (reph && reph.length === 0 && !loadingReph)) && (
