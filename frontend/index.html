@@ -1,9 +1,21 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>transdoc — Document Translation</title>
+    <script>
+      // Apply the saved / OS theme before first paint so light-mode users don't flash dark
+      // (and the choice survives a slow/blocked bundle). Mirrors lib/theme.ts.
+      (function () {
+        try {
+          var t = localStorage.getItem("transdoc-theme");
+          if (t !== "light" && t !== "dark")
+            t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          if (t === "dark") document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
