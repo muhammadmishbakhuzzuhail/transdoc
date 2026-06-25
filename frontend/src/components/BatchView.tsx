@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { type BatchJob, downloadUrl, getBatch } from "@/lib/api"
+import { useI18n } from "@/lib/i18n"
 
 // Batch progress: one row per file, polled together. Jobs run serially server-side, so this is the
 // natural "queued -> running -> done" ticker; each finished file gets its own download.
 export function BatchView({ bid }: { bid: string }) {
+  const { t } = useI18n()
   const [jobs, setJobs] = useState<BatchJob[]>([])
   const poll = useRef<number | null>(null)
 
@@ -36,7 +38,7 @@ export function BatchView({ bid }: { bid: string }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle>Batch — {done}/{jobs.length} done</CardTitle>
+        <CardTitle>{t("batch_label")} — {done}/{jobs.length} {t("st_done")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {jobs.map((j) => (
@@ -50,7 +52,7 @@ export function BatchView({ bid }: { bid: string }) {
                     <div className="h-full bg-primary transition-all"
                       style={{ width: `${Math.round((j.progress ?? 0) * 100)}%` }} /></div>}
             </div>
-            {j.status === "queued" && <Badge variant="outline">queued</Badge>}
+            {j.status === "queued" && <Badge variant="outline">{t("st_queued")}</Badge>}
             {j.status === "running" && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             {j.status === "done" && (
               <>
