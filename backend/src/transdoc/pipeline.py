@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -328,7 +329,13 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     # Phase 5c: optional reference-free quality estimation (COMET-Kiwi) -> flag weak segments.
     # Runs before escalation so a low COMET score can also trigger the gate.
-    if cfg.quality_check:
+    # COMET-Kiwi is a multi-GB model load; for a trivial doc (a sentence or two) the QE pass costs
+    # far more than it's worth, so skip it below a small block threshold (env-tunable, 0 disables).
+    _qe_min = int(os.environ.get("TRANSDOC_QE_MIN_BLOCKS", "3"))
+    if cfg.quality_check and len(doc.translatable_blocks()) < _qe_min:
+        log.info("quality_check: %d translatable blocks < %d threshold -> skipping COMET load",
+                 len(doc.translatable_blocks()), _qe_min)
+    elif cfg.quality_check:
         with _stage(timings, "quality_check"):
             from .translate.quality import QualityEstimator, annotate_quality
             annotate_quality(doc, cfg)

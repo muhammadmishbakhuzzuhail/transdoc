@@ -14,6 +14,7 @@ Tesseract coordinate space (the renderer rescales ocr-sourced blocks uniformly).
 from __future__ import annotations
 
 import io
+import os
 
 from ..config import Config
 from ..ir import BBox, Block, BlockType, Confidence
@@ -100,5 +101,20 @@ class EasyOCREngine:
             script = detect_script(img)
         reader = self._reader(self._langs(cfg, script))
         arr = np.array(Image.open(io.BytesIO(img)).convert("RGB"))
-        results = reader.readtext(arr, detail=1, paragraph=False)
+        # EasyOCR's readtext has no native timeout and runs in-process; a pathological image can
+        # wedge it, hanging the worker thread that holds the serialised job lock -> the whole queue
+        # stalls forever. Bound it with a watchdog: on expiry raise so the escalation chain moves on
+        # and the lock is released (the orphaned worker thread finishes on its own; it holds no lock).
+        timeout = float(os.environ.get("TRANSDOC_OCR_TIMEOUT", "0")) or 300.0
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import TimeoutError as FuturesTimeout
+        ex = ThreadPoolExecutor(max_workers=1)
+        try:
+            fut = ex.submit(reader.readtext, arr, detail=1, paragraph=False)
+            results = fut.result(timeout=timeout)
+        except FuturesTimeout as e:
+            raise RuntimeError(f"EasyOCR timed out after {timeout:.0f}s") from e
+        finally:
+            # don't block on the (possibly wedged) worker — let it finish detached; it holds no lock
+            ex.shutdown(wait=False)
         return parse_results(results, page)

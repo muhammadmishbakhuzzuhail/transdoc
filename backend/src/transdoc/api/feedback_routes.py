@@ -275,6 +275,16 @@ def _suggest_cfg(tgt_lang: str):
     return Config(source_lang="auto", target_lang=tgt_lang, register=Register("auto"))
 
 
+# The review LLM (Qwen) loads ~2.5-3 GB of GPU. A translate job loads paddle/COMET/ollama on the
+# same 6 GB card. They must never co-reside, so the suggestion endpoints take the same lock that
+# serialises job execution — a review request simply waits for any in-flight job rather than racing
+# it into a CUDA OOM. (The job pipeline also Suggester.release()s at its start.)
+def _with_gpu_lock(fn):
+    from .jobs import _RUN_LOCK
+    with _RUN_LOCK:
+        return fn()
+
+
 @router.post("/synonyms")
 def synonyms(body: SynReq) -> dict:
     """In-context alternatives for a selected phrase within a translated sentence (local LLM).
@@ -283,7 +293,8 @@ def synonyms(body: SynReq) -> dict:
     if not body.phrase.strip():
         return {"synonyms": []}
     try:
-        out = Suggester().synonyms(body.phrase, body.context, _suggest_cfg(body.tgt_lang), n=body.n)
+        out = _with_gpu_lock(lambda: Suggester().synonyms(
+            body.phrase, body.context, _suggest_cfg(body.tgt_lang), n=body.n))
     except SuggestError as e:
         raise HTTPException(503, f"suggestion model unavailable: {e}")
     return {"synonyms": out}
@@ -296,8 +307,8 @@ def rephrase(body: RephraseReq) -> dict:
     if not body.sentence.strip():
         return {"rephrasings": []}
     try:
-        out = Suggester().rephrase(body.sentence, _suggest_cfg(body.tgt_lang),
-                                   style=body.style, n=body.n)
+        out = _with_gpu_lock(lambda: Suggester().rephrase(
+            body.sentence, _suggest_cfg(body.tgt_lang), style=body.style, n=body.n))
     except SuggestError as e:
         raise HTTPException(503, f"suggestion model unavailable: {e}")
     return {"rephrasings": out}
