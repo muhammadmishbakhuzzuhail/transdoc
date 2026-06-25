@@ -11,6 +11,7 @@ export interface Health {
   ocr: string[]
   register: string[]
   layout: string[]
+  styles?: string[]        // rephrase/alternatives mode presets (review suggestion layer)
 }
 
 export interface JobStatus {
@@ -269,7 +270,7 @@ export async function importTmx(file: File): Promise<{ imported: number }> {
 
 // LLM alternative translations (review aid). Returns [] when the local LLM is unavailable (503).
 export async function getAlternatives(body: {
-  source: string; tgt_lang: string; src_lang?: string; domain?: string; n?: number
+  source: string; tgt_lang: string; src_lang?: string; domain?: string; n?: number; style?: string
 }): Promise<string[]> {
   const r = await fetch(`${BASE}/api/alternatives`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -277,4 +278,28 @@ export async function getAlternatives(body: {
   if (r.status === 503) return []
   if (!r.ok) throw new Error("alternatives failed")
   return (await r.json()).alternatives
+}
+
+// in-context synonyms for a selected phrase within a translated sentence (503 -> feature hidden)
+export async function getSynonyms(body: {
+  phrase: string; context: string; tgt_lang: string; n?: number
+}): Promise<string[]> {
+  const r = await fetch(`${BASE}/api/synonyms`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  })
+  if (r.status === 503) return []
+  if (!r.ok) throw new Error("synonyms failed")
+  return (await r.json()).synonyms
+}
+
+// rewrite a translated sentence in a style/mode preset (503 -> feature hidden)
+export async function getRephrasings(body: {
+  sentence: string; tgt_lang: string; style?: string; n?: number
+}): Promise<string[]> {
+  const r = await fetch(`${BASE}/api/rephrase`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  })
+  if (r.status === 503) return []
+  if (!r.ok) throw new Error("rephrase failed")
+  return (await r.json()).rephrasings
 }
