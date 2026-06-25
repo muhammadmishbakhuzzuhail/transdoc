@@ -129,12 +129,17 @@ class Suggester:
         if not phrase.strip():
             return []
         n = max(1, min(10, n))
+        lang = cfg.target_lang
         system = (
-            f"You help review a {cfg.target_lang} translation. Given a sentence and a selected "
+            f"You help review a translation written in {lang}. Given a sentence and a selected "
             "phrase inside it, propose alternative wordings for ONLY that phrase that fit the "
-            "sentence, preserve the exact meaning and the register, and read naturally. Do not "
-            "change numbers, names or punctuation. Exclude the original phrase. "
-            f'Return ONLY JSON: {{"synonyms": ["...", "..."]}} with up to {n} distinct items.'
+            "sentence and read naturally. Each alternative must mean the SAME as the original phrase "
+            "(true synonyms — never antonyms, opposites or unrelated words) and keep the same "
+            "register. "
+            f"CRITICAL: every alternative MUST be a real word/phrase written in {lang} (the same "
+            "language as the input). Do NOT translate to any other language and do not invent "
+            "non-words. Do not change numbers, names or punctuation. Exclude the original phrase. "
+            f'Return ONLY JSON: {{"synonyms": ["...", "..."]}} with up to {n} distinct items in {lang}.'
         )
         user = json.dumps({"sentence": context or phrase, "phrase": phrase}, ensure_ascii=False)
         return [s for s in self._parse_list(self._chat(system, user, temperature=0.8), "synonyms")
@@ -147,10 +152,13 @@ class Suggester:
             return []
         n = max(1, min(5, n))
         directive = STYLE_DIRECTIVES.get(style, STYLE_DIRECTIVES[DEFAULT_STYLE])
+        lang = cfg.target_lang
         system = (
-            f"You refine {cfg.target_lang} text. Rewrite the sentence to be {directive}. Keep the "
-            "meaning, and preserve numbers, dates, IDs, URLs and proper nouns exactly. "
-            f'Return ONLY JSON: {{"rephrasings": ["...", "..."]}} with {n} distinct rewrites.'
+            f"You refine text written in {lang}. Rewrite the sentence to be {directive}. "
+            f"CRITICAL: the rewrite MUST stay in {lang} (the same language as the input) — do NOT "
+            "translate it to any other language. Keep the meaning, and preserve numbers, dates, IDs, "
+            "URLs and proper nouns exactly. "
+            f'Return ONLY JSON: {{"rephrasings": ["...", "..."]}} with {n} distinct rewrites in {lang}.'
         )
         user = json.dumps({"sentence": sentence, "style": style}, ensure_ascii=False)
         return self._parse_list(self._chat(system, user, temperature=0.7), "rephrasings")
