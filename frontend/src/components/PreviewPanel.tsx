@@ -18,6 +18,11 @@ function Pane({ title, jid, which, page, ok, pages }: {
       <div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-md border bg-muted/30">
         {ok && page < pages ? (
           <img src={previewUrl(jid, which, page)} alt={`${which} p${page + 1}`}
+            onError={(e) => {
+              e.currentTarget.style.display = "none"
+              e.currentTarget.insertAdjacentHTML("afterend",
+                '<span class="p-8 text-center text-sm text-muted-foreground">preview unavailable</span>')
+            }}
             className="max-h-[70vh] w-full object-contain" />
         ) : (
           <span className="p-8 text-center text-sm text-muted-foreground">
@@ -48,7 +53,7 @@ export function PreviewPanel({ jid }: { jid: string }) {
         <div className="flex items-center gap-2">
           {maxPages > 1 && (
             <>
-              <Button size="icon" variant="outline" disabled={page <= 0}
+              <Button size="icon" variant="outline" disabled={page <= 0} aria-label="previous page"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -56,6 +61,7 @@ export function PreviewPanel({ jid }: { jid: string }) {
                 {page + 1} / {maxPages}
               </span>
               <Button size="icon" variant="outline" disabled={page >= maxPages - 1}
+                aria-label="next page"
                 onClick={() => setPage((p) => Math.min(maxPages - 1, p + 1))}>
                 <ChevronRight className="h-4 w-4" />
               </Button>

@@ -145,10 +145,11 @@ function Row({ e, onChange }: { e: GlossaryEntry; onChange: () => void }) {
       <Badge variant={e.origin === "user" ? "default" : "secondary"} className="font-normal">
         {e.origin}</Badge>
       <Button size="icon" variant="ghost" title={e.locked ? "locked" : "unlocked"}
+        aria-label={e.locked ? "unlock term" : "lock term"}
         onClick={() => save(!e.locked)}>
         {e.locked ? <Lock className="h-4 w-4 text-primary" /> : <LockOpen className="h-4 w-4" />}
       </Button>
-      <Button size="icon" variant="ghost" title="delete"
+      <Button size="icon" variant="ghost" title="delete" aria-label="delete term"
         onClick={() => removeGlossary({ term: e.term, src_lang: e.src_lang, tgt_lang: e.tgt_lang,
                                         domain: e.domain }).then(onChange)}>
         <Trash2 className="h-4 w-4 text-destructive" />

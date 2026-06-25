@@ -55,8 +55,10 @@ export function BatchView({ bid }: { bid: string }) {
             {j.status === "done" && (
               <>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <a href={downloadUrl(j.job_id)}>
-                  <Button size="sm" variant="outline"><Download className="h-4 w-4" /></Button>
+                <a href={downloadUrl(j.job_id)} aria-label="download translation">
+                  <Button size="sm" variant="outline" aria-label="download translation">
+                    <Download className="h-4 w-4" />
+                  </Button>
                 </a>
               </>
             )}

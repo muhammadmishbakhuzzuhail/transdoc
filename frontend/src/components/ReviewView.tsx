@@ -270,10 +270,13 @@ function Suggestions({ label, items, onPick, onClose }: {
   label: string; items: string[]; onPick: (s: string) => void; onClose: () => void
 }) {
   return (
-    <div className="mt-1.5 space-y-1 rounded-md border bg-muted/20 p-1.5">
+    <div role="group" aria-label={label}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose() }}
+      className="mt-1.5 space-y-1 rounded-md border bg-muted/20 p-1.5">
       <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
         <span>{label}</span>
-        <button type="button" onClick={onClose} className="hover:text-foreground">✕</button>
+        <button type="button" onClick={onClose} aria-label="dismiss suggestions"
+          className="hover:text-foreground">✕</button>
       </div>
       {items.map((s, i) => (
         <button key={i} type="button" onClick={() => onPick(s)}
@@ -303,6 +306,11 @@ function SegmentPreview({ jid, seg, pageSizes }: {
       <div className="text-xs font-medium text-muted-foreground">Source · page {seg.page + 1}</div>
       <div className="relative overflow-hidden rounded-md border bg-muted/30">
         <img src={previewUrl(jid, "source", seg.page)} alt={`source p${seg.page + 1}`}
+          onError={(e) => {
+            e.currentTarget.style.display = "none"
+            e.currentTarget.insertAdjacentHTML("afterend",
+              '<div class="p-8 text-center text-sm text-muted-foreground">preview unavailable</div>')
+          }}
           className="w-full object-contain" />
         {box && (
           <div className="pointer-events-none absolute border-2 border-primary bg-primary/20"
