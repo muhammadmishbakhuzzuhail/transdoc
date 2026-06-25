@@ -5,9 +5,9 @@ targeting, the hallucination guard, and the doc.repairs logging."""
 
 from __future__ import annotations
 
+from transdoc import repair as repair_mod
 from transdoc.config import Config
 from transdoc.ir import Block, BlockType, Document
-from transdoc import repair as repair_mod
 from transdoc.translate.ollama import OllamaTranslator
 
 

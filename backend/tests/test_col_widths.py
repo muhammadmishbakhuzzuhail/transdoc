@@ -25,6 +25,7 @@ def test_table_html_accepts_bare_rows():
 def test_docx_extract_captures_col_widths(tmp_path):
     docx = pytest.importorskip("docx")
     from docx.shared import Pt
+
     from transdoc.extract.docx import extract
     from transdoc.ir import BlockType
     dd = docx.Document()

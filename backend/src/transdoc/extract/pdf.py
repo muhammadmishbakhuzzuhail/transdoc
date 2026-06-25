@@ -279,12 +279,12 @@ def _split_blocks_by_size(blocks: list) -> list:
 
 def extract(path: str, cfg: Config, ocr_pages: set[int] | None = None) -> Document:
     """Extract a PDF. ``ocr_pages`` (0-based) are rasterized and OCR'd instead of parsed."""
+    import tempfile
+    from pathlib import Path
+
     import fitz
 
     from ..ocr import get_ocr
-
-    import tempfile
-    from pathlib import Path
 
     ocr_pages = ocr_pages or set()
     try:

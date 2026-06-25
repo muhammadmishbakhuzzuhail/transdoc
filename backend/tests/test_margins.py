@@ -10,6 +10,7 @@ import pytest
 def test_docx_margins_roundtrip(tmp_path):
     docx = pytest.importorskip("docx")
     from docx.shared import Pt
+
     from transdoc.config import Config
     from transdoc.extract.docx import extract
     from transdoc.regenerate.docx_out import render

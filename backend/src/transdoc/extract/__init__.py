@@ -125,15 +125,17 @@ def extract(det: Detection, cfg: Config) -> Document:
             except Exception:
                 log.warning("structured extraction failed for scan %s; falling back to line-OCR",
                             p, exc_info=True)
-        from .pdf import extract as ex
         import fitz
+
+        from .pdf import extract as ex
         with fitz.open(p) as _d:
             n = _d.page_count
         return ex(p, cfg, ocr_pages=set(range(n)))
     if k == Kind.PDF_MIXED:
+        import fitz
+
         from ..ingest.detect import _image_dominates
         from .pdf import extract as ex
-        import fitz
         # OCR the pages with no real text layer: empty/near-empty, OR a page whose text is
         # just a caption over a dominating scan image (matches detect._classify_pdf).
         with fitz.open(p) as d:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from transdoc.config import Config
 from transdoc.ir import Block, BlockType, Document
-from transdoc.translate.residual import retranslate_foreign_runs, _FOREIGN
+from transdoc.translate.residual import _FOREIGN, retranslate_foreign_runs
 
 
 class _Stub:

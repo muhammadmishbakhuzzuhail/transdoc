@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import types
 
-from transdoc.ingest.detect import Kind
 from transdoc import pipeline
+from transdoc.ingest.detect import Kind
 
 
 def _det(kind, path):

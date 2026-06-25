@@ -66,6 +66,7 @@ def _build_paddle():
 def _build_easyocr():
     try:
         import easyocr  # noqa: F401
+
         from .easyocr_engine import EasyOCREngine
         return EasyOCREngine()
     except Exception:

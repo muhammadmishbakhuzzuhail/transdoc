@@ -18,10 +18,11 @@ def test_docx_extract_and_render_cell_shading(tmp_path):
     docx = pytest.importorskip("docx")
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
+    from transdoc.config import Config as C
     from transdoc.extract.docx import extract
     from transdoc.ir import BlockType
     from transdoc.regenerate.docx_out import render
-    from transdoc.config import Config as C
 
     dd = docx.Document()
     t = dd.add_table(rows=1, cols=1)

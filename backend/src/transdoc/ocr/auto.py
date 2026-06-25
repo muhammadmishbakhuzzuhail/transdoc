@@ -113,6 +113,7 @@ class EscalatingOCR:
             self._strong_tried = True
             try:
                 import paddleocr  # noqa: F401
+
                 from .paddle import PaddleOCREngine
                 self._strong = PaddleOCREngine()
             except Exception:

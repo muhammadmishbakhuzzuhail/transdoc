@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-
 from transdoc.config import Config
 from transdoc.ir import BBox, Block, BlockType, Confidence, Document, Style
 

@@ -9,7 +9,7 @@ from collections import Counter
 
 from .config import Config
 from .ingest.detect import Detection, Kind
-from .ir import BlockType, Document, DocProfile
+from .ir import BlockType, DocProfile, Document
 
 # lingua (optional, `pip install -e .[detect]`) is more accurate than langdetect — 100% vs
 # 91% on our UDHR set (langdetect misreads Chinese full-text as Korean) and, in low-accuracy

@@ -8,8 +8,8 @@ import pytest
 
 fitz = pytest.importorskip("fitz")
 
-from transdoc.extract.pdf import _runs_from_spans, extract  # noqa: E402
 from transdoc.config import Config  # noqa: E402
+from transdoc.extract.pdf import _runs_from_spans, extract  # noqa: E402
 from transdoc.ir import BlockType, Run, Style  # noqa: E402
 from transdoc.regenerate.pdf_out import _runs_html  # noqa: E402
 

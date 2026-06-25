@@ -289,7 +289,7 @@ def _with_gpu_lock(fn):
 def synonyms(body: SynReq) -> dict:
     """In-context alternatives for a selected phrase within a translated sentence (local LLM).
     503 when the suggestion model isn't installed/loadable — the UI hides the feature then."""
-    from ..translate.suggest import SuggestError, Suggester
+    from ..translate.suggest import Suggester, SuggestError
     if not body.phrase.strip():
         return {"synonyms": []}
     try:
@@ -303,7 +303,7 @@ def synonyms(body: SynReq) -> dict:
 @router.post("/rephrase")
 def rephrase(body: RephraseReq) -> dict:
     """Rewrite a translated sentence in the requested style/mode (local LLM). 503 if unavailable."""
-    from ..translate.suggest import SuggestError, Suggester
+    from ..translate.suggest import Suggester, SuggestError
     if not body.sentence.strip():
         return {"rephrasings": []}
     try:
