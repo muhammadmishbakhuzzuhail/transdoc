@@ -10,7 +10,6 @@ Localhost-trust: TMX is parsed from the user's own files (no remote/DTD input).
 from __future__ import annotations
 
 import csv
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -48,12 +47,14 @@ def export_tmx(tm, path: str | Path) -> int:
 def import_tmx(tm, path: str | Path) -> int:
     """Parse a TMX file and load its translation units into the TM. Each <tu> with at least two
     <tuv> contributes (source, target, src_lang, tgt_lang). Returns the count imported."""
-    # Reject a DTD / internal entities before parsing: stdlib ET expands entities, so a small
-    # nested-entity ("billion laughs") TMX could amplify CPU/memory. We never need a DTD here.
-    head = Path(path).read_bytes()[:4096].lower()
-    if b"<!doctype" in head or b"<!entity" in head:
-        raise ValueError("TMX with a DTD / entity declaration is not accepted")
-    root = ET.parse(path).getroot()
+    # Parse with a hardened parser: stdlib ET expands internal entities, so a nested-entity
+    # ("billion laughs") TMX could amplify CPU/memory. defusedxml forbids DTDs/entities/external
+    # refs outright — robust where the old first-4096-bytes substring scan could be padded past.
+    from defusedxml.ElementTree import parse as _safe_parse
+    try:
+        root = _safe_parse(path).getroot()
+    except Exception as e:                      # EntitiesForbidden / DTDForbidden / parse error
+        raise ValueError(f"TMX rejected: {e}") from e
     rows = []
     for tu in root.iter("tu"):
         tuvs = tu.findall("tuv")

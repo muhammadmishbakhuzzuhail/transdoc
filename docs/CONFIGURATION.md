@@ -94,6 +94,10 @@ commercial fork, prefer `madlad`/`opusmt`/`argos`. See [TRANSLATION.md](TRANSLAT
 | `TRANSDOC_TM_PATH` | Legacy TM cache file | `~/.cache/transdoc/tm.sqlite` |
 | `TRANSDOC_TM_DISABLE` | Set to bypass the TM cache (verify code fixes that a cache HIT would mask) | unset |
 | `TRANSDOC_JOBS_DB` | Async job store path | under the data dir |
+| `TRANSDOC_JOBS_DIR` | Async job work dir (uploads + outputs); created `0700` | `/tmp/transdoc_jobs` |
+| `TRANSDOC_JOB_TTL_HOURS` | Evict jobs (rows + uploads + outputs) older than this on each new job; `0` disables | `24` |
+| `TRANSDOC_OCR_TIMEOUT` | Per-image OCR timeout (s) for tesseract/easyocr/paddle; expiry → next engine | `300` |
+| `TRANSDOC_QE_MIN_BLOCKS` | Skip the COMET quality pass below this many translatable blocks; `0` disables | `3` |
 | `TRANSDOC_LAYOUT_PYTHON` | Python for the isolated paddle/layout venv | `./layout_venv/bin/python` |
 | `TRANSDOC_LAYOUT_DISABLE` | Disable the structured (PP-StructureV3) path | unset |
 | `TRANSDOC_LAYOUT_PERSIST` | Keep the paddle layout worker warm across documents (set `0` for one-shot per doc) | `1` |

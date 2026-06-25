@@ -41,6 +41,19 @@ RUN pip install "./backend[api,formats]"
 # Bundle the built SPA so FastAPI serves it at / (and /assets via the StaticFiles mount).
 COPY --from=web /fe/dist/ ./backend/src/transdoc/api/spa/
 
+# Run as an unprivileged user: the image binds 0.0.0.0 with no auth, so a soffice/tesseract/paddle
+# RCE or container escape must not land as root. The app writes jobs under the work dir and
+# LibreOffice needs a writable HOME for its profile — give the user both.
+RUN useradd --create-home --uid 10001 app \
+    && mkdir -p /var/lib/transdoc \
+    && chown -R app:app /app /var/lib/transdoc
+ENV HOME=/home/app \
+    TRANSDOC_JOBS_DIR=/var/lib/transdoc/jobs
+USER app
+
 EXPOSE 8000
 WORKDIR /app/backend
+# Liveness for orchestrators (no curl in the image — use the stdlib).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=4).status==200 else 1)"]
 CMD ["python", "server.py"]
