@@ -55,7 +55,7 @@ pdf = ["weasyprint>=62"]
 # Web API the React frontend talks to (thread-backed job store — no broker needed).
 api = ["fastapi>=0.111", "uvicorn>=0.30", "python-multipart>=0.0.9"]
 # Optional: move the job store onto a Celery/Redis broker to scale past one node.
-scale = ["celery>=5.4", "redis>=5.0"]
+scale = ["celery>=5.6.3", "redis>=5.0"]
 # Reference-free translation quality estimation (COMET-Kiwi)
 qe = ["unbabel-comet>=2.2"]
 # Word-alignment style transfer: redistribute inline run styles onto the block translation
