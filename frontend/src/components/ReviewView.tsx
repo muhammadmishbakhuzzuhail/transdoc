@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
-import { AlertCircle, Check, Loader2, Sparkles, Wand2 } from "lucide-react"
+import { AlertCircle, Check, Loader2, Replace, Sparkles, Wand2, WrapText } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
-  acceptGlossarySuggestion, type FuzzySuggestion, getAlternatives, getReview,
-  type GlossarySuggestion, postCorrection, previewUrl, type ReviewPayload, type ReviewSegment,
+  acceptGlossarySuggestion, type FuzzySuggestion, getAlternatives, getHealth, getRephrasings,
+  getReview, getSynonyms, type GlossarySuggestion, postCorrection, previewUrl, type ReviewPayload,
+  type ReviewSegment,
 } from "@/lib/api"
+
+const FALLBACK_STYLES = ["general", "professional", "academic", "friendly", "concise"]
 
 type SaveState = "idle" | "saving" | "saved" | "error"
 
@@ -19,12 +22,15 @@ export function ReviewView({ jid }: { jid: string }) {
   const [review, setReview] = useState<ReviewPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [styles, setStyles] = useState<string[]>(FALLBACK_STYLES)
+  const [mode, setMode] = useState("general")     // rephrase/alternatives style preset
 
   useEffect(() => {
     getReview(jid).then((r) => {
       setReview(r)
       setSelected(r.segments[0]?.block_id ?? null)
     }).catch((e) => setError(e instanceof Error ? e.message : "review not ready"))
+    getHealth().then((h) => h.styles?.length && setStyles(h.styles)).catch(() => {})
   }, [jid])
 
   if (error) {
@@ -49,12 +55,23 @@ export function ReviewView({ jid }: { jid: string }) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-2 px-0.5 text-xs text-muted-foreground">
+          <span>{review.segments.length} segments</span>
+          <label className="ml-auto flex items-center gap-1.5">
+            Suggestion mode
+            <select value={mode} onChange={(e) => setMode(e.target.value)}
+              className="rounded-md border bg-background px-2 py-1 text-xs capitalize
+                focus:outline-none focus:ring-2 focus:ring-primary">
+              {styles.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+        </div>
         {review.segments.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">No translatable segments.</p>
         )}
         {review.segments.map((seg) => (
           <SegmentRow key={seg.block_id} seg={seg} srcLang={review.src_lang}
-            tgtLang={review.tgt_lang} fuzzy={review.fuzzy_suggestions}
+            tgtLang={review.tgt_lang} fuzzy={review.fuzzy_suggestions} mode={mode}
             active={seg.block_id === selected} onSelect={() => setSelected(seg.block_id)} />
         ))}
       </div>
@@ -70,8 +87,8 @@ export function ReviewView({ jid }: { jid: string }) {
   )
 }
 
-function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
-  seg: ReviewSegment; srcLang: string; tgtLang: string; fuzzy: FuzzySuggestion[]
+function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
+  seg: ReviewSegment; srcLang: string; tgtLang: string; fuzzy: FuzzySuggestion[]; mode: string
   active: boolean; onSelect: () => void
 }) {
   const [value, setValue] = useState(seg.translation)
@@ -84,6 +101,14 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
   const setVal = (v: string) => { valueRef.current = v; setValue(v) }
   const [alts, setAlts] = useState<string[] | null>(null)
   const [loadingAlts, setLoadingAlts] = useState(false)
+  // word/phrase synonyms for the current text selection in the textarea
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  const sel = useRef<{ start: number; end: number }>({ start: 0, end: 0 })
+  const [selText, setSelText] = useState("")
+  const [syns, setSyns] = useState<string[] | null>(null)
+  const [loadingSyns, setLoadingSyns] = useState(false)
+  const [reph, setReph] = useState<string[] | null>(null)
+  const [loadingReph, setLoadingReph] = useState(false)
 
   // a TM match whose source equals this segment's source — offer it as a one-click fill
   const match = useMemo(
@@ -106,11 +131,54 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
   async function loadAlts() {
     setLoadingAlts(true)
     try {
-      setAlts(await getAlternatives({ source: seg.source, src_lang: srcLang, tgt_lang: tgtLang }))
+      setAlts(await getAlternatives({ source: seg.source, src_lang: srcLang, tgt_lang: tgtLang,
+        style: mode }))
     } catch {
       setAlts([])
     } finally {
       setLoadingAlts(false)
+    }
+  }
+
+  // remember the current selection inside the textarea so "Synonyms" knows the phrase
+  function trackSel() {
+    const ta = taRef.current
+    if (!ta) return
+    sel.current = { start: ta.selectionStart, end: ta.selectionEnd }
+    setSelText(value.slice(ta.selectionStart, ta.selectionEnd).trim())
+  }
+
+  async function loadSynonyms() {
+    const { start, end } = sel.current
+    const phrase = value.slice(start, end).trim()
+    if (!phrase) return
+    setLoadingSyns(true)
+    try {
+      setSyns(await getSynonyms({ phrase, context: value, tgt_lang: tgtLang }))
+    } catch {
+      setSyns([])
+    } finally {
+      setLoadingSyns(false)
+    }
+  }
+
+  function applySynonym(s: string) {
+    const { start, end } = sel.current
+    const next = value.slice(0, start) + s + value.slice(end)   // local override of this occurrence
+    setVal(next)
+    save(next)
+    setSyns(null)
+    setSelText("")
+  }
+
+  async function loadRephrase() {
+    setLoadingReph(true)
+    try {
+      setReph(await getRephrasings({ sentence: value, tgt_lang: tgtLang, style: mode }))
+    } catch {
+      setReph([])
+    } finally {
+      setLoadingReph(false)
     }
   }
 
@@ -129,8 +197,9 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
         </span>
       </div>
       <p className="mb-2 whitespace-pre-wrap text-sm text-muted-foreground">{seg.source}</p>
-      <textarea value={value} onChange={(e) => setVal(e.target.value)}
+      <textarea ref={taRef} value={value} onChange={(e) => setVal(e.target.value)}
         onFocus={onSelect} onBlur={() => save(valueRef.current)}
+        onSelect={trackSel} onMouseUp={trackSel} onKeyUp={trackSel}
         rows={Math.min(6, Math.max(2, Math.ceil(value.length / 60)))}
         className="w-full resize-y rounded-md border bg-background p-2 text-sm
           focus:outline-none focus:ring-2 focus:ring-primary" />
@@ -142,27 +211,59 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, active, onSelect }: {
           TM {Math.round(match.score * 100)}%: {match.match_translation}
         </button>
       )}
-      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+      <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <button type="button" onClick={loadAlts} disabled={loadingAlts}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          className="flex items-center gap-1 hover:text-foreground">
           {loadingAlts ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
           alternatives
         </button>
-        {alts && alts.length === 0 && !loadingAlts && (
-          <span className="text-xs text-muted-foreground">none (local LLM off?)</span>
+        <button type="button" onClick={loadRephrase} disabled={loadingReph}
+          className="flex items-center gap-1 hover:text-foreground" title={`rephrase (${mode})`}>
+          {loadingReph ? <Loader2 className="h-3 w-3 animate-spin" /> : <WrapText className="h-3 w-3" />}
+          rephrase
+        </button>
+        <button type="button" onClick={loadSynonyms} disabled={!selText || loadingSyns}
+          className="flex items-center gap-1 enabled:hover:text-foreground disabled:opacity-50"
+          title={selText ? `synonyms for "${selText}"` : "select a word in the text first"}>
+          {loadingSyns ? <Loader2 className="h-3 w-3 animate-spin" /> : <Replace className="h-3 w-3" />}
+          synonyms{selText && `: "${selText.length > 18 ? `${selText.slice(0, 18)}…` : selText}"`}
+        </button>
+        {((alts && alts.length === 0 && !loadingAlts) || (syns && syns.length === 0 && !loadingSyns)
+          || (reph && reph.length === 0 && !loadingReph)) && (
+          <span>none (local LLM off?)</span>
         )}
       </div>
-      {alts && alts.length > 0 && (
-        <div className="mt-1 space-y-1">
-          {alts.map((a, i) => (
-            <button key={i} type="button"
-              onClick={() => { setVal(a); save(a); setAlts(null) }}
-              className="block w-full rounded border border-dashed px-2 py-1 text-left text-xs hover:border-primary hover:bg-primary/5">
-              {a}
-            </button>
-          ))}
-        </div>
+      {syns && syns.length > 0 && (
+        <Suggestions label={`Replace "${selText}" with`} items={syns}
+          onPick={applySynonym} onClose={() => setSyns(null)} />
       )}
+      {reph && reph.length > 0 && (
+        <Suggestions label={`Rephrase (${mode})`} items={reph}
+          onPick={(r) => { setVal(r); save(r); setReph(null) }} onClose={() => setReph(null)} />
+      )}
+      {alts && alts.length > 0 && (
+        <Suggestions label="Alternative translations" items={alts}
+          onPick={(a) => { setVal(a); save(a); setAlts(null) }} onClose={() => setAlts(null)} />
+      )}
+    </div>
+  )
+}
+
+function Suggestions({ label, items, onPick, onClose }: {
+  label: string; items: string[]; onPick: (s: string) => void; onClose: () => void
+}) {
+  return (
+    <div className="mt-1.5 space-y-1 rounded-md border bg-muted/20 p-1.5">
+      <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
+        <span>{label}</span>
+        <button type="button" onClick={onClose} className="hover:text-foreground">✕</button>
+      </div>
+      {items.map((s, i) => (
+        <button key={i} type="button" onClick={() => onPick(s)}
+          className="block w-full rounded border border-dashed px-2 py-1 text-left text-xs hover:border-primary hover:bg-primary/5">
+          {s}
+        </button>
+      ))}
     </div>
   )
 }
