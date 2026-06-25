@@ -94,9 +94,11 @@ docs/        documentation + design notes
 
 ## Scope & limits
 
-- **Personal, local, non-commercial.** Not distributed or commercialised, so software/model
-  licenses are not a constraint here — AGPL (PyMuPDF) and CC-BY-NC weights (NLLB-200, Surya) are all
-  fair game. The only goals are **maximum fidelity and quality on a CPU-only machine**.
+- **Free, open source (AGPL-3.0), CPU-first.** The goal is **maximum fidelity and quality on a
+  CPU-only machine**. The default `google` engine and all core dependencies are redistribution-safe,
+  and PyMuPDF is AGPL (compatible). The **NLLB-200** and **Surya** model weights are **CC-BY-NC
+  (non-commercial)** and ship only as *opt-in* extras — install them only if your use is
+  non-commercial. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - **North star:** output ≡ input, only the language changes. Cross-format conversion (e.g. PDF→DOCX
   as a *feature*) is deliberately out of scope; format is preserved, not transformed.
 - **Privacy:** the default `google` engine sends text to Google's public endpoint (off-device).

@@ -24,6 +24,7 @@ def test_health_lists_all_option_sets():
     for key in ("engines", "formats", "fidelity", "ocr", "register", "layout"):
         assert key in h and h[key]
     assert "paddle" in h["layout"]
+    assert h["version"] and isinstance(h["version"], str)
 
 
 def _run_echo_job(**extra):

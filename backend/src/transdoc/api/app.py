@@ -55,8 +55,10 @@ def index() -> str:
 
 @app.get("/api/health")
 def health() -> dict:
+    from .. import __version__
     from ..translate.suggest import STYLE_DIRECTIVES
     return {"status": "ok",
+            "version": __version__,
             "engines": [e.value for e in Engine],
             "formats": [f.value for f in OutputFormat],
             "fidelity": [f.value for f in Fidelity],
