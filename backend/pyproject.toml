@@ -69,6 +69,9 @@ detect = ["lingua-language-detector>=2.0"]
 # the script normalization the models expect. pip install -e ".[indic]"  (pulls torch via nmt)
 indic = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2",
          "IndicTransToolkit>=1.0"]
+# Review suggestion layer: in-context synonyms + sentence rephrase via a small local instruct LLM
+# (Qwen2.5-3B-Instruct, 4-bit on a 6 GB GPU). pip install -e ".[suggest]"
+suggest = ["transformers>=4.44", "torch>=2.2", "accelerate>=0.30", "bitsandbytes>=0.43"]
 dev = ["pytest>=8.0", "ruff>=0.5", "httpx>=0.25"]   # httpx: FastAPI TestClient
 
 [project.scripts]

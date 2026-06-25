@@ -253,6 +253,55 @@ def alternatives(body: AltReq) -> dict:
     return {"alternatives": alts}
 
 
+# --- review suggestion layer: in-context synonyms + sentence rephrase (Grammarly-style assist) ---
+
+class SynReq(BaseModel):
+    phrase: str                       # the selected word/phrase (already translated)
+    context: str = ""                 # the full translated sentence it sits in
+    tgt_lang: str
+    n: int = 6
+
+
+class RephraseReq(BaseModel):
+    sentence: str                     # the translated sentence to rewrite
+    tgt_lang: str
+    style: str = "general"            # general|professional|academic|friendly|concise
+    n: int = 3
+
+
+def _suggest_cfg(tgt_lang: str):
+    from ..config import Config, Register
+    return Config(source_lang="auto", target_lang=tgt_lang, register=Register("auto"))
+
+
+@router.post("/synonyms")
+def synonyms(body: SynReq) -> dict:
+    """In-context alternatives for a selected phrase within a translated sentence (local LLM).
+    503 when the suggestion model isn't installed/loadable — the UI hides the feature then."""
+    from ..translate.suggest import SuggestError, Suggester
+    if not body.phrase.strip():
+        return {"synonyms": []}
+    try:
+        out = Suggester().synonyms(body.phrase, body.context, _suggest_cfg(body.tgt_lang), n=body.n)
+    except SuggestError as e:
+        raise HTTPException(503, f"suggestion model unavailable: {e}")
+    return {"synonyms": out}
+
+
+@router.post("/rephrase")
+def rephrase(body: RephraseReq) -> dict:
+    """Rewrite a translated sentence in the requested style/mode (local LLM). 503 if unavailable."""
+    from ..translate.suggest import SuggestError, Suggester
+    if not body.sentence.strip():
+        return {"rephrasings": []}
+    try:
+        out = Suggester().rephrase(body.sentence, _suggest_cfg(body.tgt_lang),
+                                   style=body.style, n=body.n)
+    except SuggestError as e:
+        raise HTTPException(503, f"suggestion model unavailable: {e}")
+    return {"rephrasings": out}
+
+
 # --- per-job review payload (side-by-side UI) -------------------------------------------------
 
 @router.get("/review/{jid}")
