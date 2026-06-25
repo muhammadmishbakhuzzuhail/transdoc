@@ -18,12 +18,14 @@ Env:
 
 from __future__ import annotations
 
+import contextlib
 import json
+import logging
 import os
+import shutil
 import sqlite3
 import threading
 import time
-import traceback
 import uuid
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -54,13 +56,21 @@ class Job:
 _RUN_LOCK = threading.Lock()
 
 
+log = logging.getLogger("transdoc.jobs")
+
 _COLUMNS = [f.name for f in fields(Job)]
 
 
 class JobStore:
-    def __init__(self, work_dir: str = "/tmp/transdoc_jobs", db_path: str | None = None):
+    def __init__(self, work_dir: str | None = None, db_path: str | None = None):
+        # Default to an env-configured dir (the Docker image points this at a chown'd, non-world dir);
+        # fall back to a per-process /tmp path otherwise.
+        work_dir = work_dir or os.environ.get("TRANSDOC_JOBS_DIR") or "/tmp/transdoc_jobs"
         self.work_dir = Path(work_dir)
         self.work_dir.mkdir(parents=True, exist_ok=True)
+        # Uploaded source docs + translated outputs live here; keep them off other local users.
+        with contextlib.suppress(OSError):
+            self.work_dir.chmod(0o700)
         self._lock = threading.Lock()
         db = db_path or os.environ.get("TRANSDOC_JOBS_DB") or str(self.work_dir / "jobs.sqlite")
         self._conn = sqlite3.connect(db, check_same_thread=False)
@@ -112,8 +122,33 @@ class JobStore:
             )
             self._conn.commit()
 
+    def _evict_stale(self) -> None:
+        """Delete jobs (DB row + uploaded source + output dir) older than the TTL. Without this,
+        every upload leaks a temp file and a work dir forever until the disk fills. Runs cheaply at
+        job creation; TRANSDOC_JOB_TTL_HOURS=0 disables."""
+        ttl_h = float(os.environ.get("TRANSDOC_JOB_TTL_HOURS", "24"))
+        if ttl_h <= 0:
+            return
+        cutoff = time.time() - ttl_h * 3600
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, input_path FROM jobs WHERE updated_at < ?", (cutoff,)).fetchall()
+            for r in rows:
+                if r["input_path"]:
+                    with contextlib.suppress(OSError):
+                        Path(r["input_path"]).unlink()
+                with contextlib.suppress(OSError):
+                    shutil.rmtree(self.work_dir / r["id"], ignore_errors=True)
+            if rows:
+                self._conn.execute(
+                    "DELETE FROM jobs WHERE updated_at < ?", (cutoff,))
+                self._conn.commit()
+
     def create(self, input_path: str, meta: dict, batch_id: str | None = None) -> Job:
-        jid = uuid.uuid4().hex[:12]
+        self._evict_stale()
+        # Full 128-bit id: the id is the only access token on /api/{download,jobs,preview} (no auth),
+        # so it must be unguessable and is treated as a bearer secret (never logged).
+        jid = uuid.uuid4().hex
         job = Job(id=jid, input_path=input_path, meta=meta, batch_id=batch_id)
         self._save(job)
         return job
@@ -186,9 +221,13 @@ class JobStore:
             job.status = "done"
             job.message = "completed"
         except Exception as e:
+            # Log the full traceback server-side; return only a short class+message to the client.
+            # The raw traceback leaks absolute server paths, library versions and internal structure
+            # (recon) to anyone holding the job id, so it must not travel over the API.
+            log.exception("job %s failed", job.id)
             job.status = "error"
-            job.error = f"{e}\n{traceback.format_exc()}"
-            job.message = str(e)
+            job.error = f"{type(e).__name__}: {e}"[:500]
+            job.message = str(e)[:200]
         self._save(job)
 
 

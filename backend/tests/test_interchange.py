@@ -40,6 +40,25 @@ def test_tmx_round_trip(stores, tmp_path):
     assert got.get("Hello world") == "Halo dunia"
 
 
+def test_tmx_rejects_entity_billion_laughs(stores, tmp_path):
+    """A TMX carrying a DTD/internal entity must be rejected, not entity-expanded (XXE/DoS).
+    Also padded past the old 4096-byte prefix scan to prove the parser — not a heuristic — blocks it."""
+    from transdoc.store.interchange import import_tmx
+    tm, _ = stores
+    pad = "<!-- " + "x" * 5000 + " -->"
+    evil = (
+        '<?xml version="1.0"?>\n' + pad + "\n"
+        '<!DOCTYPE tmx [ <!ENTITY lol "ha"> <!ENTITY lol2 "&lol;&lol;&lol;"> ]>\n'
+        '<tmx version="1.4"><body>'
+        '<tu><tuv xml:lang="en"><seg>&lol2;</seg></tuv>'
+        '<tuv xml:lang="id"><seg>x</seg></tuv></tu></body></tmx>'
+    )
+    p = tmp_path / "evil.tmx"
+    p.write_text(evil, encoding="utf-8")
+    with pytest.raises(ValueError):
+        import_tmx(tm, p)
+
+
 def test_glossary_csv_round_trip(stores, tmp_path):
     from transdoc.store.interchange import export_glossary_csv, import_glossary_csv
     _, gs = stores
