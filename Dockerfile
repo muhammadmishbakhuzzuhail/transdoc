@@ -36,7 +36,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY backend/ ./backend/
-RUN pip install "./backend[api,formats]"
+# Reproducible install: pinned + hashed deps from the committed lock export (api + formats extras),
+# then the transdoc package itself with no dependency re-resolution. Regenerate the export with:
+#   cd backend && uv export --frozen --no-dev --no-emit-project --extra api --extra formats \
+#     -o requirements-docker.txt
+RUN pip install --require-hashes -r backend/requirements-docker.txt \
+    && pip install --no-deps ./backend
 
 # Bundle the built SPA so FastAPI serves it at / (and /assets via the StaticFiles mount).
 COPY --from=web /fe/dist/ ./backend/src/transdoc/api/spa/
