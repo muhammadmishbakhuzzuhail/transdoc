@@ -12,6 +12,7 @@ import { ReviewView } from "@/components/ReviewView"
 import { type FormValues, TranslateForm } from "@/components/TranslateForm"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useI18n } from "@/lib/i18n"
 import { useTheme } from "@/lib/theme"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -27,6 +28,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<"translate" | "glossary">("translate")
   const [theme, toggleTheme] = useTheme()
+  const { t, locale, setLocale } = useI18n()
   const poll = useRef<number | null>(null)
   const lastSubmit = useRef<{ files: File[]; v: FormValues } | null>(null)   // for Retry
 
@@ -87,7 +89,7 @@ export default function App() {
         <div>
           <h1 className="text-xl font-bold">transdoc</h1>
           <p className="text-sm text-muted-foreground">
-            Layout-faithful document translation — CPU-friendly, free.
+            {t("tagline")}
           </p>
         </div>
         <nav className="ml-auto flex items-center gap-1">
@@ -95,10 +97,15 @@ export default function App() {
             <button key={tab} type="button" onClick={() => setView(tab)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
                 view === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {tab}
+              {t(`nav_${tab}`)}
             </button>
           ))}
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="ml-1"
+          <button type="button" onClick={() => setLocale(locale === "id" ? "en" : "id")}
+            aria-label={t("lang_label")}
+            className="ml-1 rounded-md px-2 py-1.5 text-xs font-medium uppercase text-muted-foreground hover:text-foreground">
+            {locale}
+          </button>
+          <Button variant="ghost" size="icon" onClick={toggleTheme}
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
@@ -151,16 +158,16 @@ export default function App() {
         <Card className="border-primary/30 bg-accent/40">
           <CardContent className="flex flex-wrap items-center gap-3 py-4">
             <CheckCircle2 className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium">Translation ready</span>
+            <span className="text-sm font-medium">{t("ready")}</span>
             <div className="ml-auto flex gap-2">
               {job.has_report && (
                 <a href={reportUrl(job.job_id)} target="_blank" rel="noreferrer">
-                  <Button variant="outline" size="sm"><FileText className="h-4 w-4" /> Report</Button>
+                  <Button variant="outline" size="sm"><FileText className="h-4 w-4" /> {t("btn_report")}</Button>
                 </a>
               )}
               {job.has_output && (
                 <a href={downloadUrl(job.job_id)}>
-                  <Button size="sm"><Download className="h-4 w-4" /> Download</Button>
+                  <Button size="sm"><Download className="h-4 w-4" /> {t("btn_download")}</Button>
                 </a>
               )}
             </div>
@@ -171,9 +178,9 @@ export default function App() {
       {job?.status === "done" && (
         <Tabs defaultValue="review" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="review">Review</TabsTrigger>
-            <TabsTrigger value="preview">Before & after</TabsTrigger>
-            <TabsTrigger value="analysis">Analysis</TabsTrigger>
+            <TabsTrigger value="review">{t("tab_review")}</TabsTrigger>
+            <TabsTrigger value="preview">{t("tab_preview")}</TabsTrigger>
+            <TabsTrigger value="analysis">{t("tab_analysis")}</TabsTrigger>
           </TabsList>
           {/* key on job id: force a clean remount per job so the panels' local state (review,
               selections, edited segments, preview page) never bleeds from a previous document */}
@@ -182,7 +189,7 @@ export default function App() {
           <TabsContent value="analysis">
             {analysis
               ? <AnalysisView key={job.job_id} jid={job.job_id} a={analysis} />
-              : <p className="py-6 text-sm text-muted-foreground">Analysis unavailable.</p>}
+              : <p className="py-6 text-sm text-muted-foreground">{t("analysis_unavailable")}</p>}
           </TabsContent>
         </Tabs>
       )}
