@@ -104,6 +104,9 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
   // word/phrase synonyms for the current text selection in the textarea
   const taRef = useRef<HTMLTextAreaElement>(null)
   const sel = useRef<{ start: number; end: number }>({ start: 0, end: 0 })
+  // the exact span the on-screen synonyms were fetched for — guards against the user editing the
+  // textarea while the request is in flight (a stale start/end would splice into the wrong place).
+  const synFor = useRef<{ start: number; end: number; phrase: string } | null>(null)
   const [selText, setSelText] = useState("")
   const [syns, setSyns] = useState<string[] | null>(null)
   const [loadingSyns, setLoadingSyns] = useState(false)
@@ -152,6 +155,7 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
     const { start, end } = sel.current
     const phrase = value.slice(start, end).trim()
     if (!phrase) return
+    synFor.current = { start, end, phrase: value.slice(start, end) }   // pin the raw span
     setLoadingSyns(true)
     try {
       setSyns(await getSynonyms({ phrase, context: value, tgt_lang: tgtLang }))
@@ -163,8 +167,13 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
   }
 
   function applySynonym(s: string) {
-    const { start, end } = sel.current
-    const next = value.slice(0, start) + s + value.slice(end)   // local override of this occurrence
+    const span = synFor.current
+    // bail if the text shifted under us (edited while the fetch was in flight) — splicing at the
+    // stale offsets would corrupt a different part of the sentence.
+    if (!span || value.slice(span.start, span.end) !== span.phrase) {
+      setSyns(null); setSelText(""); return
+    }
+    const next = value.slice(0, span.start) + s + value.slice(span.end)   // local override here only
     setVal(next)
     save(next)
     setSyns(null)

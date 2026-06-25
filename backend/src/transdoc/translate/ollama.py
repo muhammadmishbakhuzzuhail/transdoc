@@ -141,7 +141,7 @@ class OllamaTranslator:
     def _parse(content: str, ids: list[str]) -> list[str]:
         """Parse {"translations": {id: text}} and return values in `ids` order. Raises on mismatch."""
         if content.startswith("```"):
-            content = content.split("```")[1].lstrip("json").strip()
+            content = content.split("```")[1].removeprefix("json").strip()
         obj = json.loads(content)
         table = obj.get("translations", obj) if isinstance(obj, dict) else {}
         if not isinstance(table, dict):
@@ -241,7 +241,7 @@ class OllamaTranslator:
         user = json.dumps({"text": text, "n": n}, ensure_ascii=False)
         content = self._call(cfg, system, user, temperature=0.8)
         if content.startswith("```"):
-            content = content.split("```")[1].lstrip("json").strip()
+            content = content.split("```")[1].removeprefix("json").strip()
         obj = json.loads(content)
         alts = obj.get("alternatives", obj) if isinstance(obj, dict) else obj
         if not isinstance(alts, list):

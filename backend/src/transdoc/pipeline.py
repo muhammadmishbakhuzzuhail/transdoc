@@ -159,6 +159,12 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
     check_file_size(input_path)
     timings: dict[str, float] = {}
 
+    # Free the review-suggestion LLM (Qwen) if a prior review session left it resident in the same
+    # server process — the stages below load paddle/COMET/escalation and a 6 GB card can't hold both
+    # (mirrors the WordAligner/QualityEstimator release discipline between phases).
+    from .translate.suggest import Suggester
+    Suggester.release()
+
     # --- Ingest + detect ---
     with _stage(timings, "detect"):
         det = detect(input_path)
