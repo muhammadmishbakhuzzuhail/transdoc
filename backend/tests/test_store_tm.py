@@ -73,3 +73,32 @@ def test_legacy_cache_migrated_on_default_path(tmp_path, monkeypatch):
     row = conn.execute("SELECT tgt_text, tgt_lang, src_lang FROM tm WHERE src_norm='hello world'"
                        ).fetchone()
     assert row == ("halo dunia", "id", "")
+
+
+def test_concurrent_put_get_is_thread_safe(tmp_path):
+    """The store is hit from the anyio threadpool (feedback routes) and the worker thread at once;
+    its 'WAL + one shared connection guarded by a lock' claim must hold. Interleave N threads doing
+    put_many/get_many and assert no 'database is locked'/'recursive use' error and consistent reads."""
+    import threading
+
+    s = TMStore(path=tmp_path / "transdoc.db")
+    errors: list[Exception] = []
+
+    def worker(i: int):
+        try:
+            for j in range(25):
+                key = f"term{i}-{j}"
+                s.put_many({key: f"val{i}-{j}"}, target="id", src_lang="en")
+                got = s.get_many([key], "id", src_lang="en")
+                assert got.get(key) == f"val{i}-{j}"
+        except Exception as e:                       # noqa: BLE001 — record, fail in main thread
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors, f"thread-safety violated: {errors[:3]}"
+    # every key from every thread persisted
+    assert s.get_many(["term7-24"], "id", src_lang="en").get("term7-24") == "val7-24"
