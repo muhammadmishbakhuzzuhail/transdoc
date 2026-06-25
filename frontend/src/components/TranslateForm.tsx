@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { Health } from "@/lib/api"
+import { useI18n } from "@/lib/i18n"
 
 const LANGS = [
   ["id", "Indonesian"], ["en", "English"], ["ar", "Arabic"], ["zh", "Chinese"],
@@ -75,6 +76,7 @@ export function TranslateForm({ health, busy, onSubmit }: {
   busy: boolean
   onSubmit: (files: File[], v: FormValues) => void
 }) {
+  const { t } = useI18n()
   const [v, setV] = useState<FormValues>(DEFAULTS)
   const [files, setFiles] = useState<File[]>([])
   const [drag, setDrag] = useState(false)
@@ -97,11 +99,11 @@ export function TranslateForm({ health, busy, onSubmit }: {
         >
           <FileUp className={`h-8 w-8 ${drag ? "text-primary" : "text-muted-foreground"}`} />
           <div className="text-sm">
-            {files.length ? <span className="font-medium">{files.length === 1 ? "1 file" : `${files.length} files`} selected — click to change</span>
-              : <><span className="font-medium text-foreground">Drop a document</span> or click to browse</>}
+            {files.length ? <span className="font-medium">{files.length === 1 ? t("file_one") : `${files.length} files`} {t("files_selected")}</span>
+              : <><span className="font-medium text-foreground">{t("drop_doc")}</span> {t("or_browse")}</>}
           </div>
           <p className="text-xs text-muted-foreground">
-            PDF (incl. scans), DOCX, PPTX, XLSX, EPUB, images, subtitles — one or many
+            {t("filetypes")}
           </p>
           <input ref={inputRef} type="file" multiple className="hidden"
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
@@ -128,71 +130,71 @@ export function TranslateForm({ health, busy, onSubmit }: {
 
         {/* The two things a beginner actually chooses */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Translate to">
+          <Field label={t("f_translate_to")}>
             <Picker value={v.target_lang} onChange={(x) => set("target_lang", x)}
               options={LANGS.map((l) => l[0])} labels={Object.fromEntries(LANGS)} />
           </Field>
-          <Field label="Output">
+          <Field label={t("f_output")}>
             <Picker value={v.output_format} onChange={(x) => set("output_format", x)}
               options={FORMATS}
-              labels={{ "same-as-source": "Same as original" }} />
+              labels={{ "same-as-source": t("opt_same") }} />
           </Field>
         </div>
 
         <Button disabled={!files.length || busy} className="w-full" size="lg"
           onClick={() => files.length && onSubmit(files, v)}>
-          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Working…</>
-            : files.length > 1 ? `Translate ${files.length} files` : "Translate"}
+          {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("working")}</>
+            : files.length > 1 ? `${t("translate")} ${files.length}` : t("translate")}
         </Button>
 
         {/* Advanced — hidden by default */}
         <div>
           <button type="button" onClick={() => setAdvanced((a) => !a)}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <Settings2 className="h-4 w-4" /> Advanced
+            <Settings2 className="h-4 w-4" /> {t("advanced")}
             <ChevronDown className={`h-4 w-4 transition-transform ${advanced ? "rotate-180" : ""}`} />
           </button>
 
           {advanced && (
             <div className="mt-4 space-y-4 rounded-lg border bg-muted/20 p-4">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                <Field label="Source language">
+                <Field label={t("f_source")}>
                   <Picker value={v.source_lang} onChange={(x) => set("source_lang", x)}
                     options={["auto", ...LANGS.map((l) => l[0])]}
-                    labels={{ auto: "Auto-detect", ...Object.fromEntries(LANGS) }} />
+                    labels={{ auto: t("opt_auto"), ...Object.fromEntries(LANGS) }} />
                 </Field>
-                <Field label="Engine" hint="auto: free chain">
+                <Field label={t("f_engine")} hint={t("hint_engine")}>
                   <Picker value={v.engine} onChange={(x) => set("engine", x)}
                     options={health?.engines ?? ["fallback"]} />
                 </Field>
-                <Field label="Fidelity">
+                <Field label={t("f_fidelity")}>
                   <Picker value={v.fidelity} onChange={(x) => set("fidelity", x)}
                     options={health?.fidelity ?? ["auto"]} />
                 </Field>
-                <Field label="Layout model" hint="auto: crop figures/math on PDFs">
+                <Field label={t("f_layout")} hint={t("hint_layout")}>
                   <Picker value={v.layout} onChange={(x) => set("layout", x)}
                     options={health?.layout ?? ["auto", "off", "paddle"]} />
                 </Field>
-                <Field label="OCR engine">
+                <Field label={t("f_ocr")}>
                   <Picker value={v.ocr_engine} onChange={(x) => set("ocr_engine", x)}
                     options={health?.ocr ?? ["auto"]} />
                 </Field>
-                <Field label="Register">
+                <Field label={t("f_register")}>
                   <Picker value={v.register} onChange={(x) => set("register", x)}
                     options={health?.register ?? ["auto"]} />
                 </Field>
-                <Field label="Pages" hint='e.g. "3-7,10"'>
+                <Field label={t("f_pages")} hint='e.g. "3-7,10"'>
                   <input value={v.pages} onChange={(e) => set("pages", e.target.value)}
-                    placeholder="all"
+                    placeholder={t("ph_all")}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </Field>
               </div>
               <div className="flex flex-wrap gap-6">
-                {([["bilingual", "Bilingual"], ["quality", "Quality flags"], ["localize", "Localize"], ["align", "Style alignment"], ["escalate", "LLM escalation"], ["repair", "OCR repair"]] as const).map(
-                  ([k, lbl]) => (
+                {([["bilingual", "tog_bilingual"], ["quality", "tog_quality"], ["localize", "tog_localize"], ["align", "tog_align"], ["escalate", "tog_escalate"], ["repair", "tog_repair"]] as const).map(
+                  ([k, key]) => (
                     <label key={k} className="flex items-center gap-2 text-sm">
                       <Switch checked={v[k]} onCheckedChange={(c) => set(k, c)} />
-                      {lbl}
+                      {t(key)}
                     </label>
                   ),
                 )}
