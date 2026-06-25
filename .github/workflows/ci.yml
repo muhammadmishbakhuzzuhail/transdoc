@@ -20,7 +20,7 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install system libs
         # python-magic needs libmagic; tesseract for the OCR path; script-{latn,grek,cyrl} = the
@@ -59,7 +59,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -79,7 +79,7 @@ jobs:
     # LibreOffice). Build only — no push — so a broken Dockerfile fails CI.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -109,7 +109,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
