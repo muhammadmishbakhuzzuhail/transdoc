@@ -219,14 +219,22 @@ class OllamaTranslator:
         without re-translating its neighbours."""
         return self._translate_once(cfg, src, [("0", text)], prev_pairs or [], following or [])[0]
 
-    def alternatives(self, text: str, cfg: Config, src: str | None = None, n: int = 3) -> list[str]:
+    def alternatives(self, text: str, cfg: Config, src: str | None = None, n: int = 3,
+                     style: str | None = None) -> list[str]:
         """Generate up to ``n`` DISTINCT alternative translations of one segment (review aid). Higher
-        temperature for variety; preserves numbers/placeholders. Raises OllamaError if unavailable."""
+        temperature for variety; preserves numbers/placeholders. ``style`` (a mode preset) steers all
+        alternatives toward one register instead of varying it. Raises OllamaError if unavailable."""
         n = max(1, min(5, n))
+        from .suggest import STYLE_DIRECTIVES
+        if style and style in STYLE_DIRECTIVES:
+            steer = (f"Write every alternative in a {STYLE_DIRECTIVES[style]} style; vary only the "
+                     "phrasing/word choice, not the register.")
+        else:
+            steer = "Vary the phrasing/word choice/register across alternatives."
         system = (
             "You are a professional translator. Produce alternative translations from "
-            f"{src or 'the detected language'} to {cfg.target_lang} of the given text. Vary the "
-            "phrasing/word choice/register across alternatives, all faithful to the meaning. "
+            f"{src or 'the detected language'} to {cfg.target_lang} of the given text. {steer} All "
+            "faithful to the meaning. "
             "Preserve numbers, dates, IDs, URLs, proper nouns and any [PH<n>] placeholders exactly. "
             f'Return ONLY a JSON object: {{"alternatives": ["...", "..."]}} with {n} distinct items.'
         )
