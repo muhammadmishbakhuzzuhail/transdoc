@@ -63,6 +63,9 @@ transdoc translate report.pdf --lang id --to docx     # PDF → translated Word
 - **A real quality pipeline.** Reference-free QE (COMET-Kiwi), LLM escalation of weak segments,
   word-alignment style transfer, reading-order normalisation, OCR repair, and a learning feedback
   flywheel (glossary + translation memory). → [docs/QUALITY.md](docs/QUALITY.md)
+- **Review with suggestions.** A per-segment review surface with edit, TM/fuzzy match accept, and
+  an optional local-LLM assist layer — in-context synonyms, sentence rephrase, and register modes
+  (professional/academic/friendly/concise). Opt-in (`[suggest]` extra); hides itself without it.
 - **Never invents, never drops.** Uncertain spans are flagged, not silently smoothed over.
 
 ---
