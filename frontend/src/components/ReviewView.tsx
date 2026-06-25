@@ -119,6 +119,14 @@ function SegmentRow({ seg, srcLang, tgtLang, fuzzy, mode, active, onSelect }: {
     [fuzzy, seg.source, seg.translation],
   )
 
+  // suggestion mode steers rephrase + alternatives, so any results already on screen are stale once
+  // the user switches mode — clear them rather than show results from the previous mode.
+  useEffect(() => {
+    setAlts(null)
+    setReph(null)
+    setSyns(null)
+  }, [mode])
+
   async function save(next: string) {
     if (next.trim() === saved.current.trim()) return
     setState("saving")
