@@ -78,6 +78,7 @@ transdoc translate report.pdf --lang id --to docx     # PDF → translated Word
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every config field, all engines, all environment variables |
 | [docs/QUALITY.md](docs/QUALITY.md) | The quality pipeline: QE, escalation, alignment, OCR repair, feedback flywheel |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Dev setup, tests, the evaluation harness, the example corpus, code layout |
+| [docs/MANUAL_QA.md](docs/MANUAL_QA.md) | Pre-release manual browser checklist for the UI (no automated frontend tests yet) |
 | [docs/EXAMPLES.md](docs/EXAMPLES.md) | Input → output gallery (preview of real results) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Pipeline architecture and the IR |
 | [docs/FIDELITY.md](docs/FIDELITY.md) | Layout-fidelity strategy (reconstruct / overlay / flow) |
