@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Muhammad Mishbakhuz Zuhail
+import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import { AlertCircle, Check, Loader2, Replace, Sparkles, Wand2, WrapText } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +13,7 @@ import {
 } from "@/lib/api"
 
 const FALLBACK_STYLES = ["general", "professional", "academic", "friendly", "concise"]
+const VIRTUAL_THRESHOLD = 60     // below this, render the whole list; above, window-virtualize
 
 type SaveState = "idle" | "saving" | "saved" | "error"
 
@@ -69,11 +71,19 @@ export function ReviewView({ jid }: { jid: string }) {
         {review.segments.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">No translatable segments.</p>
         )}
-        {review.segments.map((seg) => (
-          <SegmentRow key={seg.block_id} seg={seg} srcLang={review.src_lang}
+        {/* Small docs render the whole list (the common, visually-tested path). Large docs would
+            mount hundreds of textareas at once and jank the tab, so they window-virtualize. */}
+        {review.segments.length > 0 && review.segments.length <= VIRTUAL_THRESHOLD &&
+          review.segments.map((seg) => (
+            <SegmentRow key={seg.block_id} seg={seg} srcLang={review.src_lang}
+              tgtLang={review.tgt_lang} fuzzy={review.fuzzy_suggestions} mode={mode}
+              active={seg.block_id === selected} onSelect={() => setSelected(seg.block_id)} />
+          ))}
+        {review.segments.length > VIRTUAL_THRESHOLD && (
+          <VirtualSegments segments={review.segments} srcLang={review.src_lang}
             tgtLang={review.tgt_lang} fuzzy={review.fuzzy_suggestions} mode={mode}
-            active={seg.block_id === selected} onSelect={() => setSelected(seg.block_id)} />
-        ))}
+            selected={selected} onSelect={setSelected} />
+        )}
       </div>
 
       <aside className="space-y-4 lg:w-[340px] lg:shrink-0">
@@ -83,6 +93,42 @@ export function ReviewView({ jid }: { jid: string }) {
             fuzzy={review.fuzzy_suggestions} srcLang={review.src_lang} tgtLang={review.tgt_lang} />
         </div>
       </aside>
+    </div>
+  )
+}
+
+/** Window-virtualized segment list for large documents: only the rows near the viewport are
+ *  mounted, so a 50-page doc no longer mounts hundreds of textareas at once. Uses the window
+ *  scrollbar (no inner scroll container) so the page scroll behaviour is unchanged; rows are
+ *  dynamically measured since their height varies with the translation length. */
+function VirtualSegments({ segments, srcLang, tgtLang, fuzzy, mode, selected, onSelect }: {
+  segments: ReviewSegment[]; srcLang: string; tgtLang: string; fuzzy: FuzzySuggestion[]
+  mode: string; selected: string | null; onSelect: (id: string) => void
+}) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const v = useWindowVirtualizer({
+    count: segments.length,
+    estimateSize: () => 150,
+    overscan: 8,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
+  })
+  return (
+    <div ref={listRef} style={{ height: v.getTotalSize(), position: "relative" }}>
+      {v.getVirtualItems().map((vi) => {
+        const seg = segments[vi.index]
+        return (
+          <div key={seg.block_id} data-index={vi.index} ref={v.measureElement}
+            style={{
+              position: "absolute", top: 0, left: 0, width: "100%",
+              transform: `translateY(${vi.start - v.options.scrollMargin}px)`,
+            }}>
+            <div className="pb-2">
+              <SegmentRow seg={seg} srcLang={srcLang} tgtLang={tgtLang} fuzzy={fuzzy} mode={mode}
+                active={seg.block_id === selected} onSelect={() => onSelect(seg.block_id)} />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
