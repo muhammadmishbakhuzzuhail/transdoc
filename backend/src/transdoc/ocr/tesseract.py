@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import functools
 import io
+import os
 
 from ..config import Config
 from ..ir import BBox, Block, BlockType, Confidence, Style
@@ -122,7 +123,11 @@ class TesseractOCR:
         if not cfg.source_lang or cfg.source_lang == "auto":
             detected = self._detect_script_lang(image, set(_avail_langs()))
         lang = self._langs(cfg, detected)
-        data = pytesseract.image_to_data(image, lang=lang,
+        # Bound the tesseract call: a wedged/pathological scan would otherwise hang the worker
+        # thread, which holds the serialised job lock -> the whole queue stalls indefinitely.
+        # pytesseract raises RuntimeError on expiry; the escalation chain tolerates a failed engine.
+        timeout = float(os.environ.get("TRANSDOC_OCR_TIMEOUT", "0")) or 300.0
+        data = pytesseract.image_to_data(image, lang=lang, timeout=timeout,
                                          output_type=pytesseract.Output.DICT)
 
         # Group words by (block_num, par_num, line_num) into paragraph blocks.
