@@ -55,13 +55,15 @@ def index() -> str:
 
 @app.get("/api/health")
 def health() -> dict:
+    from ..translate.suggest import STYLE_DIRECTIVES
     return {"status": "ok",
             "engines": [e.value for e in Engine],
             "formats": [f.value for f in OutputFormat],
             "fidelity": [f.value for f in Fidelity],
             "ocr": [o.value for o in OCREngine],
             "register": [r.value for r in Register],
-            "layout": ["auto", "off", "paddle"]}
+            "layout": ["auto", "off", "paddle"],
+            "styles": list(STYLE_DIRECTIVES)}   # rephrase / alternatives mode presets (review UI)
 
 
 def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, domain, register,

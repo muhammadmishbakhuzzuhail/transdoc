@@ -233,6 +233,7 @@ class AltReq(BaseModel):
     tgt_lang: str
     domain: str = ""
     n: int = 3
+    style: str = ""                   # optional mode preset (general|professional|academic|...)
 
 
 @router.post("/alternatives")
@@ -247,7 +248,7 @@ def alternatives(body: AltReq) -> dict:
                  domain=body.domain or "auto", register=Register("auto"))
     try:
         alts = OllamaTranslator().alternatives(
-            body.source, cfg, src=body.src_lang or None, n=body.n)
+            body.source, cfg, src=body.src_lang or None, n=body.n, style=body.style or None)
     except OllamaError as e:
         raise HTTPException(503, f"local LLM unavailable: {e}")
     return {"alternatives": alts}
