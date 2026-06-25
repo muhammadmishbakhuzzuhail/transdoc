@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from transdoc.config import Config
-from transdoc.translate.suggest import STYLE_DIRECTIVES, SuggestError, Suggester
+from transdoc.translate.suggest import STYLE_DIRECTIVES, Suggester, SuggestError
 
 
 def _cfg():
@@ -61,6 +61,7 @@ def test_release_resets_state():
 def _client():
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
+
     from transdoc.api.app import app
     return TestClient(app)
 

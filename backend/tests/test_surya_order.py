@@ -7,8 +7,8 @@ non-PDF, predictor unavailable)."""
 from __future__ import annotations
 
 from transdoc.config import Config
-from transdoc.ir import BBox, Block, BlockType, Document
 from transdoc.extract import surya_order
+from transdoc.ir import BBox, Block, BlockType, Document
 
 
 def _b(bid, ro, box):

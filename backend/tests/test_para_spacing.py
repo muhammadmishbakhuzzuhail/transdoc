@@ -22,6 +22,7 @@ def _doc():
 def test_docx_extract_captures_spacing(tmp_path):
     docx = pytest.importorskip("docx")
     from docx.shared import Pt
+
     from transdoc.extract.docx import extract
     dd = docx.Document()
     p = dd.add_paragraph("hello spaced")

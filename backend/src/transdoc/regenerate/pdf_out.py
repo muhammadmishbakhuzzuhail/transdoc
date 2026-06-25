@@ -18,7 +18,6 @@ import html
 from ..config import Config
 from ..ir import BlockType, Document
 
-
 # Below this shrink factor, the box was too small for the translation -> flag for review.
 OVERFLOW_FLAG_SCALE = 0.6
 

@@ -42,6 +42,7 @@ def test_docx_highlight_smallcaps(tmp_path):
 def test_docx_extract_captures_highlight(tmp_path):
     docx = pytest.importorskip("docx")
     from docx.enum.text import WD_COLOR_INDEX
+
     from transdoc.extract.docx import extract
     dd = docx.Document()
     para = dd.add_paragraph("plain ")

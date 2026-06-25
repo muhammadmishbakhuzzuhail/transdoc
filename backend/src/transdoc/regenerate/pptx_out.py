@@ -21,7 +21,7 @@ def _set_para(para, text: str) -> None:
 def render(doc: Document, cfg: Config, out_path: str) -> str:
     from pptx import Presentation
 
-    from ..extract.pptx import iter_text_paras   # one shared walk -> extract/render never drift
+    from ..extract.pptx import iter_text_paras  # one shared walk -> extract/render never drift
 
     m = {b.id: b.output_text for b in doc.blocks}
     prs = Presentation(doc.source_path)

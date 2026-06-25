@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from ..config import (Config, Engine, Fidelity, OCREngine, OutputFormat, Register)
+from ..config import Config, Engine, Fidelity, OCREngine, OutputFormat, Register
 from .feedback_routes import router as feedback_router
 from .jobs import store
 

@@ -20,7 +20,12 @@ _SKIP_PARENTS = {"script", "style", "title"}
 def iter_text_nodes(soup):
     """Yield (ordinal, NavigableString) for translatable text nodes, in document order."""
     from bs4 import (
-        CData, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction,
+        CData,
+        Comment,
+        Declaration,
+        Doctype,
+        NavigableString,
+        ProcessingInstruction,
     )
 
     # Comment/Declaration/Doctype/PI/CData are NavigableString *subclasses* — the XML decl

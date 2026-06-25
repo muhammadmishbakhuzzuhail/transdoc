@@ -12,7 +12,7 @@ from transdoc.config import Config
 pytest.importorskip("pytesseract")
 import pytesseract  # noqa: E402
 
-from transdoc.ocr.tesseract import _SCRIPT_LANG, _avail_langs, TesseractOCR  # noqa: E402
+from transdoc.ocr.tesseract import _SCRIPT_LANG, TesseractOCR, _avail_langs  # noqa: E402
 
 _AVAIL = set(pytesseract.get_languages(config=""))
 

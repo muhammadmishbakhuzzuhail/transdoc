@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from ..config import Config, OCREngine as OCRChoice
+from ..config import Config
+from ..config import OCREngine as OCRChoice
 from .base import OCREngine
 
 

@@ -9,7 +9,6 @@ from pathlib import Path
 from ..config import Config, Fidelity, OutputFormat
 from ..ir import Document
 
-
 # Round-trip formats: reopen the source and swap text in place, keeping all structure.
 _ROUNDTRIP = {
     OutputFormat.PPTX: ("pptx_out", (".pptx",)),

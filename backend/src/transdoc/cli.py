@@ -132,9 +132,9 @@ def ocr(input: str = typer.Argument(..., help="Scanned PDF"),
         ocr_engine: str = typer.Option("auto", "--ocr"),
         out: str = typer.Option(None, "--out", "-o")):
     """Make a scanned PDF searchable (add an invisible OCR text layer, no translation)."""
-    from .ingest.detect import detect
-    from .extract import extract as extract_ir
     from .diagnose import diagnose
+    from .extract import extract as extract_ir
+    from .ingest.detect import detect
     from .regenerate.pdf_out import render_searchable
 
     cfg = _cfg(None, source, "pdf", "echo", ocr_engine, "auto", "auto", False, "auto", None)

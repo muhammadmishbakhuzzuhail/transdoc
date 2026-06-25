@@ -61,8 +61,8 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     """Append an external hyperlink run (python-docx has no public API). Blue + underlined so
     it reads as a link."""
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
-    from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
 
     r_id = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
     link = OxmlElement("w:hyperlink")
