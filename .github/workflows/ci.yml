@@ -43,9 +43,10 @@ jobs:
       - name: Lint (ruff)
         run: ruff check src tests
 
-      - name: Test (pytest)
-        # offline only: the suite uses the echo engine, never hits a translation API
-        run: pytest
+      - name: Test (pytest + coverage)
+        # offline only: the suite uses the echo engine, never hits a translation API.
+        # Coverage is reported now; a --cov-fail-under ratchet follows once the baseline is observed.
+        run: pytest --cov=transdoc --cov-report=term-missing:skip-covered
 
       - name: Eval regression gate
         # deterministic structure/fidelity metrics over committed digital fixtures vs the
@@ -97,3 +98,23 @@ jobs:
         run: |
           docker run --rm transdoc:ci python -c "import transdoc.api.app"
           docker run --rm transdoc:ci transdoc --help
+
+  security:
+    # Dependency CVE scan. Non-blocking for now (the heavy ML stack — torch/paddle — carries
+    # advisories we don't always control); surfaces findings without gating, ratchet to blocking
+    # once the baseline is triaged. Dependabot + CodeQL run on their own schedules.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: pip-audit (core deps)
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip install -e .
+          pip-audit --progress-spinner off || true

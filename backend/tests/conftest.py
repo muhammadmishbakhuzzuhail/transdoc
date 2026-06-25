@@ -39,3 +39,31 @@ def _disable_structured_layout():
         os.environ.pop("TRANSDOC_LAYOUT_DISABLE", None)
     else:
         os.environ["TRANSDOC_LAYOUT_DISABLE"] = prev
+
+
+@pytest.fixture(autouse=True)
+def _isolate_global_stores(tmp_path, monkeypatch):
+    """Hermetic per-test state. The job store, TM and glossary are process-global singletons; the
+    job `store` even defaults to a SHARED /tmp/transdoc_jobs sqlite. Without isolation, suites
+    cross-contaminate (and the echo-job tests flake) and tests touch the developer's real
+    ~/.local/share/transdoc data. Pin every store under tmp_path and rebind the job-store singleton
+    everywhere it's referenced (app.py binds it at import, feedback_routes reads it lazily)."""
+    jobs_dir = tmp_path / "jobs"
+    monkeypatch.setenv("TRANSDOC_JOBS_DIR", str(jobs_dir))
+    monkeypatch.setenv("TRANSDOC_JOBS_DB", str(jobs_dir / "jobs.sqlite"))
+    monkeypatch.setenv("TRANSDOC_DB_PATH", str(tmp_path / "transdoc.db"))
+    monkeypatch.setenv("TRANSDOC_TM_PATH", str(tmp_path / "legacy.sqlite"))
+
+    from transdoc.api import app as app_mod
+    from transdoc.api import jobs as jobs_mod
+    from transdoc.store.glossary import GlossaryStore
+    from transdoc.store.tm import TMStore
+
+    fresh = jobs_mod.JobStore(work_dir=str(jobs_dir))
+    monkeypatch.setattr(jobs_mod, "store", fresh)
+    monkeypatch.setattr(app_mod, "store", fresh, raising=False)
+    TMStore._instance = None
+    GlossaryStore._instance = None
+    yield
+    TMStore._instance = None
+    GlossaryStore._instance = None
