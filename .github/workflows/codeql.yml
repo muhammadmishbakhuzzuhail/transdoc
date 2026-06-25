@@ -25,10 +25,8 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          language: ${{ matrix.language }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+          languages: ${{ matrix.language }}
+          build-mode: none        # interpreted langs: extract directly, no autobuild
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3
