@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 
 from ..config import Config
 
@@ -39,6 +40,7 @@ class Suggester:
     _model = None
     _tok = None
     _ok = True
+    _lock = threading.Lock()   # serialise the lazy load — endpoints run in the anyio threadpool
     MODEL = os.environ.get("SUGGEST_MODEL", "Qwen/Qwen2.5-3B-Instruct")
 
     @classmethod
@@ -62,25 +64,30 @@ class Suggester:
             pass
 
     def _load(self):
+        # Double-checked lock: two concurrent /api/synonyms calls must not each load a 3 GB model
+        # (transient 2x in VRAM = the 6 GB OOM the box can't take) nor tear the _tok/_model writes.
         if Suggester._model is None and Suggester._ok:
-            try:
-                import torch
-                from transformers import AutoModelForCausalLM, AutoTokenizer
-                kw: dict = {}
-                # 4-bit on GPU when bitsandbytes is present (fits a 6 GB card ~2.5 GB); else fp16/CPU
-                import importlib.util
-                if torch.cuda.is_available() and importlib.util.find_spec("bitsandbytes"):
-                    from transformers import BitsAndBytesConfig
-                    kw["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True)
-                    kw["device_map"] = "auto"
-                elif torch.cuda.is_available():
-                    kw["torch_dtype"] = torch.float16
-                    kw["device_map"] = "auto"
-                Suggester._tok = AutoTokenizer.from_pretrained(self.MODEL)
-                Suggester._model = AutoModelForCausalLM.from_pretrained(self.MODEL, **kw)
-                Suggester._model.eval()
-            except Exception:
-                Suggester._ok = False          # missing transformers / model / OOM
+            with Suggester._lock:
+                if Suggester._model is None and Suggester._ok:
+                    try:
+                        import torch
+                        from transformers import AutoModelForCausalLM, AutoTokenizer
+                        kw: dict = {}
+                        # 4-bit on GPU when bitsandbytes present (~2.5 GB on a 6 GB card); else fp16/CPU
+                        import importlib.util
+                        if torch.cuda.is_available() and importlib.util.find_spec("bitsandbytes"):
+                            from transformers import BitsAndBytesConfig
+                            kw["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True)
+                            kw["device_map"] = "auto"
+                        elif torch.cuda.is_available():
+                            kw["torch_dtype"] = torch.float16
+                            kw["device_map"] = "auto"
+                        tok = AutoTokenizer.from_pretrained(self.MODEL)
+                        model = AutoModelForCausalLM.from_pretrained(self.MODEL, **kw)
+                        model.eval()
+                        Suggester._tok, Suggester._model = tok, model   # publish together, last
+                    except Exception:
+                        Suggester._ok = False      # missing transformers / model / OOM
         return Suggester._model
 
     def _chat(self, system: str, user: str, *, max_new_tokens: int = 256,
@@ -104,7 +111,9 @@ class Suggester:
         """Pull a JSON {key: [...]} list out of the model's reply, tolerating code fences."""
         c = content.strip()
         if c.startswith("```"):
-            c = c.split("```")[1].lstrip("json").strip()
+            # ```json\n{...}``` -> drop the fence + optional language tag (removeprefix, NOT
+            # lstrip("json") which would strip any leading j/s/o/n chars from real content).
+            c = c.split("```")[1].removeprefix("json").strip()
         try:
             obj = json.loads(c)
         except Exception:
