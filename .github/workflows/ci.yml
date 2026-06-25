@@ -118,3 +118,21 @@ jobs:
           python -m pip install --upgrade pip pip-audit
           pip install -e .
           pip-audit --progress-spinner off || true
+
+  lockfile:
+    # Guard the reproducible-build lock: fail if uv.lock is stale vs pyproject, or if the pinned
+    # Docker requirements export drifted from the lock (so a dep bump can't silently skip relocking).
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+      - name: uv.lock is up to date with pyproject
+        run: uv lock --check
+      - name: requirements-docker.txt matches the lock
+        run: |
+          uv export --frozen --no-dev --no-emit-project --extra api --extra formats \
+            -o requirements-docker.txt
+          git diff --exit-code -- requirements-docker.txt
