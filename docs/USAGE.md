@@ -34,6 +34,10 @@ UI toggles map directly onto config fields: **Quality flags** → `quality_check
 **Style alignment** → `align_styles`, **Bilingual** → `bilingual`, **Localize** → `localize`.
 Both *Quality flags* and *Style alignment* default **on** in the UI.
 
+After a job completes, the per-segment **review** panel lets you edit, accept TM/fuzzy matches,
+and (with the optional `[suggest]` extra) pull in-context synonyms, rephrase a segment, or switch
+suggestion mode — see [§4.1](#41-review-suggestions-synonyms-rephrase-modes).
+
 ---
 
 ## 2. CLI
@@ -186,6 +190,10 @@ transdoc feedback import <output>.review.tsv
 | `GET  /api/report/{jid}` | Translation report |
 | `GET  /api/analysis/{jid}` | Per-segment analysis (QE, flags) |
 | `GET  /api/preview/{jid}/{which}/{page}.png` | Rendered before/after page previews |
+| `POST /api/correct` | Persist a per-segment correction (feeds the TM flywheel) |
+| `POST /api/alternatives` | N alternative translations for a segment (accepts `style`) |
+| `POST /api/synonyms` | In-context synonyms for a selected phrase (review assist) |
+| `POST /api/rephrase` | Rewrite a segment in a chosen style/mode (review assist) |
 
 ```bash
 curl -F file=@report.pdf -F target_lang=id -F output_format=docx \
@@ -195,6 +203,26 @@ curl -F file=@report.pdf -F target_lang=id -F output_format=docx \
 > The web API intentionally exposes a conservative subset of CLI options. Power features
 > (`--escalate`, `--verify`, `--repair`, per-request glossary) are CLI-only by design; use the CLI
 > for those.
+
+### 4.1 Review suggestions (synonyms, rephrase, modes)
+
+The review surface offers optional, LLM-backed edit assists on the translated text (a
+Grammarly/DeepL-Write-style layer, **not** a full editor): select a phrase → in-context
+**synonyms**; **rephrase** a segment; a **suggestion mode** (`general`, `professional`,
+`academic`, `friendly`, `concise`) that steers rephrase + alternatives. Picks apply locally to
+that segment.
+
+These run on a small local instruct LLM (Qwen2.5-3B-Instruct, 4-bit on a 6 GB GPU) behind the
+optional extra:
+
+```bash
+pip install -e ".[suggest]"        # transformers + torch + accelerate + bitsandbytes
+```
+
+Without it (or without a GPU) `/api/synonyms`, `/api/rephrase` and styled `/api/alternatives`
+return **503** and the UI hides the controls — the core translate flow is unaffected. The active
+modes are listed under `styles` in `GET /api/health`. Override the model with `SUGGEST_MODEL`
+(see [CONFIGURATION.md](CONFIGURATION.md)).
 
 ---
 

@@ -100,6 +100,7 @@ commercial fork, prefer `madlad`/`opusmt`/`argos`. See [TRANSLATION.md](TRANSLAT
 | `TRANSDOC_SIMPLE_SKIP_DISABLE` | Set `1` to always run structured, even for simple single-column image-free PDFs | unset |
 | `TRANSDOC_LAYOUT_LOAD_TIMEOUT` | Seconds to wait for the layout worker's model load | `240` |
 | `TRANSDOC_DISABLE_LINGUA` | Disable the lingua language detector | unset |
+| `SUGGEST_MODEL` | HF model for the review suggestion layer (synonyms/rephrase); needs the `[suggest]` extra | `Qwen/Qwen2.5-3B-Instruct` |
 | `TRANSDOC_EASYOCR_GPU` | Allow EasyOCR to use the GPU | unset (CPU) |
 | `TRANSDOC_FALLBACK_CHAIN` | Override the `fallback` engine chain | `google,mymemory,libretranslate` |
 | `TRANSDOC_BREAKER_FAILS` / `TRANSDOC_BREAKER_COOLDOWN` | Engine circuit-breaker tuning | — |
