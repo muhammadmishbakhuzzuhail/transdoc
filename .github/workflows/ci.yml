@@ -74,6 +74,9 @@ jobs:
       - name: Build (tsc + vite)
         run: npm run build
 
+      - name: Test (vitest)
+        run: npm test
+
   docker:
     # Verify the single-image build (multi-stage: React build + python runtime with tesseract /
     # LibreOffice). Build only — no push — so a broken Dockerfile fails CI.
