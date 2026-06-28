@@ -26,7 +26,7 @@ import tempfile
 from pathlib import Path
 
 from ..config import Config, Engine, OutputFormat
-from .metrics import cer, chrf, pdf_fidelity, structure_metrics, wer
+from .metrics import biou, cer, chrf, pdf_fidelity, structure_metrics, wer
 
 _DOC_EXTS = {".pdf", ".docx", ".doc", ".odt", ".pptx", ".xlsx", ".epub", ".txt", ".html",
              ".png", ".jpg", ".jpeg", ".tiff", ".srt", ".vtt"}
@@ -70,6 +70,11 @@ def score_doc(path: Path, cfg: Config, workdir: Path, structure_only: bool = Fal
             row["overwrite"] = len(fid["overwrite"])
             row["tiny"] = len(fid["tiny"])
             row["overflow"] = len(fid["overflow"])
+            # Layout-fidelity (BabelDOC BIoU) needs the SOURCE geometry, so only when the input is
+            # itself a PDF. Born-digital base-14-font fixtures render byte-stable across machines,
+            # so this is safe to gate (with a tolerance) in CI.
+            if path.suffix.lower() == ".pdf":
+                row["biou"] = biou(str(path), str(out))["biou"]
 
     gold = path.with_suffix(".gold.txt")
     if gold.exists():
@@ -117,7 +122,8 @@ def run_corpus(corpus: Path, cfg: Config, exclude_dirs: tuple[str, ...] = (),
     return card
 
 
-def diff_baseline(baseline: dict, current: dict, chrf_tol: float = 1.0) -> list[str]:
+def diff_baseline(baseline: dict, current: dict, chrf_tol: float = 1.0,
+                  biou_tol: float = 3.0) -> list[str]:
     """Return human-readable regression lines (empty list = no regression)."""
     regress: list[str] = []
     for name, base in baseline.get("docs", {}).items():
@@ -138,14 +144,16 @@ def diff_baseline(baseline: dict, current: dict, chrf_tol: float = 1.0) -> list[
             regress.append(f"{name}: reading order is no longer monotonic")
         if "chrf" in base and "chrf" in cur and cur["chrf"] < base["chrf"] - chrf_tol:
             regress.append(f"{name}: chrf {base['chrf']} -> {cur['chrf']} (dropped)")
+        if "biou" in base and "biou" in cur and cur["biou"] < base["biou"] - biou_tol:
+            regress.append(f"{name}: biou {base['biou']} -> {cur['biou']} (layout drift)")
     return regress
 
 
 def _print_scorecard(card: dict) -> None:
     print(f"\nengine={card['engine']}  target={card['target_lang']}")
     print(f"{'file':30} {'blk':>4} {'frm':>4} {'tbl':>4} {'cell':>4} {'fig':>4} "
-          f"{'flag':>4} {'ow':>3} {'tiny':>4} {'cer':>6} {'chrf':>6}")
-    print("-" * 92)
+          f"{'flag':>4} {'ow':>3} {'tiny':>4} {'biou':>6} {'cer':>6} {'chrf':>6}")
+    print("-" * 100)
     for name, r in card["docs"].items():
         if "error" in r:
             print(f"{name[:30]:30} ERROR {r['error'][:50]}")
@@ -153,7 +161,7 @@ def _print_scorecard(card: dict) -> None:
         print(f"{name[:30]:30} {r.get('blocks',0):>4} {r.get('formulas',0):>4} "
               f"{r.get('tables',0):>4} {r.get('table_cells',0):>4} {r.get('figures',0):>4} "
               f"{r.get('flagged',0):>4} {r.get('overwrite',0):>3} {r.get('tiny',0):>4} "
-              f"{r.get('cer','-')!s:>6} {r.get('chrf','-')!s:>6}")
+              f"{r.get('biou','-')!s:>6} {r.get('cer','-')!s:>6} {r.get('chrf','-')!s:>6}")
 
 
 def main() -> None:
