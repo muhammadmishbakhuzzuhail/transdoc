@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# CodeQL static analysis (SAST). Free on public repositories — it uploads results to GitHub code
+# scanning, which needs a public repo (or GitHub Advanced Security on a private one). The repo is
+# public, so this runs; on a private repo without GHAS the SARIF upload step fails with
+# "Resource not accessible by integration".
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "27 3 * * 1"        # weekly, Monday 03:27 UTC — catches advisories in unchanged code
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write     # upload SARIF to code scanning
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # python = the backend, javascript-typescript = the React frontend. Both are interpreted,
+        # so CodeQL extracts from source — no build step needed.
+        language: ["python", "javascript-typescript"]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
