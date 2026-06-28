@@ -55,9 +55,30 @@ A run regresses if, for any document vs the baseline:
 - **BIoU** dropped more than `biou_tol` (default 3.0) — a layout-fidelity regression, or
 - the document now errors / went missing.
 
+## Publishable numbers (sacrebleu) & the quality trend
+
+The builtin `chrf()` is the harness's mean sentence-level char-F2 — dependency-free and good for
+internal tracking, but **not** comparable to published figures. For any externally-cited number use
+the sacrebleu helpers (`sacrebleu_chrf` / `sacrebleu_bleu` in `metrics.py`), which emit corpus-level
+scores with a reproducible signature; `sacrebleu` is a dev/eval dependency and the helpers return
+`None` if it isn't installed. `scripts.eval_translate` prints both side by side against FLORES-200.
+
+A run's headline numbers are appended to `eval/history.jsonl` (the committed quality time-series),
+so the trend — and the last-known numbers — live in the repo rather than a private notebook. Render
+it any time:
+
+```bash
+cd backend && .venv/bin/python -m scripts.quality_dashboard          # markdown trend, last 20 runs
+```
+
+Note: these are **reference-free QE / chrF-vs-FLORES**, i.e. tracking our own pipeline over time —
+not a head-to-head against a competitor's output. A credible "more accurate than X" claim must be a
+*relative*, significance-tested comparison on the same test set + metric version (the COMET
+literature is unanimous that there is no absolute cross-language threshold).
+
 ## Heavier validated tooling (not required)
 
 The builtin metrics keep the harness dependency-free for CI. For deeper analysis the validated
-references are `jiwer` (CER/WER), `sacrebleu` (BLEU/chrF/TER), `unbabel-comet` (neural COMET —
-model download, some checkpoints are CC-BY-NC) and TEDS for table-structure similarity. Swap
-them in behind the same `metrics.py` signatures if you want them.
+references are `jiwer` (CER/WER), `sacrebleu` (BLEU/chrF/TER — now wired in as above),
+`unbabel-comet` (neural COMET — model download, some checkpoints are CC-BY-NC) and TEDS for
+table-structure similarity. Swap them in behind the same `metrics.py` signatures if you want them.
