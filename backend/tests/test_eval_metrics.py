@@ -4,7 +4,19 @@
 
 from __future__ import annotations
 
-from transdoc.eval.metrics import bbox_iou, biou, cer, chrf, edit_distance, structure_metrics, wer
+import pytest
+
+from transdoc.eval.metrics import (
+    bbox_iou,
+    biou,
+    cer,
+    chrf,
+    edit_distance,
+    sacrebleu_bleu,
+    sacrebleu_chrf,
+    structure_metrics,
+    wer,
+)
 from transdoc.ir import BBox, Block, BlockType, Cell, Confidence, Document, Table
 
 
@@ -45,6 +57,16 @@ def _doc():
               confidence=Confidence()),
     ]
     return d
+
+
+def test_sacrebleu_corpus_scores():
+    # sacrebleu is a dev/eval dep; if it isn't importable the helpers must degrade to None, not raise
+    chrf_val = sacrebleu_chrf(["the cat sat"], ["the cat sat"])
+    if chrf_val is None:
+        pytest.skip("sacrebleu not installed")
+    assert chrf_val == 100.0
+    assert sacrebleu_bleu(["the cat sat on the mat"], ["the cat sat on the mat"]) == 100.0
+    assert sacrebleu_chrf(["the cat sat"], ["wholly different words here"]) < 30.0
 
 
 def test_bbox_iou():

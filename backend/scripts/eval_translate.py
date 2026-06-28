@@ -65,7 +65,8 @@ def _lines(path: Path, n: int) -> list[str]:
 
 def main(argv: list[str]) -> int:
     from transdoc.config import Config, Engine
-    from transdoc.eval.metrics import chrf
+    from transdoc.eval.dashboard import append_history
+    from transdoc.eval.metrics import chrf, sacrebleu_bleu, sacrebleu_chrf
     from transdoc.translate import get_translator
 
     engine = "google"
@@ -97,10 +98,16 @@ def main(argv: list[str]) -> int:
     dev = root / "dev"
     src = _lines(dev / f"{_SRC_FLORES}.dev", n)
 
-    print(f"Translation chrF vs FLORES-200 (engine={engine}, n={n} sentences)\n")
-    print(f"{'lang':8} {'code':10} {'chrF':>6}")
-    print("-" * 28)
+    # sacrebleu (if installed) gives the publishable corpus-level chrF/BLEU with a reproducible
+    # signature; the in-house mean chrF stays as the fast, dependency-free tracking number.
+    have_sb = sacrebleu_chrf(["x"], ["x"]) is not None
+    print(f"Translation chrF vs FLORES-200 (engine={engine}, n={n} sentences)")
+    print("sacrebleu corpus chrF/BLEU shown when available; in-house mean chrF always.\n"
+          if have_sb else "(install sacrebleu for publishable corpus chrF/BLEU)\n")
+    print(f"{'lang':8} {'code':10} {'chrF':>6} {'sbchrF':>7} {'sbBLEU':>7}")
+    print("-" * 42)
     scores = []
+    per_lang: dict[str, float] = {}
     for gcode, fcode in langs.items():
         ref_path = dev / f"{fcode}.dev"
         if not ref_path.exists():
@@ -116,16 +123,34 @@ def main(argv: list[str]) -> int:
         pair = [(r, h, chrf(r, h)) for r, h in zip(refs, hyps) if r.strip()]
         score = sum(c for _, _, c in pair) / len(pair) if pair else 0.0
         scores.append(score)
-        print(f"{gcode:8} {fcode:10} {score:>6.1f}")
+        per_lang[gcode] = round(score, 2)
+        kept_refs = [r for r, _, _ in pair]
+        kept_hyps = [h for _, h, _ in pair]
+        sb_c = sacrebleu_chrf(kept_refs, kept_hyps)
+        sb_b = sacrebleu_bleu(kept_refs, kept_hyps)
+        print(f"{gcode:8} {fcode:10} {score:>6.1f} "
+              f"{(f'{sb_c:.1f}' if sb_c is not None else '-'):>7} "
+              f"{(f'{sb_b:.1f}' if sb_b is not None else '-'):>7}")
         if worst:
             # error analysis: the lowest-chrF sentences are where the engine/pipeline loses most
             for r, h, c in sorted(pair, key=lambda t: t[2])[:worst]:
                 print(f"   [{c:4.1f}] ref: {r[:110]}")
                 print(f"          hyp: {h[:110]}")
     if scores:
-        print("-" * 28)
-        print(f"{'mean':8} {'':10} {sum(scores) / len(scores):>6.1f}")
+        mean = sum(scores) / len(scores)
+        print("-" * 42)
+        print(f"{'mean':8} {'':10} {mean:>6.1f}")
+        # record the run on the quality time-series so the trend (and the numbers) live in-repo
+        append_history({"date": _today(), "engine": engine, "kind": "flores",
+                        "metric": "chrf_inhouse", "overall": round(mean, 2),
+                        "scores": per_lang, "n": n})
+        print("appended to eval/history.jsonl")
     return 0
+
+
+def _today() -> str:
+    import datetime
+    return datetime.date.today().isoformat()
 
 
 if __name__ == "__main__":

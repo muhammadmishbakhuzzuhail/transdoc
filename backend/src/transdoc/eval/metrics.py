@@ -46,6 +46,28 @@ def chrf(ref: str, hyp: str, max_n: int = 6, beta: float = 2.0) -> float:
     return 100 * sum(fs) / len(fs) if fs else 0.0
 
 
+def sacrebleu_chrf(refs: list[str], hyps: list[str]) -> float | None:
+    """Corpus-level chrF2 via sacrebleu — the *publishable* standard with a reproducible signature.
+    Returns None if sacrebleu isn't installed; the builtin chrf() above is the dependency-free
+    fallback for fast internal tracking. Use THIS for any externally-cited number (the in-house
+    mean sentence-level chrF is not directly comparable to published sacrebleu figures)."""
+    try:
+        from sacrebleu.metrics import CHRF
+    except ImportError:
+        return None
+    return round(CHRF().corpus_score(hyps, [refs]).score, 2)
+
+
+def sacrebleu_bleu(refs: list[str], hyps: list[str]) -> float | None:
+    """Corpus-level BLEU via sacrebleu (secondary lexical signal). None if sacrebleu is absent.
+    Always cite alongside the sacrebleu version signature, never a bare BLEU number."""
+    try:
+        from sacrebleu.metrics import BLEU
+    except ImportError:
+        return None
+    return round(BLEU().corpus_score(hyps, [refs]).score, 2)
+
+
 # --------------------------------------------------------------------------- OCR / text
 
 

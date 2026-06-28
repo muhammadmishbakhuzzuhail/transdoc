@@ -3727,6 +3727,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "sacrebleu" },
 ]
 easyocr = [
     { name = "easyocr" },
@@ -3828,6 +3829,7 @@ requires-dist = [
     { name = "redis", marker = "extra == 'scale'", specifier = ">=5.0" },
     { name = "rich", specifier = ">=13.7" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
+    { name = "sacrebleu", marker = "extra == 'dev'", specifier = ">=2.4" },
     { name = "sacremoses", marker = "extra == 'nmt'", specifier = ">=0.1" },
     { name = "sentencepiece", marker = "extra == 'indic'", specifier = ">=0.2" },
     { name = "sentencepiece", marker = "extra == 'nmt'", specifier = ">=0.2" },
