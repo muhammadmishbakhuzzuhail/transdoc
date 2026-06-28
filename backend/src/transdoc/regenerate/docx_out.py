@@ -474,6 +474,17 @@ def render(doc: Document, cfg: Config, out_path: str) -> str:
         except Exception:
             pass
 
+    # Footnotes/endnotes/comments: this fresh-rebuild path (PDF/non-docx -> docx, or bilingual)
+    # can't recreate live footnote references the way the in-place renderer rewrites the original
+    # zip parts. Rather than silently drop the translated note text, append it as a labelled section
+    # so the content survives (a documented fidelity limitation of the rebuild path).
+    notes = [n for n in (doc.notes or []) if n.output_text.strip()]
+    if notes:
+        d.add_page_break()
+        d.add_heading("Notes", level=1)
+        for i, n in enumerate(notes, 1):
+            d.add_paragraph(f"{i}. {n.output_text.strip()}")
+
     md = doc.metadata or {}
     cp = d.core_properties
     if md.get("title"):

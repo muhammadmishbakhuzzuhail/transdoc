@@ -85,7 +85,10 @@ class Config(BaseModel):
     domain: str = "auto"
     output_format: OutputFormat = OutputFormat.MARKDOWN
     fidelity: Fidelity = Fidelity.AUTO         # how faithfully output mirrors source
-    localize: bool = False                     # convert dates/numbers/units/currency
+    localize: bool = False                     # convert number separators (decimal/thousands) to the
+                                               # target locale. Dates/units/currency are deliberately
+                                               # out of scope: auto-converting them in translated prose
+                                               # is unsafe, and they're protected verbatim already.
     auto_glossary: bool = True                  # pin one rendering for repeated proper nouns
     fuzzy_tm: bool = True                        # reuse near-identical past translations from the TM
     fuzzy_auto_threshold: float = 0.95          # >= this AND near-identical text AND same protected

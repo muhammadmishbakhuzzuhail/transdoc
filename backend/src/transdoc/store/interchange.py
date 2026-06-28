@@ -16,10 +16,12 @@ from xml.sax.saxutils import escape
 _XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 
 
-def _csv_safe(v: str) -> str:
+def _csv_safe(v) -> str:
     """Neutralise CSV/formula injection: a cell beginning =,+,-,@ becomes a live formula when the
-    exported file is opened in Excel/Sheets. Prefix with a single quote so it stays literal text."""
-    return "'" + v if v[:1] in ("=", "+", "-", "@") else v
+    exported file is opened in Excel/Sheets. Prefix with a single quote so it stays literal text.
+    Accepts None/non-str (metadata columns) and coerces to a safe string."""
+    s = "" if v is None else str(v)
+    return "'" + s if s[:1] in ("=", "+", "-", "@") else s
 
 
 # --- TMX (translation memory) ---------------------------------------------------------------
@@ -82,8 +84,10 @@ def export_glossary_csv(gloss, path: str | Path, src_lang: str | None = None,
         w = csv.writer(f)
         w.writerow(["source", "target", "src_lang", "tgt_lang", "domain"])
         for e in entries:
+            # every column through _csv_safe — domain in particular is user-supplied and was
+            # being written raw, so "=cmd" in a domain would inject a formula on open.
             w.writerow([_csv_safe(e["term"]), _csv_safe(e["rendering"]),
-                        e["src_lang"], e["tgt_lang"], e["domain"]])
+                        _csv_safe(e["src_lang"]), _csv_safe(e["tgt_lang"]), _csv_safe(e["domain"])])
     return len(entries)
 
 

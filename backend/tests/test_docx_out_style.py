@@ -30,6 +30,23 @@ def _doc():
     return d
 
 
+def test_docx_out_appends_notes_instead_of_dropping(tmp_path):
+    # the fresh-rebuild path can't recreate live footnote refs; it must still keep the translated
+    # note text (appended as a labelled section) rather than silently dropping it.
+    d = _doc()
+    bb = BBox(x0=0, y0=0, x1=1, y1=1)
+    note = Block(id="n1", type=BlockType.PARAGRAPH, text="original footnote", bbox=bb,
+                 confidence=Confidence())
+    note.translated = "catatan kaki yang diterjemahkan"
+    d.notes = [note]
+
+    out = tmp_path / "n.docx"
+    render(d, Config(target_lang="id"), str(out))
+    full = "\n".join(p.text for p in Docx(str(out)).paragraphs)
+    assert "Notes" in full
+    assert "catatan kaki yang diterjemahkan" in full
+
+
 def test_docx_out_applies_character_style_and_alignment(tmp_path):
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
