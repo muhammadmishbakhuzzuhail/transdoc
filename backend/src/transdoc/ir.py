@@ -306,6 +306,9 @@ class Document(BaseModel):
     notes: list["Block"] = Field(default_factory=list)
     # Number of newspaper-style columns in the (first) DOCX section body. 1 = single column.
     section_columns: int = 1
+    # QE-gated engine selection result (when engine_candidates was set): the winning engine + each
+    # candidate's mean COMET-Kiwi score. Surfaced in the report. None = selection didn't run.
+    engine_selected: dict | None = None
     # Per-page text-markup annotations (highlight/underline/strikeout) — repainted in reconstruct
     # (overlay keeps the source annotations natively). See extract/annots.py.
     page_annots: dict[int, list[dict]] = Field(default_factory=dict)

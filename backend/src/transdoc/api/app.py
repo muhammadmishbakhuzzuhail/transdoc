@@ -70,13 +70,16 @@ def health() -> dict:
 
 def _make_cfg(*, target_lang, source_lang, output_format, engine, fidelity, domain, register,
               layout, ocr_engine, bilingual, quality, localize, pages, align=True,
-              repair=False, escalate=False, verify=False, reading_order="xycut") -> Config:
+              repair=False, escalate=False, verify=False, reading_order="xycut",
+              engines="") -> Config:
     """Build a Config from the upload form, raising HTTP 400 on a bad value. A fresh Config per
     job — the pipeline mutates cfg.fidelity/layout for some inputs, so jobs must not share one."""
     try:
+        candidates = [Engine(e.strip()) for e in (engines or "").split(",") if e.strip()]
         return Config(
             source_lang=source_lang, target_lang=target_lang,
             output_format=OutputFormat(output_format), engine=Engine(engine),
+            engine_candidates=candidates,
             fidelity=Fidelity(fidelity), domain=domain, register=Register(register),
             ocr_engine=OCREngine(ocr_engine), layout=layout, bilingual=bilingual,
             quality_check=quality, localize=localize, pages=pages or None,
@@ -135,6 +138,7 @@ async def translate(
     escalate: bool = Form(False),
     verify: bool = Form(False),
     reading_order: str = Form("xycut"),
+    engines: str = Form(""),
     pages: str = Form(""),
 ) -> dict:
     path = _save_upload(file)
@@ -142,7 +146,7 @@ async def translate(
                     engine=engine, fidelity=fidelity, domain=domain, register=register,
                     layout=layout, ocr_engine=ocr_engine, bilingual=bilingual, quality=quality,
                     localize=localize, align=align, repair=repair, escalate=escalate,
-                    verify=verify, reading_order=reading_order, pages=pages)
+                    verify=verify, reading_order=reading_order, engines=engines, pages=pages)
     job = store.create(path, meta={"filename": file.filename})
     store.run_async(job, cfg)
     return {"job_id": job.id, "status": job.status}

@@ -25,6 +25,12 @@ def build_report(doc: Document, cfg: Config) -> str:
     L.append(f"- **Structure:** {', '.join(p.structure) or 'n/a'}")
     L.append(f"- **Engine:** {cfg.engine.value} · **Fidelity:** "
              f"{cfg.resolve_fidelity(bool(doc.source_path and doc.source_path.endswith('.pdf'))).value}")
+    sel = doc.engine_selected
+    if sel and sel.get("scores"):
+        ranked = sorted(sel["scores"].items(), key=lambda kv: kv[1], reverse=True)
+        ranked_str = ", ".join(f"{e} {s:.3f}" for e, s in ranked)
+        L.append(f"- **Engine selection (COMET-Kiwi QE on {sel.get('sample', '?')} sampled blocks):** "
+                 f"**{sel['winner']}** won — {ranked_str}")
     L.append("")
 
     if doc.glossary:

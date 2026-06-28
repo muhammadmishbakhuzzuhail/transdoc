@@ -49,6 +49,10 @@ def translate(
                                     "nllb|openrouter|anthropic|echo "
                                     "(default: google = benchmark winner; nllb for offline/private; "
                                     "fallback = google->mymemory->libretranslate if you want backstops)"),
+    engines: str = typer.Option(None, "--engines",
+                                help="QE-gated engine selection: comma-separated candidates "
+                                     "(e.g. opusmt,nllb,google). A sample is translated by each and "
+                                     "COMET-Kiwi picks the best engine for this document. Implies -q."),
     ocr: str = typer.Option("auto", "--ocr", help="auto|tesseract|paddle|easyocr|surya"),
     fidelity: str = typer.Option("auto", "--fidelity", "-f", help="auto|flow|layout"),
     domain: str = typer.Option("auto", "--domain", "-d"),
@@ -106,6 +110,8 @@ def translate(
     cfg.ocr_figures = ocr_figures
     cfg.layout = layout
     cfg.reading_order_engine = reading_order
+    if engines:
+        cfg.engine_candidates = [Engine(e.strip()) for e in engines.split(",") if e.strip()]
     if glossary:
         from .translate.protect import load_glossary
         cfg.glossary = load_glossary(glossary)

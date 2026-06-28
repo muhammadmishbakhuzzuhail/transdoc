@@ -151,6 +151,12 @@ class Config(BaseModel):
                                                 # Falls back to xycut when Surya is unavailable.
 
     engine: Engine = Engine.GOOGLE             # benchmark winner (chrF 85.1); personal/local, no fallback chain
+    # QE-gated engine selection (doc-MT technique #2): when non-empty, a sample of the document is
+    # translated by each candidate engine, scored reference-free with COMET-Kiwi, and the best-mean
+    # engine wins the whole document. No single engine dominates across language pairs (Opus-MT wins
+    # European, IndicTrans2 wins Indic, ...), so picking per document is the biggest offline-quality
+    # lever. `engine` is always included as a candidate. Empty = no selection (use `engine`).
+    engine_candidates: list[Engine] = Field(default_factory=list)
     ocr_engine: OCREngine = OCREngine.AUTO
 
     # Provided glossary: term -> rendering. Extended automatically.
