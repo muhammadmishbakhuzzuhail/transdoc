@@ -30,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # LLM translation. pip install -e ".[llm]"  (OpenRouter uses the openai SDK)
-llm = ["openai>=1.35", "anthropic>=0.40", "httpx>=0.25"]
+llm = ["openai>=1.35", "anthropic>=0.112.0", "httpx>=0.25"]
 # Offline neural MT (MADLAD/Opus-MT/NLLB). pip install -e ".[nmt]"  (pulls torch — heavy)
 nmt = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2", "sacremoses>=0.1",
        "accelerate>=0.30"]
