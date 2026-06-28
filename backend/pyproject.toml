@@ -73,7 +73,7 @@ indic = ["transformers>=4.44", "torch>=2.2", "sentencepiece>=0.2",
 # Review suggestion layer: in-context synonyms + sentence rephrase via a small local instruct LLM
 # (Qwen2.5-3B-Instruct, 4-bit on a 6 GB GPU). pip install -e ".[suggest]"
 suggest = ["transformers>=4.44", "torch>=2.2", "accelerate>=0.30", "bitsandbytes>=0.49.2"]
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "mypy>=1.10", "httpx>=0.25",   # httpx: FastAPI TestClient
+dev = ["pytest>=8.0", "pytest-cov>=7.1.0", "ruff>=0.5", "mypy>=1.10", "httpx>=0.25",   # httpx: FastAPI TestClient
        "sacrebleu>=2.4"]   # publishable corpus chrF/BLEU with a reproducible signature (eval only)
 
 [project.scripts]
