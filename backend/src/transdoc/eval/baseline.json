@@ -26,7 +26,7 @@
       "file": "digital_two_page.pdf",
       "blocks": 6,
       "by_type": {
-        "heading": 2,
+        "header": 2,
         "paragraph": 4
       },
       "formulas": 0,
@@ -39,7 +39,8 @@
       "reading_order_monotonic": true,
       "overwrite": 0,
       "tiny": 0,
-      "overflow": 0
+      "overflow": 0,
+      "biou": 25.27
     }
   }
 }

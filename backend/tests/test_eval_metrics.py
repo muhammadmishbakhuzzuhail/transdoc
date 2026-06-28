@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from transdoc.eval.metrics import cer, chrf, edit_distance, structure_metrics, wer
+from transdoc.eval.metrics import bbox_iou, biou, cer, chrf, edit_distance, structure_metrics, wer
 from transdoc.ir import BBox, Block, BlockType, Cell, Confidence, Document, Table
 
 
@@ -45,6 +45,40 @@ def _doc():
               confidence=Confidence()),
     ]
     return d
+
+
+def test_bbox_iou():
+    a = (0, 0, 10, 10)
+    assert bbox_iou(a, a) == 1.0
+    assert bbox_iou(a, (20, 20, 30, 30)) == 0.0          # disjoint
+    # half-overlap on x: intersection 5x10=50, union 100+100-50=150
+    assert abs(bbox_iou(a, (5, 0, 15, 10)) - 50 / 150) < 1e-9
+
+
+def _mk_pdf(path, ys):
+    import fitz
+    d = fitz.open()
+    p = d.new_page(width=595, height=842)
+    for i, y in enumerate(ys):
+        p.insert_text((42, y), f"line number {i} with some words", fontsize=11)
+    d.save(str(path))
+    d.close()
+
+
+def test_biou_identical_and_shifted(tmp_path):
+    same = tmp_path / "a.pdf"
+    _mk_pdf(same, [60, 100, 140])
+    # a document compared to itself = perfect layout fidelity
+    b = biou(str(same), str(same))
+    assert b["biou"] == 100.0
+    assert b["coverage"] == 1.0 and b["matched"] == b["src_boxes"]
+
+    # shift every line far down -> no source block overlaps its output -> BIoU collapses
+    shifted = tmp_path / "b.pdf"
+    _mk_pdf(shifted, [400, 500, 600])
+    worse = biou(str(same), str(shifted))
+    assert worse["biou"] < 5.0
+    assert worse["coverage"] < b["coverage"]
 
 
 def test_structure_metrics():

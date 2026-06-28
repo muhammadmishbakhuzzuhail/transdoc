@@ -279,6 +279,61 @@ def _overlap(a, b) -> float:
     return abs(inter) / max(abs(a), 1e-6)
 
 
+def biou(src_pdf: str, out_pdf: str) -> dict:
+    """Layout fidelity: mean bbox-IoU between the SOURCE and the translated-OUTPUT text blocks,
+    page by page (BabelDOC's BIoU). No gold reference is needed — it measures how faithfully the
+    output preserves the source's spatial layout *through* translation, which is the headline
+    differentiator over reflow-only tools. Boxes are normalised by their page rect so the score is
+    scale-invariant; each source block is greedily matched to its best-IoU output block (one-to-one)
+    and an unmatched source block scores 0. Reconstruct / overlay / layout modes aim for a high
+    BIoU; FLOW reflows by design and scores lower. Returns a 0..100 index plus diagnostics.
+
+    Reference: BabelDOC reports BIoU 50.0 vs PDFMathTranslate 48.7 vs DeepL Document 19.8 — i.e.
+    layout preservation, not raw sentence quality, is where document translators actually differ."""
+    import fitz
+
+    def _pages(path: str) -> list[list[tuple]]:
+        d = fitz.open(path)
+        try:
+            out: list[list[tuple]] = []
+            for pno in range(d.page_count):
+                pr = d[pno].rect
+                w, h = pr.width or 1.0, pr.height or 1.0
+                boxes = []
+                for blk in d[pno].get_text("dict")["blocks"]:
+                    if not blk.get("lines"):       # text blocks only (skip image blocks)
+                        continue
+                    x0, y0, x1, y1 = blk["bbox"]
+                    boxes.append((x0 / w, y0 / h, x1 / w, y1 / h))
+                out.append(boxes)
+            return out
+        finally:
+            d.close()
+
+    src, out = _pages(src_pdf), _pages(out_pdf)
+    ious: list[float] = []
+    for pno, sb in enumerate(src):
+        ob = out[pno] if pno < len(out) else []
+        pairs = sorted(((bbox_iou(a, b), i, j)
+                        for i, a in enumerate(sb) for j, b in enumerate(ob)),
+                       key=lambda t: t[0], reverse=True)
+        best: dict[int, float] = {}
+        used_o: set[int] = set()
+        for iou, i, j in pairs:
+            if iou <= 0 or i in best or j in used_o:
+                continue
+            best[i] = iou
+            used_o.add(j)
+        ious.extend(best.get(i, 0.0) for i in range(len(sb)))   # unmatched source block -> 0
+    n_src = sum(len(p) for p in src)
+    mean = sum(ious) / len(ious) if ious else 1.0
+    matched = sum(1 for v in ious if v > 0)
+    return {"biou": round(100 * mean, 2), "mean_iou": round(mean, 4),
+            "coverage": round(matched / n_src, 4) if n_src else 1.0,
+            "matched": matched, "src_boxes": n_src,
+            "out_boxes": sum(len(p) for p in out)}
+
+
 def pdf_fidelity(path: str) -> dict:
     """Per-page rendering defects in an output PDF, by geometry:
       - overwrite: a text span sitting on top of an embedded image (figure/table crop)
