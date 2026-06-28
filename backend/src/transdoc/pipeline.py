@@ -290,6 +290,18 @@ def run(input_path: str, cfg: Config, out_path: str | None = None) -> Result:
 
     from .translate import get_translator, translate_document
 
+    # Phase 5a⁻: QE-gated engine selection — when candidates are given, translate a sample with each
+    # and let COMET-Kiwi pick the best engine for THIS document before the full translate pass.
+    if cfg.engine_candidates:
+        with _stage(timings, "engine_select"):
+            from .translate.select import select_engine
+            winner, sel = select_engine(doc, cfg, cfg.engine_candidates)
+            doc.engine_selected = sel
+            if winner != cfg.engine:
+                log.info("engine selection: %s won over %s (QE %s)",
+                         winner.value, cfg.engine.value, sel.get("scores"))
+                cfg.engine = winner
+
     tr = get_translator(cfg)
     with _stage(timings, "translate"):
         translate_document(doc, tr, cfg)
