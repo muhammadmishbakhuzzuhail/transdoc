@@ -98,6 +98,18 @@ def test_glossary_csv_export_neutralises_formula_injection(stores, tmp_path):
     assert "'=cmd()" in text and "'=HYPERLINK(evil)" in text
 
 
+def test_glossary_csv_export_neutralises_injection_in_metadata_columns(stores, tmp_path):
+    from transdoc.store.interchange import export_glossary_csv
+    _, gs = stores
+    # a malicious value hidden in the user-supplied domain column (was written raw)
+    gs.add("term", "rendering", "en", "id", domain="=cmd()", origin="user")
+    p = tmp_path / "g.csv"
+    export_glossary_csv(gs, p)
+    text = p.read_text()
+    assert "'=cmd()" in text                 # domain cell guarded too
+    assert "\n=cmd()" not in text and ",=cmd()" not in text
+
+
 def test_tmx_import_rejects_dtd_entity(stores, tmp_path):
     from transdoc.store.interchange import import_tmx
     tm, _ = stores

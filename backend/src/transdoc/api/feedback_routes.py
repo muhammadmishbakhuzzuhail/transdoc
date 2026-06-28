@@ -247,8 +247,10 @@ def alternatives(body: AltReq) -> dict:
     cfg = Config(source_lang=body.src_lang or "auto", target_lang=body.tgt_lang,
                  domain=body.domain or "auto", register=Register("auto"))
     try:
-        alts = OllamaTranslator().alternatives(
-            body.source, cfg, src=body.src_lang or None, n=body.n, style=body.style or None)
+        # same GPU lock as /synonyms and /rephrase — Ollama loads the local LLM onto the same 6 GB
+        # card a translate job uses; serialise against in-flight jobs instead of racing into OOM.
+        alts = _with_gpu_lock(lambda: OllamaTranslator().alternatives(
+            body.source, cfg, src=body.src_lang or None, n=body.n, style=body.style or None))
     except OllamaError as e:
         raise HTTPException(503, f"local LLM unavailable: {e}")
     return {"alternatives": alts}
