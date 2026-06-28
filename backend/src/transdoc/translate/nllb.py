@@ -10,12 +10,23 @@ from __future__ import annotations
 
 from ..config import Config
 
-# Minimal ISO 639-1 -> NLLB FLORES-200 code map for common targets. Extend as needed.
+# ISO 639-1 -> NLLB FLORES-200 code map. MUST cover every language the UI offers: an unmapped
+# TARGET used to silently fall back to eng_Latn, so NLLB "translated" en->en and returned the
+# source unchanged (a silent passthrough — caught on Bengali, which scored ~0 chrF). Covers the UI
+# shortlist + common pairs; extend as needed (the values are FLORES-200 codes, lang_Script).
 NLLB_CODE = {
-    "en": "eng_Latn", "id": "ind_Latn", "ar": "arb_Arab", "zh": "zho_Hans",
-    "ja": "jpn_Jpan", "ko": "kor_Hang", "ru": "rus_Cyrl", "hi": "hin_Deva",
-    "th": "tha_Thai", "vi": "vie_Latn", "de": "deu_Latn", "fr": "fra_Latn",
-    "es": "spa_Latn", "pt": "por_Latn", "it": "ita_Latn", "nl": "nld_Latn",
+    "en": "eng_Latn", "id": "ind_Latn", "ms": "zsm_Latn", "ar": "arb_Arab",
+    "zh": "zho_Hans", "zh-CN": "zho_Hans", "zh-TW": "zho_Hant", "ja": "jpn_Jpan",
+    "ko": "kor_Hang", "ru": "rus_Cyrl", "uk": "ukr_Cyrl", "hi": "hin_Deva",
+    "bn": "ben_Beng", "ta": "tam_Taml", "te": "tel_Telu", "ur": "urd_Arab",
+    "fa": "pes_Arab", "he": "heb_Hebr", "th": "tha_Thai", "vi": "vie_Latn",
+    "fil": "tgl_Latn", "tl": "tgl_Latn", "sw": "swh_Latn", "af": "afr_Latn",
+    "de": "deu_Latn", "fr": "fra_Latn", "es": "spa_Latn", "pt": "por_Latn",
+    "it": "ita_Latn", "nl": "nld_Latn", "pl": "pol_Latn", "cs": "ces_Latn",
+    "ro": "ron_Latn", "el": "ell_Grek", "tr": "tur_Latn", "sv": "swe_Latn",
+    "da": "dan_Latn", "fi": "fin_Latn", "no": "nob_Latn", "nb": "nob_Latn",
+    "hu": "hun_Latn", "bg": "bul_Cyrl", "hr": "hrv_Latn", "sr": "srp_Cyrl",
+    "sk": "slk_Latn",
 }
 
 
@@ -42,10 +53,19 @@ class NLLBTranslator:
             if torch.cuda.is_available():
                 NLLBTranslator._model = NLLBTranslator._model.to("cuda")
 
-    def _code(self, lang: str | None, default: str) -> str:
+    def _code(self, lang: str | None, default: str, *, required: bool = False) -> str:
         if not lang or lang == "auto":
             return default
-        return NLLB_CODE.get(lang, default)
+        code = NLLB_CODE.get(lang) or NLLB_CODE.get(lang.split("-")[0])
+        if code:
+            return code
+        if required:
+            # never silently fall back to English for the TARGET — that returns the source
+            # untranslated. Fail loudly so the caller can route to another engine.
+            raise ValueError(
+                f"nllb: unsupported target language {lang!r} (no FLORES-200 code mapped). "
+                f"Add it to NLLB_CODE or use a different engine.")
+        return default
 
     def translate_batch(self, texts: list[str], cfg: Config,
                         src: str | None = None) -> list[str]:
@@ -55,7 +75,7 @@ class NLLBTranslator:
 
         tok, model = NLLBTranslator._tok, NLLBTranslator._model
         src_code = self._code(src, "eng_Latn")
-        tgt_code = self._code(cfg.target_lang, "eng_Latn")
+        tgt_code = self._code(cfg.target_lang, "eng_Latn", required=True)
         tok.src_lang = src_code
         bos = tok.convert_tokens_to_ids(tgt_code)
 
