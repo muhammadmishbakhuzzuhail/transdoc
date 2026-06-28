@@ -45,8 +45,9 @@ jobs:
 
       - name: Test (pytest + coverage)
         # offline only: the suite uses the echo engine, never hits a translation API.
-        # Coverage is reported now; a --cov-fail-under ratchet follows once the baseline is observed.
-        run: pytest --cov=transdoc --cov-report=term-missing:skip-covered
+        # Floor is a regression backstop, set a couple points below the observed 75% so normal
+        # 3.11/3.12 variance can't flake CI; ratchet it upward as coverage grows.
+        run: pytest --cov=transdoc --cov-report=term-missing:skip-covered --cov-fail-under=73
 
       - name: Eval regression gate
         # deterministic structure/fidelity metrics over committed digital fixtures vs the
