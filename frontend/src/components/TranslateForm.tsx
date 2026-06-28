@@ -10,10 +10,22 @@ import { Switch } from "@/components/ui/switch"
 import type { Health } from "@/lib/api"
 import { useI18n } from "@/lib/i18n"
 
+// Curated target/source languages. Indonesian first (default audience); the rest span the major
+// scripts so the "40+ languages" claim is real and a user can actually pick them (the old 12-item
+// list both under-served users and made the marketing chip false). The engines support far more —
+// any ISO code works at the API/CLI — this is just the common-case UI shortlist.
 const LANGS = [
   ["id", "Indonesian"], ["en", "English"], ["ar", "Arabic"], ["zh", "Chinese"],
   ["ja", "Japanese"], ["ko", "Korean"], ["de", "German"], ["fr", "French"],
-  ["es", "Spanish"], ["ru", "Russian"], ["hi", "Hindi"], ["pt", "Portuguese"],
+  ["es", "Spanish"], ["pt", "Portuguese"], ["it", "Italian"], ["nl", "Dutch"],
+  ["ru", "Russian"], ["uk", "Ukrainian"], ["pl", "Polish"], ["cs", "Czech"],
+  ["ro", "Romanian"], ["el", "Greek"], ["tr", "Turkish"], ["sv", "Swedish"],
+  ["da", "Danish"], ["fi", "Finnish"], ["no", "Norwegian"], ["hu", "Hungarian"],
+  ["bg", "Bulgarian"], ["hr", "Croatian"], ["sr", "Serbian"], ["sk", "Slovak"],
+  ["hi", "Hindi"], ["bn", "Bengali"], ["ta", "Tamil"], ["te", "Telugu"],
+  ["ur", "Urdu"], ["fa", "Persian"], ["he", "Hebrew"], ["th", "Thai"],
+  ["vi", "Vietnamese"], ["ms", "Malay"], ["fil", "Filipino"], ["sw", "Swahili"],
+  ["af", "Afrikaans"], ["nb", "Norwegian Bokmål"],
 ] as const
 
 export interface FormValues {
@@ -89,15 +101,20 @@ export function TranslateForm({ health, busy, onSubmit }: {
   return (
     <Card>
       <CardContent className="space-y-5 pt-5">
-        {/* Drop zone */}
+        {/* Drop zone — a real button so it's keyboard-reachable (Tab) and operable (Enter/Space),
+            not a mouse-only <div onClick>. */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-label={t("drop_doc")}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click() } }}
           onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files.length) setFiles(Array.from(e.dataTransfer.files)) }}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-10 text-center transition-colors ${drag ? "border-primary bg-accent" : "border-border"}`}
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-10 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${drag ? "border-primary bg-accent" : "border-border"}`}
         >
-          <FileUp className={`h-8 w-8 ${drag ? "text-primary" : "text-muted-foreground"}`} />
+          <FileUp className={`h-8 w-8 ${drag ? "text-primary" : "text-muted-foreground"}`} aria-hidden />
           <div className="text-sm">
             {files.length ? <span className="font-medium">{files.length === 1 ? t("file_one") : `${files.length} files`} {t("files_selected")}</span>
               : <><span className="font-medium text-foreground">{t("drop_doc")}</span> {t("or_browse")}</>}
